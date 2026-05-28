@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth / Staff ────────────────────────────────────────────────
+
+model User {
+  id         String     @id @default(cuid())
+  email      String     @unique
+  password   String
+  name       String
+  role       Role       @default(RECEPTIONIST)
+  status     UserStatus @default(ACTIVE)
+  avatar     String?
+  joinedDate DateTime   @default(now())
+  lastLogin  DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  RECEPTIONIST
+  HOUSEKEEPING
+}
+
+enum UserStatus {
+  ACTIVE
+  ON_LEAVE
+  INACTIVE
+}
+
+// ─── Guests ──────────────────────────────────────────────────────
+
+model Guest {
+  id            String      @id @default(cuid())
+  name          String
+  email         String      @unique
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+  status        GuestStatus @default(STANDARD)
+  memberSince   DateTime    @default(now())
+  totalStays    Int         @default(0)
+  lifetimeValue Int         @default(0)
+  avatar        String?
+  preferences   String[]
+  notes         GuestNote[]
+  bookings      Booking[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+enum GuestStatus {
+  STANDARD
+  VIP_MEMBER
+  VIP_ELITE
+  PLATINUM_TIER
+}
+
+model GuestNote {
+  id        String   @id @default(cuid())
+  guest     Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  guestId   String
+  author    String
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+}
+
+// ─── Rooms ───────────────────────────────────────────────────────
+
+model Room {
+  id          String       @id @default(cuid())
+  number      String       @unique
+  type        String
+  category    RoomCategory
+  area        Int
+  bedType     String
+  capacity    String
+  rate        Int
+  status      RoomStatus   @default(AVAILABLE)
+  view        String?
+  images      String[]
+  description String?
+  features    RoomFeature[] @relation("RoomToFeature")
+  bookings    Booking[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum RoomCategory {
+  SUPERIOR
+  DELUXE
+  SUITE
+  PENTHOUSE
+  VILLA
+  LUXURY
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  RESERVED
+}
+
+model RoomFeature {
+  id       String @id @default(cuid())
+  label    String
+  iconName String
+  rooms    Room[] @relation("RoomToFeature")
+}
+
+// ─── Bookings ────────────────────────────────────────────────────
+
+model Booking {
+  id          String        @id @default(cuid())
+  guest       Guest         @relation(fields: [guestId], references: [id])
+  guestId     String
+  room        Room          @relation(fields: [roomId], references: [id])
+  roomId      String
+  arrival     DateTime
+  departure   DateTime
+  status      BookingStatus @default(CONFIRMED)
+  totalAmount Int
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CHECKED_IN
+  AWAITING
+  CANCELLED
+  CHECKED_OUT
+}
+
+// ─── Amenities ───────────────────────────────────────────────────
+
+model Amenity {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  category    String?
+  iconName    String?
+  status      AmenityStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum AmenityStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+}

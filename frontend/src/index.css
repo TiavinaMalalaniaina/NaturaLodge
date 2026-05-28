@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "EB Garamond", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-primary: #00685d;
+  --color-primary-container: #168376;
+  --color-secondary: #7b5800;
+  --color-surface-container: #ebefec;
+  --color-surface-container-low: #f0f4f2;
+  --color-surface-container-high: #e5e9e7;
+  --color-on-surface: #181d1b;
+  --color-on-surface-variant: #3e4947;
+  --color-outline: #6e7977;
+  --color-outline-variant: #bdc9c6;
+  --color-stone-50: #F7F5F2;
+  --color-stone-200: #DCD9D2;
+  --color-teal-50: #E8F5F3;
+  --color-gold-400: #D4A017;
+  --color-gold-500: #B8860B;
+  --color-status-available: #2A8F82;
+  --color-status-occupied: #C4772A;
+  --color-status-reserved: #4A7FA8;
+  --color-status-maintenance: #8A5C3A;
+}
+
+@layer base {
+  body {
+    @apply bg-stone-50 text-on-surface font-sans antialiased;
+  }
+}
+
+.subtle-grain {
+  background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuDudZ0SdRH6HGKKLn_QezKCQKQZpn2bA2Xav2PsTBJZYHpNczkAaAe57xDZoCeavMCPhzHDPOd83v-Sm0HiXmB04zl56MpwxHGF4Rg3dgCMYCoQLDNNvqB6BU00LnhALs1bv64_3es7T-M5uiiDexT9ez95JocsJl4F4YWo9dzjjTMexYrKSsAX4S0BesDlmF1NDexE_ZiHj5bTDdnCIfYFJK8TE9HtZei3FalW7jZIKKTURFg73DemKibRQWYFPLwGWbvSQgLO54Q);
+}
+
+.organic-shadow {
+  box-shadow: 0 20px 40px -15px rgba(15, 110, 86, 0.08);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
