@@ -16,13 +16,12 @@ export const AppLayout: React.FC = () => {
       <div className="flex-1 lg:ml-60 flex flex-col min-h-screen w-full transition-all duration-300">
         <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 p-4 md:p-10 overflow-x-hidden">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="sync">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.2 }}
             >
               <Outlet />
             </motion.div>
