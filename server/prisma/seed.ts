@@ -6,7 +6,10 @@ import { config } from 'dotenv'
 
 config()
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
+})
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -226,79 +229,78 @@ const STAFF_DATA = [
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('🗑️  Clearing database…')
-  await prisma.payment.deleteMany()
-  await prisma.invoiceItem.deleteMany()
-  await prisma.invoice.deleteMany()
-  await prisma.guestNote.deleteMany()
-  await prisma.bookingRoom.deleteMany()
-  await prisma.booking.deleteMany()
-  await prisma.room.deleteMany()
-  await prisma.roomType.deleteMany()
-  await prisma.roomFeature.deleteMany()
-  await prisma.guest.deleteMany()
-  await prisma.user.deleteMany()
-  console.log('✅ Database cleared\n')
 
-  // ── Room Features ──────────────────────────────────────────────────────────
-  await prisma.roomFeature.createMany({
-    data: [
-      { id: 'wifi',   label: 'High-speed Wi-Fi',    iconName: 'Wifi'        },
-      { id: 'coffee', label: 'Organic Coffee Bar',   iconName: 'Coffee'      },
-      { id: 'ac',     label: 'Eco-Air Control',      iconName: 'Wind'        },
-      { id: 'tv',     label: 'Smart TV 4K',          iconName: 'Tv'          },
-      { id: 'entry',  label: 'Contactless Entry',    iconName: 'ShieldCheck' },
-      { id: 'guide',  label: 'Curated Local Guide',  iconName: 'Map'         },
-    ],
-  })
+  // ── Room Features (upsert by fixed id) ────────────────────────────────────
+  const featureDefs = [
+    { id: 'wifi',   label: 'High-speed Wi-Fi',    iconName: 'Wifi'        },
+    { id: 'coffee', label: 'Organic Coffee Bar',   iconName: 'Coffee'      },
+    { id: 'ac',     label: 'Eco-Air Control',      iconName: 'Wind'        },
+    { id: 'tv',     label: 'Smart TV 4K',          iconName: 'Tv'          },
+    { id: 'entry',  label: 'Contactless Entry',    iconName: 'ShieldCheck' },
+    { id: 'guide',  label: 'Curated Local Guide',  iconName: 'Map'         },
+  ]
+  for (const f of featureDefs) {
+    await prisma.roomFeature.upsert({
+      where:  { id: f.id },
+      update: { label: f.label, iconName: f.iconName },
+      create: f,
+    })
+  }
   console.log('✅ 6 room features')
 
-  // ── Room Types (4) ────────────────────────────────────────────────────────
+  // ── Room Types (findFirst or create — name not @unique) ───────────────────
   const roomTypeIdByKey: Record<string, string> = {}
   for (const rt of ROOM_TYPE_DEFS) {
-    const created = await prisma.roomType.create({
-      data: {
-        name:        rt.name,
-        category:    rt.category,
-        rate:        rt.rate,
-        area:        rt.area,
-        bedType:     rt.bedType,
-        capacity:    rt.capacity,
-        view:        rt.view,
-        description: rt.description,
-        features:    { connect: rt.featureIds.map(id => ({ id })) },
-      },
-    })
-    roomTypeIdByKey[rt.key] = created.id
+    let existing = await prisma.roomType.findFirst({ where: { name: rt.name } })
+    if (!existing) {
+      existing = await prisma.roomType.create({
+        data: {
+          name:        rt.name,
+          category:    rt.category,
+          rate:        rt.rate,
+          area:        rt.area,
+          bedType:     rt.bedType,
+          capacity:    rt.capacity,
+          view:        rt.view,
+          description: rt.description,
+          features:    { connect: rt.featureIds.map(id => ({ id })) },
+        },
+      })
+    }
+    roomTypeIdByKey[rt.key] = existing.id
   }
   console.log('✅ 4 room types')
 
-  // ── Rooms (20) ────────────────────────────────────────────────────────────
+  // ── Rooms (upsert by number @unique) ─────────────────────────────────────
   type RoomInfo = { id: string; rate: number; role: RoomRole }
   const roomByNumber: Record<string, RoomInfo> = {}
 
   for (const rd of ROOM_DEFS) {
     const typeDef = ROOM_TYPE_DEFS.find(t => t.key === rd.typeKey)!
-    const created = await prisma.room.create({
-      data: {
+    const room = await prisma.room.upsert({
+      where:  { number: rd.number },
+      update: {},
+      create: {
         number:     rd.number,
         status:     rd.dbStatus,
         images:     [],
         roomTypeId: roomTypeIdByKey[rd.typeKey],
       },
     })
-    roomByNumber[rd.number] = { id: created.id, rate: typeDef.rate, role: rd.role }
+    roomByNumber[rd.number] = { id: room.id, rate: typeDef.rate, role: rd.role }
   }
   console.log('✅ 20 rooms')
 
-  // ── Staff (15) ────────────────────────────────────────────────────────────
+  // ── Staff (upsert by email @unique) ──────────────────────────────────────
   const adminPwd = await bcrypt.hash('Admin@1234', 12)
   const staffPwd = await bcrypt.hash('Staff@1234', 12)
 
   const staff = await Promise.all(
     STAFF_DATA.map((s, i) =>
-      prisma.user.create({
-        data: {
+      prisma.user.upsert({
+        where:  { email: s.email },
+        update: { name: s.name, role: s.role, status: s.status },
+        create: {
           email:     s.email,
           name:      s.name,
           role:      s.role,
@@ -310,6 +312,14 @@ async function main() {
     ),
   )
   console.log('✅ 15 staff')
+
+  // ── Guests + Bookings : skip if already seeded ────────────────────────────
+  const existingGuests = await prisma.guest.count()
+  if (existingGuests > 0) {
+    console.log(`⏭️  ${existingGuests} guests already exist — skipping guests & bookings`)
+    console.log('\n🏨 Seed complete (partial)!')
+    return
+  }
 
   // ── Guests (100) ─────────────────────────────────────────────────────────
   const guests: Array<{ id: string }> = []
@@ -523,7 +533,7 @@ async function main() {
   console.log(`   CONFIRMED:   ${counts.CONFIRMED   ?? 0}  (incl. 7 arriving today)`)
   console.log(`   CANCELLED:   ${counts.CANCELLED   ?? 0}`)
 
-  console.log('\n🏨 Seed complete!')
+  console.log('\n🏨 Seed complete (full)!')
   console.log('─────────────────────────────────────────────────────')
   console.log('  ADMIN       admin@naturalodge.mg   / Admin@1234')
   console.log('  MANAGER     marc.d@naturalodge.mg  / Staff@1234')
