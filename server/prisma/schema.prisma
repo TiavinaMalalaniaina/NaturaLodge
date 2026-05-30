@@ -216,6 +216,14 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+// ─── Configuration ───────────────────────────────────────────────
+
+model HotelConfig {
+  id        String   @id @default("default")
+  taxRate   Float    @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 // ─── Payments ────────────────────────────────────────────────────
 
 model Payment {

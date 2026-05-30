@@ -39,7 +39,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, boo
 
   const [taxRate, setTaxRate] = useState(0);
   const [notes,   setNotes]   = useState('');
-  const [dueAt,   setDueAt]   = useState('');
+  const [dueAt] = useState(() => new Date().toISOString().split('T')[0]);
 
   const [payAmount,    setPayAmount]    = useState('');
   const [payMethod,    setPayMethod]    = useState<PaymentMethod>('cash');
@@ -175,15 +175,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, boo
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.due')}</label>
-                        <input
-                          type="date"
-                          value={dueAt}
-                          onChange={e => setDueAt(e.target.value)}
-                          className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                        />
-                      </div>
-                      <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">Notes</label>
                         <textarea
                           rows={2}
@@ -240,10 +231,6 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ isOpen, onClose, boo
                         <div>
                           <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.issued')}</p>
                           <p className="font-mono mt-1">{fmtDate(invoice.issuedAt)}</p>
-                        </div>
-                        <div>
-                          <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.due')}</p>
-                          <p className="font-mono mt-1">{invoice.dueAt ? fmtDate(invoice.dueAt) : '—'}</p>
                         </div>
                         <div>
                           <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.registrationRef')}</p>

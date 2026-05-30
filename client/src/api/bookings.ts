@@ -141,6 +141,15 @@ export const updateBookingStatus = async (id: string, status: string): Promise<R
   return normalizeBooking(data);
 };
 
+export const reassignRoom = async (
+  bookingId: string,
+  oldRoomId: string,
+  newRoomId: string,
+): Promise<RichBooking> => {
+  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/reassign`, { oldRoomId, newRoomId });
+  return normalizeBooking(data);
+};
+
 export const createBooking = async (payload: {
   guestId: string;
   arrival: string;

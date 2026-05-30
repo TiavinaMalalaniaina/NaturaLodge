@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchBooking, fetchBookings, createBooking, updateBookingStatus, BookingParams } from '../api/bookings';
+import { fetchBooking, fetchBookings, createBooking, updateBookingStatus, reassignRoom, BookingParams } from '../api/bookings';
 import { ROOMS_KEY } from './useRooms';
 
 export const BOOKINGS_KEY = ['bookings'] as const;
@@ -36,6 +36,18 @@ export function useUpdateBookingStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       updateBookingStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+    },
+  });
+}
+
+export function useReassignRoom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, oldRoomId, newRoomId }: { bookingId: string; oldRoomId: string; newRoomId: string }) =>
+      reassignRoom(bookingId, oldRoomId, newRoomId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ROOMS_KEY });

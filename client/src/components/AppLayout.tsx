@@ -13,14 +13,15 @@ export const AppLayout: React.FC = () => {
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
-      <div className="flex-1 lg:ml-60 flex flex-col min-h-screen w-full transition-all duration-300">
+      <div className="flex-1 lg:ml-60 flex flex-col min-h-screen min-w-0 transition-all duration-300">
         <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="flex-1 p-4 md:p-10 overflow-x-hidden">
+        <main className="flex-1 p-4 md:p-10 overflow-x-hidden min-w-0">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
+            className="w-full min-w-0"
           >
             <Outlet />
           </motion.div>

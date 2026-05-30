@@ -254,7 +254,10 @@ export const BookingDetail: React.FC = () => {
         isOpen={reassignOpen}
         onClose={() => setReassignOpen(false)}
         bookingId={booking.id}
+        currentRoomId={booking.rooms[0]?.roomId ?? ''}
         currentRoomNumber={booking.rooms[0]?.room.number ?? ''}
+        arrival={booking.arrival}
+        departure={booking.departure}
       />
     </motion.div>
   );

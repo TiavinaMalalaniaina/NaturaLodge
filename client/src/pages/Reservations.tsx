@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, Users, Calendar, Filter,
   Download, Info, Construction, RefreshCw, LayoutGrid, List,
@@ -23,13 +23,7 @@ import { RichBooking, EffectiveStatus } from '../api/bookings';
 
 // ── Date helpers ──────────────────────────────────────────────────
 
-function getMondayOf(d: Date): Date {
-  const date = new Date(d);
-  const day  = date.getDay();
-  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
+
 function addDays(d: Date, n: number): Date {
   const r = new Date(d); r.setDate(r.getDate() + n); return r;
 }
@@ -59,16 +53,14 @@ const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED
 const ROOM_STATUS    = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 const CATEGORIES     = ['ALL', 'Suite', 'Deluxe', 'Superior', 'Penthouse', 'Villa', 'Luxury'];
 
+// Grid constants
+const COL_W        = 52;   // px per day column
+const LABEL_W      = 176;  // px for room label column
+
 // ── Main component ────────────────────────────────────────────────
 
 export const Reservations: React.FC = () => {
   const { t } = useTranslation();
-
-  // Week day labels localised
-  const WEEK_LABELS = [
-    t('calendar.mon', 'Lun'), t('calendar.tue', 'Mar'), t('calendar.wed', 'Mer'),
-    t('calendar.thu', 'Jeu'), t('calendar.fri', 'Ven'), t('calendar.sat', 'Sam'), t('calendar.sun', 'Dim'),
-  ];
 
   // View
   const [viewMode, setViewMode]         = useState<'grid' | 'list' | 'calendar'>('grid');
@@ -81,11 +73,68 @@ export const Reservations: React.FC = () => {
   // List pagination
   const [page, setPage] = useState(1);
 
-  // Grid week
-  const [weekStart, setWeekStart] = useState(() => getMondayOf(new Date()));
-  const weekEnd   = addDays(weekStart, 7);
-  const todayStr  = toStr(new Date());
-  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
+  // Grid — window: 1 year before today → 4 years after today
+  const bodyRef   = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const monthBarRef = useRef<HTMLDivElement>(null); // month nav bar (synced)
+
+  const windowStart = useMemo(() => {
+    const d = new Date(); d.setFullYear(d.getFullYear() - 1); d.setHours(0, 0, 0, 0); return d;
+  }, []);
+  const windowEnd = useMemo(() => {
+    const d = new Date(); d.setFullYear(d.getFullYear() + 4); d.setHours(23, 59, 59, 999); return d;
+  }, []);
+  const totalDays = useMemo(
+    () => Math.ceil((windowEnd.getTime() - windowStart.getTime()) / 86_400_000),
+    [windowStart, windowEnd],
+  );
+  const gridDates = useMemo(
+    () => Array.from({ length: totalDays }, (_, i) => addDays(windowStart, i)),
+    [windowStart, totalDays],
+  );
+  const todayStr = toStr(new Date());
+
+  // Visible date (leftmost visible day, updated on scroll)
+  const [visibleDate, setVisibleDate] = useState<Date>(() => new Date());
+
+  // All months in the window, for the month navigator
+  const allMonths = useMemo(() => {
+    const months: Array<{ year: number; month: number; label: string; startDay: number; isNewYear: boolean }> = [];
+    let d = new Date(windowStart.getFullYear(), windowStart.getMonth(), 1);
+    while (d <= windowEnd) {
+      const startDay = Math.max(0, dayDiff(windowStart, d));
+      months.push({
+        year:      d.getFullYear(),
+        month:     d.getMonth(),
+        label:     d.toLocaleString('en', { month: 'short' }).toUpperCase(),
+        startDay,
+        isNewYear: d.getMonth() === 0,
+      });
+      d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    }
+    return months;
+  }, [windowStart, windowEnd]);
+
+  const visibleDayCount = useMemo(
+    () => Math.round((bodyRef.current?.clientWidth ?? 800) / COL_W),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleDate],
+  );
+  const visibleEnd = addDays(visibleDate, visibleDayCount);
+
+  // Horizontal virtualization — only render visible columns + 50-day buffer on each side
+  const virtualStartIdx = useMemo(() => {
+    const offset = Math.max(0, dayDiff(windowStart, visibleDate));
+    return Math.max(0, offset - 50);
+  }, [windowStart, visibleDate]);
+  const virtualEndIdx = useMemo(() => {
+    const offset = Math.max(0, dayDiff(windowStart, visibleDate));
+    return Math.min(totalDays, offset + visibleDayCount + 50);
+  }, [windowStart, visibleDate, visibleDayCount, totalDays]);
+  const virtualDates = useMemo(
+    () => gridDates.slice(virtualStartIdx, virtualEndIdx),
+    [gridDates, virtualStartIdx, virtualEndIdx],
+  );
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen]     = useState(false);
@@ -93,7 +142,7 @@ export const Reservations: React.FC = () => {
   const [addModalDate, setAddModalDate]         = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
   const [invoiceBooking, setInvoiceBooking]     = useState<RichBooking | null>(null);
-  const [reassignBooking, setReassignBooking]   = useState<{ id: string; room: string } | null>(null);
+  const [reassignBooking, setReassignBooking]   = useState<{ id: string; roomId: string; room: string; arrival: string; departure: string } | null>(null);
   const [cancelBookingId, setCancelBookingId]   = useState<string | null>(null);
 
   const navigate     = useNavigate();
@@ -113,10 +162,64 @@ export const Reservations: React.FC = () => {
 
   const { data: gridPage, isLoading: gridLoading } = useBookings(
     viewMode === 'grid'
-      ? { startDate: toStr(weekStart), endDate: toStr(weekEnd), limit: 500 }
+      ? { startDate: toStr(windowStart), endDate: toStr(windowEnd), limit: 500 }
       : { limit: 1 }
   );
   const gridBookings = gridPage?.data ?? [];
+
+  // Pre-index bookings by room to avoid O(rooms × bookings) scan on every render
+  const bookingsByRoomId = useMemo(() => {
+    const map = new Map<string, RichBooking[]>();
+    for (const b of gridBookings) {
+      if (b.status === 'cancelled') continue;
+      for (const br of b.rooms) {
+        const existing = map.get(br.room.id);
+        if (existing) existing.push(b);
+        else map.set(br.room.id, [b]);
+      }
+    }
+    return map;
+  }, [gridBookings]);
+
+  // Sync frozen headers on every scroll frame — update visible date only on month change
+  const handleBodyScroll = useCallback(() => {
+    const sl = bodyRef.current?.scrollLeft ?? 0;
+    if (headerRef.current)   headerRef.current.scrollLeft   = sl;
+    if (monthBarRef.current) monthBarRef.current.scrollLeft = sl;
+    setVisibleDate(prev => {
+      const next = addDays(windowStart, Math.round(sl / COL_W));
+      return prev.getFullYear() === next.getFullYear() && prev.getMonth() === next.getMonth()
+        ? prev   // same month → skip re-render
+        : next;  // new month → update
+    });
+  }, [windowStart]);
+
+  const syncScrollTo = useCallback((target: number) => {
+    const clamped = Math.max(0, Math.min(target, (totalDays - 1) * COL_W));
+    if (bodyRef.current)     bodyRef.current.scrollLeft     = clamped;
+    if (headerRef.current)   headerRef.current.scrollLeft   = clamped;
+    if (monthBarRef.current) monthBarRef.current.scrollLeft = clamped;
+    setVisibleDate(addDays(windowStart, Math.round(clamped / COL_W)));
+  }, [windowStart, totalDays]);
+
+  const scrollToToday = useCallback(() => {
+    const offset = Math.max(0, dayDiff(windowStart, new Date()) - 1) * COL_W;
+    syncScrollTo(offset);
+  }, [windowStart, syncScrollTo]);
+
+  const scrollByDays = useCallback((days: number) => {
+    const current = bodyRef.current?.scrollLeft ?? 0;
+    syncScrollTo(Math.max(0, current + days * COL_W));
+  }, [syncScrollTo]);
+
+  const scrollToMonth = useCallback((startDay: number) => {
+    syncScrollTo(startDay * COL_W);
+  }, [syncScrollTo]);
+
+  // Scroll to today when switching to grid view
+  useEffect(() => {
+    if (viewMode === 'grid') setTimeout(scrollToToday, 50);
+  }, [viewMode, scrollToToday]);
 
   // Grid : toutes les chambres chargées une fois, filtrées côté client
   const { data: allGridRooms = [], isLoading: roomsLoading } = useRooms(
@@ -136,16 +239,19 @@ export const Reservations: React.FC = () => {
 
   // ── Grid helpers ──────────────────────────────────────────────────
 
-  const getRoomBookings = (roomId: string) =>
-    gridBookings.filter(b => b.status !== 'cancelled' && b.rooms.some(br => br.room.id === roomId));
 
   function getBlockStyle(b: RichBooking): React.CSSProperties | null {
-    const start = Math.max(0, dayDiff(weekStart, new Date(b.arrival)));
-    const end   = Math.min(7, dayDiff(weekStart, new Date(b.departure)));
-    if (end <= start) return null;
+    const startDay = dayDiff(windowStart, new Date(b.arrival));
+    const endDay   = dayDiff(windowStart, new Date(b.departure));
+    const s = Math.max(0, startDay);
+    const e = Math.min(totalDays, endDay);
+    if (e <= s) return null;
     return {
-      left:  `calc(${(start / 7) * 100}% + 4px)`,
-      width: `calc(${((end - start) / 7) * 100}% - 8px)`,
+      left:     s * COL_W + 3,
+      width:    (e - s) * COL_W - 6,
+      position: 'absolute',
+      top:      5,
+      height:   50,
     };
   }
 
@@ -173,10 +279,10 @@ export const Reservations: React.FC = () => {
     : t('reservations.bookingsRegistry');
 
   return (
-    <div className="space-y-8 h-full">
+    <div className="space-y-8 h-full overflow-x-hidden">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-4 min-w-0">
         <div>
           <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-3 leading-none">
             {viewLabel}
@@ -199,19 +305,30 @@ export const Reservations: React.FC = () => {
               ))}
             </div>
 
-            {/* Week navigation */}
+            {/* Grid navigation + visible date indicator */}
             {viewMode === 'grid' && (
-              <div className="flex items-center gap-3 text-on-surface-variant/60">
-                <button onClick={() => setWeekStart(d => addDays(d, -7))}
-                  className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors">
+              <div className="flex items-center gap-2">
+                <button onClick={() => scrollByDays(-14)}
+                  className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
-                <button onClick={() => setWeekStart(getMondayOf(new Date()))}
-                  className="font-mono text-xs font-bold tracking-wide hover:text-primary transition-colors">
-                  {fmtDate(weekStart)} — {fmtDate(addDays(weekStart, 6))}
+
+                {/* Visible date info */}
+                <div className="text-center min-w-[140px] select-none">
+                  <p className="text-sm font-bold text-on-surface leading-tight capitalize">
+                    {visibleDate.toLocaleString('en', { month: 'long' })} {visibleDate.getFullYear()}
+                  </p>
+                  <p className="text-[9px] font-mono text-on-surface-variant/40">
+                    {toStr(visibleDate)} – {toStr(addDays(visibleDate, 20))}
+                  </p>
+                </div>
+
+                <button onClick={scrollToToday}
+                  className="px-3 py-1.5 rounded-lg border border-stone-200 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 hover:text-primary transition-colors text-on-surface-variant/60">
+                  Today
                 </button>
-                <button onClick={() => setWeekStart(d => addDays(d, 7))}
-                  className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors">
+                <button onClick={() => scrollByDays(14)}
+                  className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -241,32 +358,77 @@ export const Reservations: React.FC = () => {
       </div>
 
       {/* ── Filter bar ── */}
-      <div className="flex flex-wrap items-center gap-6 py-2 border-b border-stone-100">
-        <div className="flex items-center gap-3">
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('reservations.filterCategory')}</span>
-          <div className="flex gap-1.5 flex-wrap">
-            {CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => handleFilterChange(setCategoryFilter)(cat)}
-                className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border',
-                  categoryFilter === cat ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
-                {cat === 'ALL' ? t('common.all') : cat}
-              </button>
-            ))}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 border-b border-stone-100">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+              {t('reservations.filterCategory')}
+            </span>
+            <div className="flex gap-1.5">
+              {CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => handleFilterChange(setCategoryFilter)(cat)}
+                  className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
+                    categoryFilter === cat ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                  {cat === 'ALL' ? t('common.all') : cat}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="h-4 w-px bg-stone-200 hidden md:block" />
-        <div className="flex items-center gap-3">
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('reservations.filterStatus')}</span>
-          <div className="flex gap-1.5 flex-wrap">
-            {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
-              <button key={s} onClick={() => handleFilterChange(setStatusFilter)(s)}
-                className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border',
-                  statusFilter === s ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
-                {s === 'ALL' ? t('common.all') : s}
-              </button>
-            ))}
+
+          <div className="h-4 w-px bg-stone-200 shrink-0" />
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+              {t('reservations.filterStatus')}
+            </span>
+            <div className="flex gap-1.5">
+              {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
+                <button key={s} onClick={() => handleFilterChange(setStatusFilter)(s)}
+                  className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
+                    statusFilter === s ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                  {s === 'ALL' ? t('common.all') : s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+
+          {/* Month quick-nav — grid mode only */}
+          {viewMode === 'grid' && (
+            <>
+              <div className="h-4 w-px bg-stone-200 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap font-mono">
+                  {visibleDate.getFullYear()}
+                </span>
+                <div className="flex gap-1">
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const entry    = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
+                    const isActive = visibleDate.getMonth() === i;
+                    const isNow    = new Date().getFullYear() === visibleDate.getFullYear() && new Date().getMonth() === i;
+                    const label    = new Date(visibleDate.getFullYear(), i, 1)
+                      .toLocaleString('en', { month: 'short' }).toUpperCase();
+                    return (
+                      <button
+                        key={i}
+                        disabled={!entry}
+                        onClick={() => entry && scrollToMonth(entry.startDay)}
+                        className={cn(
+                          'relative px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
+                          isActive
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-primary/40 hover:text-primary',
+                          !entry && 'opacity-30 cursor-not-allowed',
+                        )}>
+                        {label}
+                        {isNow && !isActive && (
+                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary border border-white" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
       </div>
 
       {/* ── Views ── */}
@@ -275,40 +437,113 @@ export const Reservations: React.FC = () => {
         {/* ─────────────────── GRID VIEW ─────────────────── */}
         {viewMode === 'grid' && (
           <motion.div key="grid" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            className="bg-white rounded-3xl border border-outline-variant/40 overflow-hidden organic-shadow flex flex-col"
-            style={{ height: 'calc(100vh - 380px)', minHeight: 400 }}>
+            className="w-full bg-white rounded-3xl border border-outline-variant/40 overflow-hidden organic-shadow flex flex-col"
+            style={{ height: 'calc(100vh - 280px)', minHeight: 700 }}>
 
-            <div className="min-w-[900px] flex flex-col h-full">
-
-              {/* Grid header — days */}
-              <div className="flex border-b border-outline-variant/40 bg-stone-50/50 sticky top-0 z-30">
-                <div className="w-44 flex-shrink-0 border-r border-outline-variant/40 p-4 flex items-center">
-                  <span className="text-[9px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase">{t('reservations.unit')}</span>
-                </div>
-                <div className="flex-1 flex">
-                  {weekDates.map((date: Date, i: number) => {
-                    const isToday = toStr(date) === todayStr;
+            {/* ── Month navigator bar ── */}
+            <div className="shrink-0 flex border-b border-stone-100 bg-white" style={{ height: 32 }}>
+              {/* Corner: label */}
+              <div className="shrink-0 border-r border-stone-100 px-3 flex items-center bg-white"
+                style={{ width: LABEL_W }}>
+                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">Mois</span>
+              </div>
+              {/* Month chips — synced via monthBarRef, overflow hidden */}
+              <div ref={monthBarRef} className="flex-1 overflow-hidden relative">
+                <div style={{ width: totalDays * COL_W, height: '100%', position: 'relative' }}>
+                  {allMonths.map((m, idx) => {
+                    const nextStart = allMonths[idx + 1]?.startDay ?? totalDays;
+                    const chipW     = (nextStart - m.startDay) * COL_W;
+                    const isActive  = m.year === visibleDate.getFullYear() && m.month === visibleDate.getMonth();
+                    const isNow     = m.year === new Date().getFullYear() && m.month === new Date().getMonth();
                     return (
-                      <div key={i} className={cn('flex-1 p-3 border-r border-stone-100 last:border-0 text-center', isToday && 'bg-teal-50/60')}>
-                        <p className={cn('text-[9px] font-bold tracking-widest uppercase mb-0.5', isToday ? 'text-primary' : 'text-on-surface-variant/40')}>
-                          {WEEK_LABELS[i]}
-                        </p>
-                        <p className={cn('font-mono text-lg leading-none', isToday ? 'text-primary font-bold' : 'text-on-surface')}>
-                          {date.getDate()}
-                        </p>
-                        <p className="text-[8px] text-on-surface-variant/30 font-mono mt-0.5">
-                          {date.toLocaleString('en', { month: 'short' }).toUpperCase()}
-                        </p>
-                      </div>
+                      <button
+                        key={`${m.year}-${m.month}`}
+                        onClick={() => scrollToMonth(m.startDay)}
+                        style={{ position: 'absolute', left: m.startDay * COL_W, width: chipW, top: 0, bottom: 0 }}
+                        className={cn(
+                          'flex items-center justify-center gap-1 border-r border-stone-100 transition-all overflow-hidden',
+                          isActive
+                            ? 'bg-primary text-white'
+                            : m.isNewYear
+                              ? 'bg-stone-50 text-on-surface-variant/60 hover:bg-primary/10 hover:text-primary'
+                              : 'text-on-surface-variant/50 hover:bg-primary/5 hover:text-primary',
+                        )}>
+                        {m.isNewYear && (
+                          <span className={cn('text-[7px] font-bold shrink-0', isActive ? 'opacity-75' : 'opacity-50')}>
+                            {m.year}
+                          </span>
+                        )}
+                        {chipW > 36 && (
+                          <span className="text-[8px] font-bold uppercase tracking-widest truncate">
+                            {chipW > 60 ? m.label : m.label.slice(0, 1)}
+                          </span>
+                        )}
+                        {isNow && !isActive && (
+                          <span className="w-1 h-1 rounded-full bg-primary shrink-0" />
+                        )}
+                      </button>
                     );
                   })}
                 </div>
               </div>
+            </div>
 
-              {/* Grid body — rooms */}
-              <div className="flex-1 overflow-y-auto no-scrollbar relative min-h-0">
+            {/* ── Header row — fixed, never scrolls vertically ── */}
+            <div className="shrink-0 flex border-b border-stone-200 bg-stone-50/95 z-30">
+              {/* Corner cell */}
+              <div className="shrink-0 border-r border-stone-200 px-4 flex items-center bg-stone-50"
+                style={{ width: LABEL_W }}>
+                <span className="text-[9px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase">
+                  {t('reservations.unit')}
+                </span>
+              </div>
+              {/* Day labels — synced scroll (overflow hidden, no scrollbar) */}
+              <div ref={headerRef} className="flex overflow-hidden">
+                <div style={{ width: virtualStartIdx * COL_W, flexShrink: 0 }} />
+                {virtualDates.map((date, localI) => {
+                  const i            = virtualStartIdx + localI;
+                  const isToday      = toStr(date) === todayStr;
+                  const isMonthStart = date.getDate() === 1;
+                  const dayName      = date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+                  return (
+                    <div key={i} style={{ width: COL_W, minWidth: COL_W }}
+                      className={cn(
+                        'shrink-0 border-r border-stone-100 text-center py-2 px-1',
+                        isToday && 'bg-teal-50/80',
+                      )}>
+                      <p className={cn('text-[8px] font-bold tracking-widest leading-none mb-0.5',
+                        isToday ? 'text-primary' : 'text-on-surface-variant/30')}>
+                        {dayName}
+                      </p>
+                      <p className={cn('font-mono text-base leading-none font-bold',
+                        isToday ? 'text-primary' : 'text-on-surface/80')}>
+                        {date.getDate()}
+                      </p>
+                      {(isMonthStart || i === 0) && (
+                        <p className={cn('text-[7px] font-bold uppercase tracking-widest mt-0.5',
+                          isToday ? 'text-primary/60' : 'text-on-surface-variant/30')}>
+                          {date.toLocaleString('en', { month: 'short' }).toUpperCase()}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+                <div style={{ width: (totalDays - virtualEndIdx) * COL_W, flexShrink: 0 }} />
+              </div>
+            </div>
+
+            {/* ── Body — scrolls both x and y, syncs header on scroll ── */}
+            <div
+              ref={bodyRef}
+              onScroll={handleBodyScroll}
+              className="flex-1 overflow-auto min-h-0"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: '#d6d3d1 transparent' }}
+            >
+              <div style={{ minWidth: LABEL_W + totalDays * COL_W }}>
+
                 {gridRooms.length === 0 && (
-                  <div className="h-full flex flex-col items-center justify-center p-20 text-on-surface-variant/40">
+                  <div className="flex flex-col items-center justify-center p-20 text-on-surface-variant/40"
+                    style={{ minHeight: 300 }}>
                     <Filter className="w-12 h-12 mb-4 opacity-10" />
                     <p className="font-display italic text-2xl">{t('reservations.noUnitsMatch')}</p>
                     <button onClick={() => { setStatusFilter('ALL'); setCategoryFilter('ALL'); setSearchQuery(''); }}
@@ -319,15 +554,17 @@ export const Reservations: React.FC = () => {
                 )}
 
                 {gridRooms.map(room => {
-                  const bookings = getRoomBookings(room.id);
+                  const bookings = bookingsByRoomId.get(room.id) ?? [];
                   const isMaint  = room.status === 'maintenance';
 
                   return (
-                    <div key={room.id} className="flex border-b border-stone-50 last:border-0 relative group" style={{ height: 72 }}>
+                    <div key={room.id} className="flex border-b border-stone-50 last:border-0 group"
+                      style={{ height: 60 }}>
 
-                      {/* Room label */}
-                      <div className="w-44 flex-shrink-0 border-r border-outline-variant/40 px-4 flex flex-col justify-center bg-white group-hover:bg-stone-50/60 transition-colors z-10">
-                        <p className="font-display italic text-xl text-primary leading-none">{room.type}</p>
+                      {/* Room label — sticky left */}
+                      <div className="shrink-0 sticky left-0 z-20 border-r border-stone-100 px-4 flex flex-col justify-center bg-white group-hover:bg-stone-50/60 transition-colors"
+                        style={{ width: LABEL_W }}>
+                        <p className="font-display italic text-lg text-primary leading-none truncate">{room.type}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={cn('w-1.5 h-1.5 rounded-full shrink-0',
                             room.status === 'available'    ? 'bg-status-available' :
@@ -339,49 +576,46 @@ export const Reservations: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Day cells grid */}
-                      <div className="flex-1 flex relative">
-                        {weekDates.map((date, i) => {
+                      {/* Day cells + blocks */}
+                      <div className="relative flex" style={{ height: 60 }}>
+                        <div style={{ width: virtualStartIdx * COL_W, flexShrink: 0 }} />
+                        {virtualDates.map((date, localI) => {
+                          const i       = virtualStartIdx + localI;
                           const isToday = toStr(date) === todayStr;
                           return (
-                            <div key={i}
+                            <div key={i} style={{ width: COL_W, minWidth: COL_W }}
                               onClick={() => { if (!isMaint) { setAddModalRoom(room.id); setAddModalDate(toStr(date)); setIsAddModalOpen(true); } }}
                               className={cn(
-                                'flex-1 border-r border-stone-50 last:border-0 h-full transition-colors',
-                                isToday && 'bg-teal-50/30',
-                                !isMaint && 'hover:bg-stone-50/80 cursor-pointer',
+                                'border-r border-stone-50 h-full',
+                                isToday && 'bg-teal-50/25',
+                                !isMaint && 'hover:bg-stone-50/70 cursor-pointer transition-colors',
                               )} />
                           );
                         })}
+                        <div style={{ width: (totalDays - virtualEndIdx) * COL_W, flexShrink: 0 }} />
 
-                        {/* Maintenance overlay */}
                         {isMaint && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                            style={{ background: 'repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(0,0,0,0.03) 8px, rgba(0,0,0,0.03) 16px)' }}>
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+                            style={{ background: 'repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(0,0,0,0.025) 8px, rgba(0,0,0,0.025) 16px)' }}>
                             <div className="flex items-center gap-2 text-status-maintenance/40">
-                              <Construction className="w-4 h-4" />
+                              <Construction className="w-3.5 h-3.5" />
                               <span className="text-[9px] font-bold uppercase tracking-widest">{t('status.maintenance')}</span>
                             </div>
                           </div>
                         )}
 
-                        {/* Booking blocks */}
                         {bookings.map(b => {
                           const style = getBlockStyle(b);
                           if (!style) return null;
-                          const cls = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
+                          const cls   = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
                           const isVip = b.guest.status === 'VIP_ELITE' || b.guest.status === 'PLATINUM_TIER';
-
                           return (
-                            <motion.div
+                            <div
                               key={b.id}
-                              initial={{ scaleX: 0, originX: 0 }}
-                              animate={{ scaleX: 1 }}
-                              transition={{ duration: 0.25 }}
-                              style={{ ...style, top: 8, height: 56, position: 'absolute' }}
+                              style={style}
                               onClick={e => { e.stopPropagation(); setSelectedBooking(b); }}
                               className={cn(
-                                'rounded-xl border flex flex-col justify-center px-3 cursor-pointer z-20 group/block overflow-hidden',
+                                'rounded-xl border flex flex-col justify-center px-3 cursor-pointer z-10 group/block overflow-hidden',
                                 'hover:brightness-105 transition-all shadow-sm',
                                 cls,
                                 isVip && b.effectiveStatus === 'upcoming' && 'bg-gradient-to-r from-gold-400 to-gold-500 text-white border-gold-400',
@@ -390,7 +624,7 @@ export const Reservations: React.FC = () => {
                                 <p className="text-[10px] font-bold truncate leading-tight">{b.guestName}</p>
                                 <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                   <button
-                                    onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, room: b.rooms[0]?.room.number ?? '' }); }}
+                                    onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, roomId: b.rooms[0]?.roomId ?? '', room: b.rooms[0]?.room.number ?? '', arrival: b.arrival, departure: b.departure }); }}
                                     className="p-0.5 hover:bg-white/20 rounded" title={t('reservations.reassign')}>
                                     <RefreshCw className="w-3 h-3" />
                                   </button>
@@ -399,7 +633,7 @@ export const Reservations: React.FC = () => {
                               <p className="text-[8px] opacity-60 font-medium leading-tight mt-0.5">
                                 {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} · {b.nights}n
                               </p>
-                            </motion.div>
+                            </div>
                           );
                         })}
                       </div>
@@ -407,32 +641,33 @@ export const Reservations: React.FC = () => {
                   );
                 })}
               </div>
+            </div>
 
-              {/* Footer legend */}
-              <div className="p-4 border-t border-outline-variant/40 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap gap-6">
-                  {([
-                    { key: 'status.upcoming',    cls: 'bg-primary-container border-primary/20' },
-                    { key: 'status.dueCheckin',  cls: 'bg-amber-100 border-amber-300' },
-                    { key: 'status.inProgress',  cls: 'bg-teal-800 border-teal-700' },
-                    { key: 'status.overdue',     cls: 'bg-red-100 border-red-300' },
-                    { key: 'legend.vip',         cls: 'bg-gradient-to-r from-gold-400 to-gold-500 border-gold-400' },
-                    { key: 'status.maintenance', cls: 'bg-stone-100 border-stone-200' },
-                  ] as const).map(item => (
-                    <div key={item.key} className="flex items-center gap-2">
-                      <span className={cn('w-3 h-3 rounded border', item.cls)} />
-                      <span className="text-[9px] font-bold tracking-widest text-on-surface-variant/60 uppercase">
-                        {item.key === 'legend.vip' ? 'VIP Stay' : t(item.key)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">
-                  <Info className="w-3 h-3" />
-                  {t('reservations.clickHint')}
-                </div>
+            {/* ── Footer legend (outside scroll, always visible) ── */}
+            <div className="shrink-0 p-4 border-t border-outline-variant/40 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap gap-6">
+                {([
+                  { key: 'status.upcoming',    cls: 'bg-primary-container border-primary/20' },
+                  { key: 'status.dueCheckin',  cls: 'bg-amber-100 border-amber-300' },
+                  { key: 'status.inProgress',  cls: 'bg-teal-800 border-teal-700' },
+                  { key: 'status.overdue',     cls: 'bg-red-100 border-red-300' },
+                  { key: 'legend.vip',         cls: 'bg-gradient-to-r from-gold-400 to-gold-500 border-gold-400' },
+                  { key: 'status.maintenance', cls: 'bg-stone-100 border-stone-200' },
+                ] as const).map(item => (
+                  <div key={item.key} className="flex items-center gap-2">
+                    <span className={cn('w-3 h-3 rounded border', item.cls)} />
+                    <span className="text-[9px] font-bold tracking-widest text-on-surface-variant/60 uppercase">
+                      {item.key === 'legend.vip' ? 'VIP Stay' : t(item.key)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 text-[9px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">
+                <Info className="w-3 h-3" />
+                {t('reservations.clickHint')}
               </div>
             </div>
+
           </motion.div>
         )}
 
@@ -573,27 +808,36 @@ export const Reservations: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-full max-w-xl px-4"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] w-full max-w-3xl px-4"
           >
-            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl p-5 flex items-start gap-5">
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={cn('px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border',
-                    EFFECTIVE_STATUS_CLASS[selectedBooking.effectiveStatus])}>
-                    {t(EFFECTIVE_STATUS_I18N_KEY[selectedBooking.effectiveStatus])}
-                  </span>
-                  <span className="text-[9px] font-mono text-on-surface-variant/40">#{selectedBooking.id.slice(-8)}</span>
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl overflow-hidden">
+
+              {/* ── Info ── */}
+              <div className="px-5 pt-4 pb-3 flex items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={cn('px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border',
+                      EFFECTIVE_STATUS_CLASS[selectedBooking.effectiveStatus])}>
+                      {t(EFFECTIVE_STATUS_I18N_KEY[selectedBooking.effectiveStatus])}
+                    </span>
+                    <span className="text-[9px] font-mono text-on-surface-variant/40">#{selectedBooking.id.slice(-8)}</span>
+                  </div>
+                  <p className="font-semibold text-on-surface truncate">{selectedBooking.guestName}</p>
+                  <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
+                    {selectedBooking.rooms.map(br => br.room.type).join(', ')} · {selectedBooking.rooms.map(br => `#${br.room.number}`).join(' · ')} · {selectedBooking.arrival} → {selectedBooking.departure} ({selectedBooking.nights}n)
+                  </p>
                 </div>
-                <p className="font-semibold text-on-surface truncate">{selectedBooking.guestName}</p>
-                <p className="text-xs text-on-surface-variant/60 mt-0.5">
-                  {selectedBooking.rooms.map(br => br.room.type).join(', ')} · {selectedBooking.rooms.map(br => `#${br.room.number}`).join(' · ')} · {selectedBooking.arrival} → {selectedBooking.departure} ({selectedBooking.nights}n)
-                </p>
-                <p className="text-xs font-bold text-primary mt-1">{selectedBooking.totalAmount.toLocaleString()} Ar</p>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} Ar</span>
+                  <button onClick={() => setSelectedBooking(null)}
+                    className="p-1.5 text-on-surface-variant/40 hover:text-on-surface hover:bg-stone-50 rounded-lg transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Quick actions */}
-              <div className="flex items-center gap-2 shrink-0">
+              {/* ── Actions ── */}
+              <div className="px-5 py-3 border-t border-stone-100 flex items-center gap-2 flex-wrap">
                 {selectedBooking.effectiveStatus === 'due_checkin' && (
                   <button
                     onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_IN' }); setSelectedBooking(null); }}
@@ -629,25 +873,25 @@ export const Reservations: React.FC = () => {
                     <Ban className="w-3.5 h-3.5" /> {t('common.cancel')}
                   </button>
                 )}
+
+                <div className="w-px h-5 bg-stone-200 mx-1" />
+
                 <button
-                  onClick={() => { setReassignBooking({ id: selectedBooking.id, room: selectedBooking.rooms[0]?.room.number ?? '' }); setSelectedBooking(null); }}
+                  onClick={() => { setReassignBooking({ id: selectedBooking.id, roomId: selectedBooking.rooms[0]?.roomId ?? '', room: selectedBooking.rooms[0]?.room.number ?? '', arrival: selectedBooking.arrival, departure: selectedBooking.departure }); setSelectedBooking(null); }}
                   className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
                   <RefreshCw className="w-3.5 h-3.5" /> {t('reservations.reassign')}
                 </button>
                 <button
                   onClick={() => { setInvoiceBooking(selectedBooking); setSelectedBooking(null); }}
-                  className="p-2 bg-stone-100 text-on-surface-variant rounded-lg hover:bg-stone-200 transition-colors" title={t('invoice.title')}>
-                  <FileText className="w-4 h-4" />
+                  className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
+                  <FileText className="w-3.5 h-3.5" /> {t('invoice.title')}
                 </button>
                 <button onClick={() => navigate(`/reservations/${selectedBooking.id}`)}
-                  className="p-2 bg-stone-100 text-on-surface-variant rounded-lg hover:bg-stone-200 transition-colors">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <button onClick={() => setSelectedBooking(null)}
-                  className="p-2 text-on-surface-variant/40 hover:text-on-surface transition-colors">
-                  <X className="w-4 h-4" />
+                  className="ml-auto flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
+                  {t('common.view')} <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
+
             </div>
           </motion.div>
         )}
@@ -664,7 +908,10 @@ export const Reservations: React.FC = () => {
         isOpen={!!reassignBooking}
         onClose={() => setReassignBooking(null)}
         bookingId={reassignBooking?.id ?? ''}
+        currentRoomId={reassignBooking?.roomId ?? ''}
         currentRoomNumber={reassignBooking?.room ?? ''}
+        arrival={reassignBooking?.arrival ?? ''}
+        departure={reassignBooking?.departure ?? ''}
       />
       <InvoiceModal
         isOpen={!!invoiceBooking}

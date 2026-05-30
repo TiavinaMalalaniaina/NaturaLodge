@@ -230,6 +230,58 @@ bookingsRouter.patch('/:id/status', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'
   res.json(booking);
 });
 
+// PATCH /bookings/:id/reassign  ── remplacer une chambre dans la réservation
+bookingsRouter.patch('/:id/reassign', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = z.object({
+    oldRoomId: z.string().min(1),
+    newRoomId: z.string().min(1),
+  }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const { oldRoomId, newRoomId } = parsed.data;
+
+  const booking = await prisma.booking.findUnique({ where: { id: req.params.id }, include });
+  if (!booking) { res.status(404).json({ error: 'Réservation introuvable' }); return; }
+
+  // Trouver le BookingRoom à remplacer
+  const bookingRoom = booking.rooms.find(br => br.roomId === oldRoomId);
+  if (!bookingRoom) { res.status(404).json({ error: 'Chambre introuvable dans cette réservation' }); return; }
+
+  // Valider la nouvelle chambre
+  const newRoom = await prisma.room.findUnique({ where: { id: newRoomId }, select: { status: true, number: true } });
+  if (!newRoom)                          { res.status(404).json({ error: 'Chambre cible introuvable' }); return; }
+  if (newRoom.status === 'MAINTENANCE')  { res.status(409).json({ error: `La chambre ${newRoom.number} est en maintenance` }); return; }
+
+  // Vérifier l'absence de conflit sur la nouvelle chambre
+  const conflict = await prisma.bookingRoom.findFirst({
+    where: {
+      roomId:    newRoomId,
+      arrival:   { lt: bookingRoom.departure },
+      departure: { gt: bookingRoom.arrival },
+      booking:   { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] }, id: { not: req.params.id } },
+    },
+  });
+  if (conflict) { res.status(409).json({ error: 'La chambre cible est déjà réservée sur cette période' }); return; }
+
+  // Mise à jour : remplacer la chambre dans le BookingRoom
+  await prisma.bookingRoom.update({
+    where: { id: bookingRoom.id },
+    data:  { roomId: newRoomId },
+  });
+
+  // Recalculer les statuts des deux chambres
+  await applyRoomStatuses([oldRoomId]);
+
+  if (booking.status === 'CHECKED_IN') {
+    await prisma.room.update({ where: { id: newRoomId }, data: { status: 'OCCUPIED' } });
+  } else {
+    await applyRoomStatuses([newRoomId]);
+  }
+
+  const updated = await prisma.booking.findUnique({ where: { id: req.params.id }, include });
+  res.json({ ...updated, effectiveStatus: computeEffectiveStatus(updated!) });
+});
+
 bookingsRouter.delete('/:id', authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response): Promise<void> => {
   const booking = await prisma.booking.findUnique({ where: { id: req.params.id }, include: { rooms: true } });
   if (!booking) { res.status(404).json({ error: 'Réservation introuvable' }); return; }
