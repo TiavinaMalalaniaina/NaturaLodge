@@ -20,35 +20,67 @@ const guestSchema = z.object({
 });
 
 const noteSchema = z.object({
-  author: z.string().min(1),
-  role: z.string().min(1),
   content: z.string().min(1),
 });
 
+const notesInclude = {
+  notes: {
+    include: { author: { select: { id: true, name: true, role: true } } },
+    orderBy: { createdAt: 'desc' as const },
+  },
+};
+
+const paginationSchema = z.object({
+  search: z.string().optional(),
+  status: z.nativeEnum(GuestStatus).optional(),
+  page:   z.coerce.number().int().min(1).default(1),
+  limit:  z.coerce.number().int().min(1).max(100).default(20),
+});
+
 guestsRouter.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
-  const { search, status } = req.query;
-  const guests = await prisma.guest.findMany({
-    where: {
-      ...(search ? {
-        OR: [
-          { name: { contains: String(search), mode: 'insensitive' } },
-          { email: { contains: String(search), mode: 'insensitive' } },
-        ],
-      } : {}),
-      ...(status ? { status: status as GuestStatus } : {}),
+  const parsed = paginationSchema.safeParse(req.query);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+
+  const { search, status, page, limit } = parsed.data;
+  const skip = (page - 1) * limit;
+
+  const where = {
+    ...(search ? {
+      OR: [
+        { name:  { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+      ],
+    } : {}),
+    ...(status ? { status } : {}),
+  };
+
+  const [guests, total] = await Promise.all([
+    prisma.guest.findMany({ where, include: notesInclude, orderBy: { name: 'asc' }, skip, take: limit }),
+    prisma.guest.count({ where }),
+  ]);
+
+  res.json({
+    data: guests,
+    meta: {
+      total, page, limit,
+      totalPages:  Math.ceil(total / limit),
+      hasNextPage: page * limit < total,
+      hasPrevPage: page > 1,
     },
-    include: { notes: { orderBy: { createdAt: 'desc' } } },
-    orderBy: { name: 'asc' },
   });
-  res.json(guests);
 });
 
 guestsRouter.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const guest = await prisma.guest.findUnique({
     where: { id: req.params.id },
     include: {
-      notes: { orderBy: { createdAt: 'desc' } },
-      bookings: { include: { room: true }, orderBy: { arrival: 'desc' } },
+      ...notesInclude,
+      bookings: {
+        include: {
+          rooms: { include: { room: { select: { id: true, number: true, type: true, category: true } } } },
+        },
+        orderBy: { arrival: 'desc' },
+      },
     },
   });
   if (!guest) { res.status(404).json({ error: 'Client introuvable' }); return; }
@@ -61,7 +93,7 @@ guestsRouter.post('/', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (req
 
   const guest = await prisma.guest.create({
     data: { ...parsed.data, preferences: parsed.data.preferences ?? [] },
-    include: { notes: true },
+    include: notesInclude,
   });
   res.status(201).json(guest);
 });
@@ -73,7 +105,7 @@ guestsRouter.patch('/:id', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), async 
   const guest = await prisma.guest.update({
     where: { id: req.params.id },
     data: parsed.data,
-    include: { notes: true },
+    include: notesInclude,
   });
   res.json(guest);
 });
@@ -83,13 +115,15 @@ guestsRouter.delete('/:id', authorize('ADMIN'), async (req: AuthRequest, res: Re
   res.status(204).send();
 });
 
-// Notes
+// ─── Notes ───────────────────────────────────────────────────────
+
 guestsRouter.post('/:id/notes', async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = noteSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   const note = await prisma.guestNote.create({
-    data: { ...parsed.data, guestId: req.params.id },
+    data: { content: parsed.data.content, guestId: req.params.id, authorId: req.user!.id },
+    include: { author: { select: { id: true, name: true, role: true } } },
   });
   res.status(201).json(note);
 });

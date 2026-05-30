@@ -1,14 +1,27 @@
 import { api } from './client';
-import { Booking } from '../types';
+
+export interface BookingRoomEntry {
+  id: string;
+  roomId: string;
+  arrival: string;
+  departure: string;
+  roomRate: number;
+  room: { id: string; number: string; type: string; category: string; rate: number };
+}
+
+interface ApiBookingRoom {
+  id: string; roomId: string;
+  arrival: string; departure: string; roomRate: number;
+  room: { id: string; number: string; type: string; category: string; rate: number };
+}
 
 interface ApiBooking {
-  id: string; guestId: string; roomId: string;
+  id: string; guestId: string;
   arrival: string; departure: string; status: string;
   totalAmount: number; notes?: string;
-  nights?: number;
-  effectiveStatus?: string;
+  nights?: number; effectiveStatus?: string;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
-  room: { id: string; number: string; type: string; category: string; rate: number };
+  rooms: ApiBookingRoom[];
 }
 
 export type EffectiveStatus =
@@ -16,32 +29,40 @@ export type EffectiveStatus =
   | 'due_checkin'
   | 'in_progress'
   | 'overdue'
-  | 'checked_in'
   | 'checked_out'
   | 'cancelled';
 
-const BOOKING_STATUS: Record<string, Booking['status']> = {
+export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'awaiting' | 'cancelled';
+
+const BOOKING_STATUS: Record<string, BookingStatus> = {
   CONFIRMED: 'confirmed', CHECKED_IN: 'checked-in', CHECKED_OUT: 'checked-out',
   AWAITING: 'awaiting', CANCELLED: 'cancelled',
 };
 
-/** Calcul client-side de secours si le backend ne renvoie pas effectiveStatus */
-function deriveEffectiveStatus(arrival: string, departure: string, status: Booking['status']): EffectiveStatus {
-  const now  = new Date();
-  const arr  = new Date(arrival);
-  const dep  = new Date(departure);
-
-  if (status === 'cancelled')    return 'cancelled';
-  if (status === 'checked-out')  return 'checked_out';
-  if (status === 'checked-in') {
-    return now > dep ? 'overdue' : 'in_progress';
-  }
-  if (now < arr) {
-    const sameDay = arr.toDateString() === now.toDateString();
-    return sameDay ? 'due_checkin' : 'upcoming';
-  }
-  if (now >= arr && now <= dep)  return 'due_checkin';
+function deriveEffectiveStatus(arrival: string, departure: string, status: BookingStatus): EffectiveStatus {
+  const now = new Date();
+  const arr = new Date(arrival);
+  const dep = new Date(departure);
+  if (status === 'cancelled')   return 'cancelled';
+  if (status === 'checked-out') return 'checked_out';
+  if (status === 'checked-in')  return now > dep ? 'overdue' : 'in_progress';
+  if (now < arr) return arr.toDateString() === now.toDateString() ? 'due_checkin' : 'upcoming';
+  if (now >= arr && now <= dep) return 'due_checkin';
   return 'overdue';
+}
+
+export interface RichBooking {
+  id: string;
+  guestId: string;
+  guestName: string;
+  arrival: string;
+  departure: string;
+  status: BookingStatus;
+  totalAmount: number;
+  nights: number;
+  effectiveStatus: EffectiveStatus;
+  guest: { id: string; name: string; email: string; avatar?: string; status: string };
+  rooms: BookingRoomEntry[];
 }
 
 export function normalizeBooking(b: ApiBooking): RichBooking {
@@ -56,20 +77,17 @@ export function normalizeBooking(b: ApiBooking): RichBooking {
   const effectiveStatus: EffectiveStatus = (b.effectiveStatus as EffectiveStatus)
     ?? deriveEffectiveStatus(arrival, departure, status);
 
+  const rooms: BookingRoomEntry[] = b.rooms.map(br => ({
+    id: br.id, roomId: br.roomId, roomRate: br.roomRate,
+    arrival: br.arrival.split('T')[0], departure: br.departure.split('T')[0],
+    room: br.room,
+  }));
+
   return {
     id: b.id, guestId: b.guestId, guestName: b.guest.name,
-    roomId: b.roomId, roomNumber: b.room.number, roomType: b.room.type,
     arrival, departure, status, totalAmount: b.totalAmount,
-    nights, effectiveStatus,
-    guest: b.guest, room: b.room,
+    nights, effectiveStatus, guest: b.guest, rooms,
   };
-}
-
-export interface RichBooking extends Booking {
-  nights:          number;
-  effectiveStatus: EffectiveStatus;
-  guest: { id: string; name: string; email: string; avatar?: string; status: string };
-  room:  { id: string; number: string; type: string; category: string; rate: number };
 }
 
 export interface BookingParams {
@@ -77,7 +95,7 @@ export interface BookingParams {
   limit?:     number;
   status?:    string;
   date?:      string;
-  startDate?: string; // pour le planning grid (range overlap)
+  startDate?: string;
   endDate?:   string;
   search?:    string;
   sort?:      'arrival' | 'departure' | 'createdAt' | 'totalAmount';
@@ -92,6 +110,11 @@ export interface PaginatedBookings {
   };
 }
 
+export const fetchBooking = async (id: string): Promise<RichBooking> => {
+  const { data } = await api.get<ApiBooking>(`/bookings/${id}`);
+  return normalizeBooking(data);
+};
+
 export const fetchBookings = async (params?: BookingParams): Promise<PaginatedBookings> => {
   const { data } = await api.get<{ data: ApiBooking[]; meta: PaginatedBookings['meta'] }>('/bookings', { params });
   return { data: data.data.map(normalizeBooking), meta: data.meta };
@@ -103,8 +126,12 @@ export const updateBookingStatus = async (id: string, status: string): Promise<R
 };
 
 export const createBooking = async (payload: {
-  guestId: string; roomId: string; arrival: string;
-  departure: string; totalAmount: number; notes?: string;
+  guestId: string;
+  arrival: string;
+  departure: string;
+  rooms: { roomId: string; roomRate: number; arrival?: string; departure?: string }[];
+  totalAmount: number;
+  notes?: string;
 }): Promise<RichBooking> => {
   const { data } = await api.post<ApiBooking>('/bookings', payload);
   return normalizeBooking(data);

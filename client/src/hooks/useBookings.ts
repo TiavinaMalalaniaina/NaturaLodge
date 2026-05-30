@@ -1,7 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchBookings, createBooking, updateBookingStatus, BookingParams } from '../api/bookings';
+import { fetchBooking, fetchBookings, createBooking, updateBookingStatus, BookingParams } from '../api/bookings';
+import { ROOMS_KEY } from './useRooms';
 
 export const BOOKINGS_KEY = ['bookings'] as const;
+
+export function useBooking(id: string) {
+  return useQuery({
+    queryKey: [...BOOKINGS_KEY, id],
+    queryFn:  () => fetchBooking(id),
+    enabled:  !!id,
+  });
+}
 
 export function useBookings(params?: BookingParams) {
   return useQuery({
@@ -15,7 +24,10 @@ export function useCreateBooking() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createBooking,
-    onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+    },
   });
 }
 
@@ -24,7 +36,10 @@ export function useUpdateBookingStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       updateBookingStatus(id, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: BOOKINGS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+    },
   });
 }
 

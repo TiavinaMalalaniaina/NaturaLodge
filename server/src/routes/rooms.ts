@@ -13,7 +13,7 @@ const roomSchema = z.object({
   category: z.nativeEnum(RoomCategory),
   area: z.number().int().positive(),
   bedType: z.string().min(1),
-  capacity: z.string().min(1),
+  capacity: z.number().int().positive(),
   rate: z.number().int().positive(),
   status: z.nativeEnum(RoomStatus).optional(),
   view: z.string().optional(),
@@ -23,6 +23,7 @@ const roomSchema = z.object({
 });
 
 // ─── Features ────────────────────────────────────────────────────
+
 roomsRouter.get('/features', async (_req: AuthRequest, res: Response): Promise<void> => {
   const features = await prisma.roomFeature.findMany({ orderBy: { label: 'asc' } });
   res.json(features);
@@ -43,39 +44,37 @@ roomsRouter.delete('/features/:featureId', authorize('ADMIN', 'MANAGER'), async 
 // ─── Available rooms for a date range ────────────────────────────
 
 const availabilitySchema = z.object({
-  arrival:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD requis'),
-  departure: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD requis'),
-  excludeBookingId: z.string().optional(), // utile pour le réassignement
+  arrival:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD requis'),
+  departure:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD requis'),
+  excludeBookingId: z.string().optional(),
 });
 
 roomsRouter.get('/available', async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = availabilitySchema.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten() });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   const { arrival, departure, excludeBookingId } = parsed.data;
   const arrivalDate   = new Date(`${arrival}T00:00:00.000Z`);
   const departureDate = new Date(`${departure}T00:00:00.000Z`);
 
   if (departureDate <= arrivalDate) {
-    res.status(400).json({ error: 'La date de départ doit être après l\'arrivée' });
+    res.status(400).json({ error: "La date de départ doit être après l'arrivée" });
     return;
   }
 
-  // Trouve les chambres qui ont au moins une réservation qui chevauche la période
-  const conflictingBookings = await prisma.booking.findMany({
+  const blocked = await prisma.bookingRoom.findMany({
     where: {
-      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
-      status:    { notIn: ['CANCELLED', 'CHECKED_OUT'] },
-      arrival:   { lt: departureDate },  // commence avant la fin demandée
-      departure: { gt: arrivalDate },    // finit après le début demandé
+      arrival:   { lt: departureDate },
+      departure: { gt: arrivalDate },
+      booking: {
+        ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+        status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+      },
     },
     select: { roomId: true },
   });
 
-  const blockedIds = new Set(conflictingBookings.map(b => b.roomId));
+  const blockedIds = new Set(blocked.map(br => br.roomId));
 
   const rooms = await prisma.room.findMany({
     where: {
@@ -91,66 +90,42 @@ roomsRouter.get('/available', async (req: AuthRequest, res: Response): Promise<v
 
 // ─── Rooms ───────────────────────────────────────────────────────
 
-/** Calcule le statut en temps réel depuis les réservations actives. */
-async function computeRoomStatuses(roomIds: string[]): Promise<Map<string, RoomStatus>> {
-  const now = new Date();
+roomsRouter.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { search, category, status } = req.query;
 
-  const [active, upcoming] = await Promise.all([
-    // Réservations dont la période couvre aujourd'hui
-    prisma.booking.findMany({
-      where: {
-        roomId: { in: roomIds },
-        status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
-        arrival:   { lte: now },
-        departure: { gte: now },
-      },
-      select: { roomId: true },
-    }),
-    // Réservations futures confirmées
-    prisma.booking.findMany({
-      where: {
-        roomId: { in: roomIds },
-        status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
-        arrival: { gt: now },
-      },
-      select: { roomId: true },
-    }),
-  ]);
-
-  const occupiedIds  = new Set(active.map(b => b.roomId));
-  const reservedIds  = new Set(upcoming.map(b => b.roomId));
-  const result       = new Map<string, RoomStatus>();
-
-  for (const id of roomIds) {
-    if (occupiedIds.has(id))  result.set(id, 'OCCUPIED');
-    else if (reservedIds.has(id)) result.set(id, 'RESERVED');
-    else result.set(id, 'AVAILABLE');
-  }
-  return result;
-}
-
-roomsRouter.get('/', async (_req: AuthRequest, res: Response): Promise<void> => {
   const rooms = await prisma.room.findMany({
+    where: {
+      ...(search ? {
+        OR: [
+          { number: { contains: String(search), mode: 'insensitive' } },
+          { type:   { contains: String(search), mode: 'insensitive' } },
+        ],
+      } : {}),
+      ...(category && category !== 'ALL' ? { category: String(category).toUpperCase() as any } : {}),
+      ...(status && status !== 'ALL' ? { status: String(status) as any } : {}),
+    },
     include: { features: true },
     orderBy: { number: 'asc' },
   });
 
-  const ids = rooms.map(r => r.id);
-  const computed = await computeRoomStatuses(ids);
-
-  const result = rooms.map(r => ({
-    ...r,
-    // MAINTENANCE est intentionnel → on le garde ; sinon statut calculé
-    status: r.status === 'MAINTENANCE' ? r.status : (computed.get(r.id) ?? r.status),
-  }));
-
-  res.json(result);
+  res.json(rooms);
 });
 
 roomsRouter.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   const room = await prisma.room.findUnique({
     where: { id: req.params.id },
-    include: { features: true, bookings: { include: { guest: true }, orderBy: { arrival: 'desc' }, take: 10 } },
+    include: {
+      features: true,
+      bookings: {
+        include: {
+          booking: {
+            include: { guest: { select: { id: true, name: true, email: true, avatar: true } } },
+          },
+        },
+        orderBy: { arrival: 'desc' },
+        take: 10,
+      },
+    },
   });
   if (!room) { res.status(404).json({ error: 'Chambre introuvable' }); return; }
   res.json(room);
@@ -184,6 +159,27 @@ roomsRouter.patch('/:id', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (
     },
     include: { features: true },
   });
+
+  // Si passage en maintenance, renvoyer les réservations actives/futures impactées
+  if (data.status === 'MAINTENANCE') {
+    const conflicts = await prisma.booking.findMany({
+      where: {
+        rooms:      { some: { roomId: room.id } },
+        status:     { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+        departure:  { gte: new Date() },
+      },
+      select: {
+        id:       true,
+        arrival:  true,
+        departure: true,
+        guest:    { select: { name: true } },
+      },
+      orderBy: { arrival: 'asc' },
+    });
+    res.json({ ...room, conflicts });
+    return;
+  }
+
   res.json(room);
 });
 

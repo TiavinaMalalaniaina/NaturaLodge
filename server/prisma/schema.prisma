@@ -4,23 +4,26 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ─── Auth / Staff ────────────────────────────────────────────────
 
 model User {
-  id         String     @id @default(cuid())
-  email      String     @unique
-  password   String
-  name       String
-  role       Role       @default(RECEPTIONIST)
-  status     UserStatus @default(ACTIVE)
-  avatar     String?
-  joinedDate DateTime   @default(now())
-  lastLogin  DateTime?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id               String      @id @default(cuid())
+  email            String      @unique
+  password         String
+  name             String
+  role             Role        @default(RECEPTIONIST)
+  status           UserStatus  @default(ACTIVE)
+  avatar           String?
+  joinedDate       DateTime    @default(now())
+  lastLogin        DateTime?
+  guestNotes       GuestNote[]
+  createdBookings  Booking[]
+  issuedInvoices   Invoice[]
+  processedPayments Payment[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 enum Role {
@@ -54,6 +57,7 @@ model Guest {
   preferences   String[]
   notes         GuestNote[]
   bookings      Booking[]
+  invoices      Invoice[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -69,8 +73,8 @@ model GuestNote {
   id        String   @id @default(cuid())
   guest     Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
   guestId   String
-  author    String
-  role      String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
   content   String
   createdAt DateTime @default(now())
 }
@@ -78,22 +82,22 @@ model GuestNote {
 // ─── Rooms ───────────────────────────────────────────────────────
 
 model Room {
-  id          String       @id @default(cuid())
-  number      String       @unique
+  id          String        @id @default(cuid())
+  number      String        @unique
   type        String
   category    RoomCategory
   area        Int
   bedType     String
-  capacity    String
+  capacity    Int
   rate        Int
-  status      RoomStatus   @default(AVAILABLE)
+  status      RoomStatus    @default(AVAILABLE)
   view        String?
   images      String[]
   description String?
-  features    RoomFeature[] @relation("RoomToFeature")
-  bookings    Booking[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  features      RoomFeature[]      @relation("RoomToFeature")
+  bookings      BookingRoom[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 enum RoomCategory {
@@ -122,18 +126,34 @@ model RoomFeature {
 // ─── Bookings ────────────────────────────────────────────────────
 
 model Booking {
-  id          String        @id @default(cuid())
-  guest       Guest         @relation(fields: [guestId], references: [id])
-  guestId     String
-  room        Room          @relation(fields: [roomId], references: [id])
-  roomId      String
-  arrival     DateTime
-  departure   DateTime
-  status      BookingStatus @default(CONFIRMED)
-  totalAmount Int
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  guest         Guest         @relation(fields: [guestId], references: [id])
+  guestId       String
+  createdBy     User?         @relation(fields: [createdById], references: [id])
+  createdById   String?
+  rooms         BookingRoom[]
+  invoices      Invoice[]
+  arrival       DateTime
+  departure     DateTime
+  status        BookingStatus @default(CONFIRMED)
+  totalAmount   Int
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model BookingRoom {
+  id        String   @id @default(cuid())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String
+  room      Room     @relation(fields: [roomId], references: [id])
+  roomId    String
+  arrival   DateTime
+  departure DateTime
+  roomRate  Int
+
+  @@unique([bookingId, roomId])
+  @@index([roomId, arrival, departure])
 }
 
 enum BookingStatus {
@@ -144,21 +164,74 @@ enum BookingStatus {
   CHECKED_OUT
 }
 
-// ─── Amenities ───────────────────────────────────────────────────
+// ─── Invoices ────────────────────────────────────────────────────
 
-model Amenity {
-  id          String        @id @default(cuid())
-  name        String
-  description String?
-  category    String?
-  iconName    String?
-  status      AmenityStatus @default(ACTIVE)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+model Invoice {
+  id           String        @id @default(cuid())
+  number       String        @unique
+  booking      Booking       @relation(fields: [bookingId], references: [id])
+  bookingId    String
+  guest        Guest         @relation(fields: [guestId], references: [id])
+  guestId      String
+  issuedBy     User?         @relation(fields: [issuedById], references: [id])
+  issuedById   String?
+  status       InvoiceStatus @default(PENDING)
+  issuedAt     DateTime      @default(now())
+  dueAt        DateTime?
+  paidAt       DateTime?
+  totalAmount  Int
+  taxAmount    Int           @default(0)
+  notes        String?
+  items        InvoiceItem[]
+  payments     Payment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
-enum AmenityStatus {
-  ACTIVE
-  INACTIVE
-  MAINTENANCE
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId   String
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Int
+  total       Int
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  REFUNDED
+  CANCELLED
+}
+
+// ─── Payments ────────────────────────────────────────────────────
+
+model Payment {
+  id              String        @id @default(cuid())
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+  invoiceId       String
+  processedBy     User          @relation(fields: [processedById], references: [id])
+  processedById   String
+  amount          Int
+  method          PaymentMethod
+  status          PaymentStatus @default(COMPLETED)
+  reference       String?
+  paidAt          DateTime      @default(now())
+  notes           String?
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  REFUNDED
 }

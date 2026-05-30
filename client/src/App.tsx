@@ -11,6 +11,7 @@ import { Guests } from './pages/Guests';
 import { GuestProfile } from './pages/GuestProfile';
 import { Rooms } from './pages/Rooms';
 import { RoomDetail } from './pages/RoomDetail';
+import { BookingDetail } from './pages/BookingDetail';
 import { Amenities } from './pages/Amenities';
 import { Staff } from './pages/Staff';
 import { Settings } from './pages/Settings';
@@ -27,6 +28,7 @@ const App: React.FC = () => {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="reservations" element={<Reservations />} />
+              <Route path="reservations/:id" element={<BookingDetail />} />
               <Route path="rooms" element={<Rooms />} />
               <Route path="rooms/:id" element={<RoomDetail />} />
               <Route path="guests" element={<Guests />} />

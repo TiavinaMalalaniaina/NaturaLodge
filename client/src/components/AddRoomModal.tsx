@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useRoomFeatures, useCreateRoom } from '../hooks/useRooms';
 import { Room } from '../types';
+import { useTranslation } from 'react-i18next';
 
 const PRESET_PHOTOS = [
   { url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80', label: 'Suite Classic' },
@@ -23,6 +24,7 @@ interface AddRoomModalProps {
 }
 
 export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onRoomAdded }) => {
+  const { t } = useTranslation();
   const { data: features = [] } = useRoomFeatures();
   const createRoom = useCreateRoom();
 
@@ -51,7 +53,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
     if (file.type.startsWith('image/')) setImages([URL.createObjectURL(file)]);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApiError('');
     try {
@@ -61,7 +63,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
         category:    form.category,
         area:        Number(form.area) || 45,
         bedType:     form.bedType,
-        capacity:    `${form.capacity} Guests`,
+        capacity:    Number(form.capacity) || 2,
         rate:        Number(form.rate),
         view:        form.view,
         images:      images.length ? images : [PRESET_PHOTOS[0].url],
@@ -72,7 +74,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
       onClose();
     } catch (err: any) {
       const msg = err?.response?.data?.error;
-      setApiError(typeof msg === 'string' ? msg : 'Erreur lors de la création.');
+      setApiError(typeof msg === 'string' ? msg : t('common.error'));
     }
   };
 
@@ -92,8 +94,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
             {/* ── Sidebar ── */}
             <div className="w-full md:w-80 bg-teal-900 p-8 text-white flex flex-col overflow-y-auto max-h-[85vh] no-scrollbar">
               <div className="mb-6">
-                <h3 className="font-display italic text-3xl mb-1">Unit Registration</h3>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Inventory Management</p>
+                <h3 className="font-display italic text-3xl mb-1">{t('rooms.unitRegistration')}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{t('rooms.inventoryManagement')}</p>
               </div>
 
               {/* Image upload */}
@@ -112,7 +114,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                     <img src={images[0]} alt="preview" className="w-full h-full object-cover rounded-xl" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all rounded-xl gap-2">
                       <Upload className="w-6 h-6 text-white" />
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-white">Click to replace</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-white">{t('rooms.uploadImage')}</span>
                     </div>
                     <button type="button" onClick={e => { e.stopPropagation(); setImages([]); }}
                       className="absolute top-3 right-3 bg-black/70 p-1.5 rounded-lg text-red-400 z-10">
@@ -122,8 +124,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                 ) : (
                   <div className="text-center p-4">
                     <Upload className="w-8 h-8 opacity-40 mx-auto mb-2 group-hover:scale-110 transition-transform text-teal-300" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-300">Upload Image</p>
-                    <p className="text-[8px] text-white/40 mt-1">Drag & drop or click</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-300">{t('rooms.uploadImage')}</p>
+                    <p className="text-[8px] text-white/40 mt-1">{t('rooms.dragDropImage')}</p>
                   </div>
                 )}
               </div>
@@ -143,7 +145,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
               {/* URL input */}
               <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-white/40 flex items-center gap-1.5">
-                  <Link className="w-3 h-3" /> External URL
+                  <Link className="w-3 h-3" /> {t('rooms.externalUrl')}
                 </p>
                 <div className="flex gap-2">
                   <input type="text" placeholder="https://..." value={imageUrl}
@@ -151,7 +153,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                     className="flex-1 h-9 px-3 bg-white/5 border border-white/10 rounded-lg text-[10px] outline-none focus:border-white/35 font-sans text-white placeholder-white/20" />
                   <button type="button"
                     onClick={() => { if (imageUrl.startsWith('http')) { setImages([imageUrl]); setImageUrl(''); } }}
-                    className="px-3 bg-white text-zinc-900 rounded-lg font-bold text-[9px] uppercase tracking-wider">Apply</button>
+                    className="px-3 bg-white text-zinc-900 rounded-lg font-bold text-[9px] uppercase tracking-wider">{t('common.apply')}</button>
                 </div>
               </div>
 
@@ -159,17 +161,17 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
               <div className="mt-6 pt-6 border-t border-white/10 space-y-3">
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-[8px] opacity-40 font-bold uppercase tracking-widest mb-1">Unit</p>
+                    <p className="text-[8px] opacity-40 font-bold uppercase tracking-widest mb-1">{t('reservations.unit')}</p>
                     <p className="font-display italic text-2xl">{form.number || '---'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[8px] opacity-40 font-bold uppercase tracking-widest mb-1">Rate</p>
+                    <p className="text-[8px] opacity-40 font-bold uppercase tracking-widest mb-1">{t('rooms.rate')}</p>
                     <p className="font-mono text-xs font-bold text-gold-400">{form.rate ? `${Number(form.rate).toLocaleString()} Ar` : '—'}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-[10px] font-bold uppercase tracking-tight">
-                  <div><p className="opacity-40 text-[8px]">Category</p>{form.category}</div>
-                  <div><p className="opacity-40 text-[8px]">Surface</p>{form.area ? `${form.area}m²` : '—'}</div>
+                  <div><p className="opacity-40 text-[8px]">{t('rooms.category')}</p>{form.category}</div>
+                  <div><p className="opacity-40 text-[8px]">{t('rooms.surface')}</p>{form.area ? `${form.area}m²` : '—'}</div>
                 </div>
               </div>
 
@@ -182,7 +184,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
             {/* ── Form ── */}
             <div className="flex-1 p-8 md:p-12 bg-white overflow-y-auto max-h-[85vh]">
               <div className="flex justify-between items-center mb-10">
-                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">Configuration Details</h4>
+                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('rooms.configDetails')}</h4>
                 <button onClick={onClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
@@ -196,29 +198,27 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
               )}
 
               <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Number + Rate */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Room Number</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.roomNumber')}</label>
                     <input type="text" placeholder="e.g. 402" required value={form.number}
                       onChange={e => setForm(p => ({ ...p, number: e.target.value }))} className={field} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Nightly Rate (MGA)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.nightlyRate')}</label>
                     <input type="number" placeholder="e.g. 1500000" required min={1} value={form.rate}
                       onChange={e => setForm(p => ({ ...p, rate: e.target.value }))} className={field} />
                   </div>
                 </div>
 
-                {/* Type + Category + BedType */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Type Name</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.typeName')}</label>
                     <input type="text" value={form.type}
                       onChange={e => setForm(p => ({ ...p, type: e.target.value }))} className={field} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Category</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.category')}</label>
                     <div className="relative">
                       <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value as Room['category'] }))}
                         className={field + ' appearance-none pr-10'}>
@@ -228,7 +228,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Bedding</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.bedding')}</label>
                     <div className="relative">
                       <select value={form.bedType} onChange={e => setForm(p => ({ ...p, bedType: e.target.value }))}
                         className={field + ' appearance-none pr-10'}>
@@ -239,20 +239,19 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   </div>
                 </div>
 
-                {/* Area + Capacity + View */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Surface (m²)</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.surface')} (m²)</label>
                     <input type="number" placeholder="45" min={1} value={form.area}
                       onChange={e => setForm(p => ({ ...p, area: e.target.value }))} className={field} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Capacity</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.capacity')}</label>
                     <input type="number" placeholder="2" min={1} max={20} value={form.capacity}
                       onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} className={field} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">View</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.view')}</label>
                     <div className="relative">
                       <select value={form.view} onChange={e => setForm(p => ({ ...p, view: e.target.value }))}
                         className={field + ' appearance-none pr-10'}>
@@ -263,9 +262,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   </div>
                 </div>
 
-                {/* Features */}
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Amenities</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.features')}</label>
                   <div className="flex flex-wrap gap-2">
                     {features.map(f => (
                       <button key={f.id} type="button" onClick={() => toggleFeature(f.id)}
@@ -280,9 +278,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   </div>
                 </div>
 
-                {/* Description */}
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Description</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('rooms.description')}</label>
                   <textarea rows={3} value={form.description}
                     onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                     placeholder="Describe the atmosphere and unique features..."
@@ -292,11 +289,11 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                 <div className="flex items-center gap-4 pt-4">
                   <button type="button" onClick={onClose}
                     className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button type="submit" disabled={createRoom.isPending}
                     className="flex-1 py-4 bg-primary text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-teal-700 disabled:opacity-40 transition-all shadow-xl shadow-primary/20">
-                    {createRoom.isPending ? 'Saving...' : 'Confirm Unit Registration'}
+                    {createRoom.isPending ? t('rooms.saving') : t('rooms.confirmUnitReg')}
                   </button>
                 </div>
               </form>

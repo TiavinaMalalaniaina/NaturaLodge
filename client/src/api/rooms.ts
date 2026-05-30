@@ -4,7 +4,7 @@ import { Room } from '../types';
 export interface ApiFeature { id: string; label: string; iconName: string }
 interface ApiRoom {
   id: string; number: string; type: string; category: string;
-  area: number; bedType: string; capacity: string; rate: number;
+  area: number; bedType: string; capacity: number; rate: number;
   status: string; view?: string; images: string[];
   description?: string; features: ApiFeature[];
 }
@@ -37,8 +37,40 @@ export function normalizeRoom(r: ApiRoom): Room {
   };
 }
 
-export const fetchRooms = async (): Promise<Room[]> => {
-  const { data } = await api.get<ApiRoom[]>('/rooms');
+export interface ConflictBooking {
+  id:        string;
+  arrival:   string;
+  departure: string;
+  guest:     { name: string };
+}
+
+export interface RoomStatusResult {
+  room:      Room;
+  conflicts: ConflictBooking[];
+}
+
+export const setRoomStatus = async (id: string, status: string): Promise<RoomStatusResult> => {
+  const { data } = await api.patch<ApiRoom & { conflicts?: ConflictBooking[] }>(`/rooms/${id}`, {
+    status: status.toUpperCase(),
+  });
+  return {
+    room:      normalizeRoom(data),
+    conflicts: (data.conflicts ?? []).map(c => ({
+      ...c,
+      arrival:   c.arrival.split('T')[0],
+      departure: c.departure.split('T')[0],
+    })),
+  };
+};
+
+export interface RoomsParams {
+  search?:   string;
+  category?: string;
+  status?:   string;
+}
+
+export const fetchRooms = async (params?: RoomsParams): Promise<Room[]> => {
+  const { data } = await api.get<ApiRoom[]>('/rooms', { params });
   return data.map(normalizeRoom);
 };
 
@@ -80,7 +112,7 @@ export const deleteRoomFeature = async (id: string): Promise<void> => {
 
 export interface RoomPayload {
   number: string; type: string; category: string;
-  area: number; bedType: string; capacity: string; rate: number;
+  area: number; bedType: string; capacity: number; rate: number;
   view?: string; images?: string[]; description?: string;
   featureIds?: string[];
 }

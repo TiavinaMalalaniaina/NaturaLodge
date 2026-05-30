@@ -18,10 +18,9 @@ export interface Guest {
 
 export interface StaffNote {
   id: string;
-  author: string;
-  role: string;
-  date: string;
+  author: { id: string; name: string; role: string };
   content: string;
+  createdAt: string;
 }
 
 export type StaffRole = 'admin' | 'manager' | 'receptionist' | 'housekeeping';
@@ -50,24 +49,11 @@ export interface Room {
   category: 'Superior' | 'Deluxe' | 'Suite' | 'Penthouse' | 'Villa' | 'Luxury';
   area: number;
   bedType: string;
-  capacity: string;
+  capacity: number;
   rate: number;
   status: 'available' | 'occupied' | 'maintenance' | 'reserved';
   view: string;
   images: string[];
   description: string;
-  features: string[]; // Array of feature IDs
-}
-
-export interface Booking {
-  id: string;
-  guestId: string;
-  guestName: string;
-  roomId: string;
-  roomNumber: string;
-  roomType: string;
-  arrival: string;
-  departure: string;
-  status: 'confirmed' | 'checked-in' | 'checked-out' | 'awaiting' | 'cancelled';
-  totalAmount: number;
+  features: string[];
 }

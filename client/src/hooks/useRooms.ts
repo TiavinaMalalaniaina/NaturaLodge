@@ -2,15 +2,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchRooms, fetchRoom, fetchAvailableRooms, createRoom, updateRoom,
   fetchRoomFeatures, createRoomFeature, deleteRoomFeature,
-  RoomPayload,
+  setRoomStatus,
+  RoomPayload, RoomsParams,
 } from '../api/rooms';
-import { api } from '../api/client';
 
 export const ROOMS_KEY     = ['rooms'] as const;
 export const FEATURES_KEY  = [...ROOMS_KEY, 'features'] as const;
 
-export function useRooms() {
-  return useQuery({ queryKey: ROOMS_KEY, queryFn: fetchRooms });
+export function useRooms(params?: RoomsParams, options?: { refetchInterval?: number }) {
+  return useQuery({
+    queryKey: params ? [...ROOMS_KEY, params] : ROOMS_KEY,
+    queryFn:  () => fetchRooms(params),
+    placeholderData: (prev) => prev,
+    ...options,
+  });
 }
 
 export function useRoom(id: string) {
@@ -49,8 +54,7 @@ export function useUpdateRoom() {
 export function useUpdateRoomStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.patch(`/rooms/${id}`, { status: status.toUpperCase() }),
+    mutationFn: ({ id, status }: { id: string; status: string }) => setRoomStatus(id, status),
     onSuccess: () => qc.invalidateQueries({ queryKey: ROOMS_KEY }),
   });
 }
