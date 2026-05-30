@@ -18,10 +18,9 @@ export interface Guest {
 
 export interface StaffNote {
   id: string;
-  author: string;
-  role: string;
-  date: string;
+  author: { id: string; name: string; role: string };
   content: string;
+  createdAt: string;
 }
 
 export type StaffRole = 'admin' | 'manager' | 'receptionist' | 'housekeeping';
@@ -43,31 +42,38 @@ export interface RoomFeature {
   iconName: string;
 }
 
-export interface Room {
-  id: string;
-  number: string;
-  type: string;
-  category: 'Superior' | 'Deluxe' | 'Suite' | 'Penthouse' | 'Villa' | 'Luxury';
-  area: number;
-  bedType: string;
-  capacity: string;
-  rate: number;
-  status: 'available' | 'occupied' | 'maintenance' | 'reserved';
-  view: string;
-  images: string[];
+export type RoomCategory = 'Superior' | 'Deluxe' | 'Suite' | 'Penthouse' | 'Villa' | 'Luxury';
+export type RoomStatus   = 'available' | 'occupied' | 'maintenance' | 'reserved';
+
+export interface RoomType {
+  id:          string;
+  name:        string;
+  category:    RoomCategory;
+  rate:        number;
   description: string;
-  features: string[]; // Array of feature IDs
+  area:        number;
+  bedType:     string;
+  capacity:    number;
+  view:        string;
+  features:    RoomFeature[];
+  rooms:       { id: string }[];
 }
 
-export interface Booking {
-  id: string;
-  guestId: string;
-  guestName: string;
-  roomId: string;
-  roomNumber: string;
-  roomType: string;
-  arrival: string;
-  departure: string;
-  status: 'confirmed' | 'checked-in' | 'checked-out' | 'awaiting' | 'cancelled';
-  totalAmount: number;
+export interface Room {
+  id:           string;
+  number:       string;
+  roomTypeId:   string;
+  // Flattened from RoomType for convenience
+  type:         string;
+  category:     RoomCategory;
+  area:         number;
+  bedType:      string;
+  capacity:     number;
+  rate:         number;        // rateOverride ?? roomType.rate
+  rateOverride: number | null;
+  status:       RoomStatus;
+  view:         string;
+  images:       string[];
+  description:  string;
+  features:     string[];      // feature IDs
 }

@@ -9,12 +9,14 @@ import { useNotifications } from '../context/NotificationContext';
 import { useRooms } from '../hooks/useRooms';
 import { useBookings } from '../hooks/useBookings';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export const Dashboard: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { addNotification } = useNotifications();
   const [isAlertDispatched, setIsAlertDispatched] = useState(false);
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const { data: rooms = [] } = useRooms();
   const { data: bookingsPage } = useBookings({ limit: 100 });
@@ -40,16 +42,16 @@ export const Dashboard: React.FC = () => {
   };
 
   const metrics = [
-    { label: 'Occupancy', value: `${occupancyRate}%`, trend: `${occupied}/${rooms.length}`, icon: Users, color: 'text-teal-500' },
-    { label: 'Revenue Today', value: `${(todayRevenue / 1_000_000).toFixed(1)}M Ar`, trend: `${todayArrivals.length} arrivées`, icon: TrendingUp, color: 'text-gold-500' },
-    { label: 'Arrivals', value: String(todayArrivals.length).padStart(2, '0'), trend: 'Today', icon: LogIn, color: 'text-status-reserved' },
-    { label: 'Issues', value: String(issues).padStart(2, '0'), trend: 'Pending', icon: Construction, color: 'text-red-500' },
+    { label: t('dashboard.occupancy'),    value: `${occupancyRate}%`,                            trend: `${occupied}/${rooms.length}`,          icon: Users,         color: 'text-teal-500' },
+    { label: t('dashboard.revenueToday'), value: `${(todayRevenue / 1_000_000).toFixed(1)}M Ar`, trend: `${todayArrivals.length} ${t('dashboard.arrivals')}`, icon: TrendingUp, color: 'text-gold-500' },
+    { label: t('dashboard.arrivals'),     value: String(todayArrivals.length).padStart(2, '0'),   trend: 'Today',                                icon: LogIn,         color: 'text-status-reserved' },
+    { label: t('dashboard.issues'),       value: String(issues).padStart(2, '0'),                 trend: 'Pending',                              icon: Construction,  color: 'text-red-500' },
   ];
 
   const arrivals = todayArrivals.slice(0, 5).map(b => ({
     name: b.guestName,
-    room: b.roomNumber,
-    type: b.roomType,
+    room: b.rooms[0]?.room.number ?? '—',
+    type: b.rooms[0]?.room.type   ?? '—',
     eta: '—',
     status: 'Standard',
   }));
@@ -58,14 +60,16 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-10">
       <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/60 mb-2">Good morning, {user?.name?.split(' ')[0] ?? 'Marie'}</p>
-          <h2 className="font-display italic text-5xl text-primary leading-none">Overview Today</h2>
+          <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/60 mb-2">
+            {t('dashboard.goodMorning')}, {user?.name?.split(' ')[0] ?? 'Marie'}
+          </p>
+          <h2 className="font-display italic text-5xl text-primary leading-none">{t('dashboard.title')}</h2>
         </div>
-        <button 
+        <button
           onClick={() => setIsAddModalOpen(true)}
           className="bg-primary text-white px-8 py-3.5 rounded-2xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center gap-3 shadow-xl shadow-primary/20"
         >
-          <Plus className="w-5 h-5" /> New Booking
+          <Plus className="w-5 h-5" /> {t('dashboard.newBooking')}
         </button>
       </section>
 
@@ -82,7 +86,7 @@ export const Dashboard: React.FC = () => {
               <div className={cn("p-2 rounded-lg bg-stone-50 group-hover:bg-teal-50 transition-colors", m.color)}>
                 <m.icon className="w-5 h-5" />
               </div>
-              <span className={cn("text-[10px] font-bold uppercase tracking-widest", 
+              <span className={cn("text-[10px] font-bold uppercase tracking-widest",
                 m.trend.startsWith('+') ? "text-status-available" : "text-on-surface-variant/40"
               )}>
                 {m.trend}
@@ -98,16 +102,16 @@ export const Dashboard: React.FC = () => {
         <section className="lg:col-span-2 space-y-10">
           <div className="space-y-6">
             <div className="flex justify-between items-center px-1">
-              <h3 className="text-xs font-sans font-bold tracking-[0.2em] text-on-surface-variant uppercase">Arrival Logistics</h3>
-              <button className="text-[10px] font-bold text-primary hover:underline transition-all tracking-widest uppercase">Full Schedule</button>
+              <h3 className="text-xs font-sans font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('dashboard.arrivalLogistics')}</h3>
+              <button className="text-[10px] font-bold text-primary hover:underline transition-all tracking-widest uppercase">{t('dashboard.fullSchedule')}</button>
             </div>
             <div className="bg-white rounded-3xl border border-stone-200/60 overflow-hidden overflow-x-auto organic-shadow">
               <table className="w-full text-left min-w-[600px]">
                 <thead>
                   <tr className="bg-stone-50/50 border-b border-stone-100">
-                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/60">Guest</th>
-                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/60">Room</th>
-                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/60 text-right">Action</th>
+                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/60">{t('guests.title')}</th>
+                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/60">{t('dashboard.room')}</th>
+                    <th className="px-6 py-4 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant/60 text-right">{t('dashboard.action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
@@ -122,7 +126,7 @@ export const Dashboard: React.FC = () => {
                             <p className="text-sm font-semibold text-on-surface leading-tight">{arrival.name}</p>
                             <span className={cn(
                               "text-[8px] font-bold uppercase px-2 py-0.5 rounded-full tracking-wider border inline-block mt-1",
-                              arrival.status === 'VIP' ? "bg-gold-50 text-gold-500 border-gold-400" : 
+                              arrival.status === 'VIP' ? "bg-gold-50 text-gold-500 border-gold-400" :
                               arrival.status === 'PREMIUM' ? "bg-teal-50 text-primary border-primary" : "bg-stone-50 text-outline border-stone-200"
                             )}>
                               {arrival.status}
@@ -132,13 +136,13 @@ export const Dashboard: React.FC = () => {
                       </td>
                       <td className="px-6 py-5">
                         <p className="font-display italic text-lg text-on-surface leading-tight">{arrival.type}</p>
-                        <p className="text-[10px] font-mono text-outline uppercase">Room {arrival.room}</p>
+                        <p className="text-[10px] font-mono text-outline uppercase">{t('dashboard.room')} {arrival.room}</p>
                       </td>
                       <td className="px-6 py-5 text-right">
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] font-bold tracking-[0.1em] text-on-surface-variant/40 uppercase mb-1">ETA {arrival.eta}</span>
                           <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-[9px] font-bold uppercase tracking-widest">
-                            Quick Check-in
+                            {t('dashboard.quickCheckin')}
                           </button>
                         </div>
                       </td>
@@ -151,7 +155,7 @@ export const Dashboard: React.FC = () => {
 
           <div className="bg-stone-900 text-on-primary-container p-10 rounded-[2.5rem] relative overflow-hidden organic-shadow">
             <div className="relative z-10">
-              <h3 className="text-[10px] tracking-[0.4em] font-bold text-primary-fixed uppercase opacity-60 mb-2">Live Performance</h3>
+              <h3 className="text-[10px] tracking-[0.4em] font-bold text-primary-fixed uppercase opacity-60 mb-2">{t('dashboard.livePerformance')}</h3>
               <p className="font-display italic text-4xl mb-6 leading-none text-white">{(todayRevenue / 1_000_000).toFixed(2)}M Ar</p>
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-status-available">
@@ -162,7 +166,7 @@ export const Dashboard: React.FC = () => {
                 </p>
               </div>
             </div>
-            <motion.div 
+            <motion.div
               animate={{ scale: [1, 1.05, 1], rotate: [-1, 1, -1] }}
               transition={{ duration: 10, repeat: Infinity }}
               className="absolute right-0 bottom-0 top-0 w-1/2 opacity-10 pointer-events-none"
@@ -175,31 +179,31 @@ export const Dashboard: React.FC = () => {
         <aside className="space-y-10">
           <CheckInQueue />
           <NewBookingsFeed />
-          
+
           <div className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse font-bold"></div>
-              <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest">Operational Alert</h4>
+              <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest">{t('dashboard.operationalAlert')}</h4>
             </div>
             <p className="text-xs text-on-surface-variant font-light leading-relaxed mb-4">
               Housekeeping requires priority for Suite 402. VIP arrival at 15:10.
             </p>
-            <button 
+            <button
               onClick={handleNotifyTeam}
               disabled={isAlertDispatched}
               className={cn(
                 "w-full py-2.5 border rounded-xl text-[9px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2",
-                isAlertDispatched 
-                  ? "border-emerald-100 bg-emerald-50 text-emerald-600 cursor-default" 
+                isAlertDispatched
+                  ? "border-emerald-100 bg-emerald-50 text-emerald-600 cursor-default"
                   : "border-stone-100 text-primary hover:bg-stone-50"
               )}
             >
               {isAlertDispatched ? (
                 <>
-                  <Check className="w-3.5 h-3.5" /> Team Notified
+                  <Check className="w-3.5 h-3.5" /> {t('dashboard.teamNotified')}
                 </>
               ) : (
-                "Notify Team"
+                t('dashboard.notifyTeam')
               )}
             </button>
           </div>
