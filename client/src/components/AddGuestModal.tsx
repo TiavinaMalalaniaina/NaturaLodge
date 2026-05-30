@@ -1,28 +1,68 @@
 import React, { useState } from 'react';
-import { X, User, MapPin, Phone, Mail, Languages, Shield, Check, Star } from 'lucide-react';
+import { X, User, MapPin, Phone, Mail, Shield, Star, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { useCreateGuest } from '../hooks/useGuests';
+import { useNotifications } from '../context/NotificationContext';
+import { useTranslation } from 'react-i18next';
 
 interface AddGuestModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (guest: { id: string; name: string; city: string; status: string }) => void;
 }
 
-export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    city: '',
-    country: '',
-    status: 'REGULAR' as const,
-    preferences: '',
-  });
+const STATUSES = [
+  { labelKey: 'Standard',   value: 'STANDARD'   },
+  { labelKey: 'VIP Member', value: 'VIP_MEMBER'  },
+  { labelKey: 'VIP Elite',  value: 'VIP_ELITE'   },
+] as const;
 
-  const handleSubmit = (e: React.FormEvent) => {
+export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, onCreated }) => {
+  const { t } = useTranslation();
+  const createGuest = useCreateGuest();
+  const { addNotification } = useNotifications();
+
+  const [name,        setName]        = useState('');
+  const [email,       setEmail]       = useState('');
+  const [phone,       setPhone]       = useState('');
+  const [city,        setCity]        = useState('');
+  const [country,     setCountry]     = useState('');
+  const [status,      setStatus]      = useState<typeof STATUSES[number]['value']>('STANDARD');
+  const [preferences, setPreferences] = useState('');
+  const [apiError,    setApiError]    = useState('');
+
+  const reset = () => {
+    setName(''); setEmail(''); setPhone('');
+    setCity(''); setCountry(''); setStatus('STANDARD');
+    setPreferences(''); setApiError('');
+  };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('New Guest Profile Created:', formData);
-    onClose();
+    setApiError('');
+    try {
+      const newGuest = await createGuest.mutateAsync({
+        name, email,
+        phone:       phone || undefined,
+        city:        city || undefined,
+        country:     country || undefined,
+        status,
+        preferences: preferences ? preferences.split(',').map(p => p.trim()).filter(Boolean) : [],
+      });
+      addNotification({
+        source:   'direct',
+        title:    'Guest Profile Created',
+        subtitle: `${name} — ${STATUSES.find(s => s.value === status)?.labelKey}`,
+      });
+      onCreated?.({ id: newGuest.id, name: newGuest.name, city: newGuest.city, status: newGuest.status });
+      handleClose();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error;
+      setApiError(typeof msg === 'string' ? msg : t('common.error'));
+    }
   };
 
   return (
@@ -30,36 +70,32 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose })
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={handleClose}
             className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row"
           >
-            {/* Legend / Branding */}
-            <div className="w-full md:w-72 bg-zinc-900 p-8 text-white flex flex-col">
+            {/* Sidebar */}
+            <div className="w-full md:w-72 bg-zinc-900 p-8 text-white flex flex-col shrink-0">
               <div className="mb-10">
-                <h3 className="font-display italic text-3xl mb-2 text-white">Curated Profile</h3>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">Guest Registry</p>
+                <h3 className="font-display italic text-3xl mb-2">{t('guests.curatedProfile')}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{t('guests.guestRegistry')}</p>
               </div>
-
               <div className="space-y-6 flex-1">
                 <div className="p-6 bg-white/10 rounded-2xl border border-white/10">
-                   <Star className="w-6 h-6 text-white mb-4" />
-                   <p className="text-xs font-light leading-relaxed">
-                     Profiles at Natura Lodge are more than data; they are records of preference and comfort. 
-                     Precision ensures we anticipate needs before they are voiced.
-                   </p>
+                  <Star className="w-6 h-6 text-white mb-4" />
+                  <p className="text-xs font-light leading-relaxed">
+                    Profiles at Natura Lodge are more than data; they are records of preference and comfort.
+                    Precision ensures we anticipate needs before they are voiced.
+                  </p>
                 </div>
               </div>
-
               <div className="mt-auto pt-10 flex items-center gap-2 opacity-50">
                 <Shield className="w-3.5 h-3.5" />
                 <span className="text-[8px] font-bold uppercase tracking-widest">Encrypted & Private</span>
@@ -68,109 +104,115 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose })
 
             {/* Form */}
             <div className="flex-1 p-8 md:p-12 bg-white overflow-y-auto max-h-[85vh]">
-              <div className="flex justify-between items-center mb-10">
-                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">Identity details</h4>
-                <button onClick={onClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
+              <div className="flex justify-between items-center mb-8">
+                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('guests.identityDetails')}</h4>
+                <button onClick={handleClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-8">
+              {apiError && (
+                <div className="flex items-center gap-3 p-3 mb-6 bg-red-50 border border-red-100 rounded-xl text-red-600">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <p className="text-xs font-medium">{apiError}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Name */}
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Full Legal Name</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.fullName')}</label>
                   <div className="relative">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                    <input 
-                      type="text"
-                      placeholder="e.g. Leonardo Hamilton"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    <input type="text" placeholder="e.g. Leonardo Hamilton" value={name}
+                      onChange={e => setName(e.target.value)} required
                       className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
-                      required
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Email + Phone */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Primary Email</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.email')}</label>
                     <div className="relative">
                       <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                      <input 
-                        type="email"
-                        placeholder="leonardo@example.com"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      <input type="email" placeholder="guest@example.com" value={email}
+                        onChange={e => setEmail(e.target.value)} required
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
-                        required
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Phone Line</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.phone')}</label>
                     <div className="relative">
                       <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                      <input 
-                        type="tel"
-                        placeholder="+44 ..."
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      <input type="tel" placeholder="+44 ..." value={phone}
+                        onChange={e => setPhone(e.target.value)}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* City + Country */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">City / Residence</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.city')}</label>
                     <div className="relative">
                       <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                      <input 
-                        type="text"
-                        placeholder="London"
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      <input type="text" placeholder="London" value={city}
+                        onChange={e => setCity(e.target.value)}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
-                        required
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Classification</label>
-                    <div className="flex gap-2">
-                       {['REGULAR', 'PREMIUM', 'VIP'].map((s) => (
-                         <button
-                           key={s}
-                           type="button"
-                           onClick={() => setFormData({ ...formData, status: s as any })}
-                           className={cn(
-                             "flex-1 py-3.5 rounded-xl border font-bold text-[9px] tracking-widest uppercase transition-all",
-                             formData.status === s 
-                               ? "bg-stone-900 text-white border-stone-900" 
-                               : "bg-white text-on-surface-variant border-stone-200 hover:border-stone-400"
-                           )}
-                         >
-                           {s}
-                         </button>
-                       ))}
-                    </div>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.country')}</label>
+                    <input type="text" placeholder="France" value={country}
+                      onChange={e => setCountry(e.target.value)}
+                      className="w-full h-14 px-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 pt-8">
-                  <button 
-                    type="button"
-                    onClick={onClose}
-                    className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all"
-                  >
-                    Cancel
+                {/* Classification */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.classification')}</label>
+                  <div className="flex gap-2">
+                    {STATUSES.map(s => (
+                      <button key={s.value} type="button" onClick={() => setStatus(s.value)}
+                        className={cn(
+                          'flex-1 py-3.5 rounded-xl border font-bold text-[9px] tracking-widest uppercase transition-all',
+                          status === s.value
+                            ? 'bg-zinc-900 text-white border-zinc-900'
+                            : 'bg-white text-on-surface-variant border-stone-200 hover:border-stone-400',
+                        )}>
+                        {s.labelKey}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preferences */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">
+                    {t('guests.preferences')} <span className="opacity-40 normal-case font-normal tracking-normal">{t('guests.preferencesSeparated')}</span>
+                  </label>
+                  <input type="text" placeholder="High floors, Feather-free pillows, Organic Spa"
+                    value={preferences} onChange={e => setPreferences(e.target.value)}
+                    className="w-full h-14 px-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
+                  />
+                </div>
+
+                <div className="flex items-center gap-4 pt-4">
+                  <button type="button" onClick={handleClose}
+                    className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
+                    {t('common.cancel')}
                   </button>
-                  <button 
-                    type="submit"
-                    className="flex-1 py-4 bg-zinc-900 text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-black transition-all shadow-xl shadow-black/20"
-                  >
-                    Create Guest Profile
+                  <button type="submit" disabled={createGuest.isPending}
+                    className="flex-1 py-4 bg-zinc-900 text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-black transition-all shadow-xl shadow-black/20 disabled:opacity-50">
+                    {createGuest.isPending ? t('common.creating') : t('guests.createProfile')}
                   </button>
                 </div>
               </form>

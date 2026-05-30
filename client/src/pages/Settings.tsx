@@ -1,33 +1,32 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { 
-  Settings as SettingsIcon, 
-  Globe, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Save, 
-  Building2, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Smartphone,
+import {
+  Globe,
+  Bell,
+  Shield,
+  Palette,
+  Save,
+  Building2,
+  MapPin,
   ChevronRight,
   Database
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-
-const SECTIONS = [
-  { id: 'property', label: 'Property Identity', icon: Building2 },
-  { id: 'localization', label: 'Localization', icon: Globe },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'security', label: 'Security & Access', icon: Shield },
-  { id: 'appearance', label: 'Interface Design', icon: Palette },
-];
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export const Settings: React.FC = () => {
+  const { t } = useTranslation();
   const [activeSection, setActiveSection] = useState('property');
   const [isSaving, setIsSaving] = useState(false);
+
+  const SECTIONS = [
+    { id: 'property',      label: t('settings.sections.property',      'Identité propriété'), icon: Building2 },
+    { id: 'localization',  label: t('settings.sections.localization',  'Localisation'),       icon: Globe },
+    { id: 'notifications', label: t('settings.sections.notifications', 'Notifications'),      icon: Bell },
+    { id: 'security',      label: t('settings.sections.security',      'Sécurité & Accès'),  icon: Shield },
+    { id: 'appearance',    label: t('settings.sections.appearance',    'Design interface'),   icon: Palette },
+  ];
 
   const handleSave = () => {
     setIsSaving(true);
@@ -38,23 +37,23 @@ export const Settings: React.FC = () => {
     <div className="space-y-10 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
-          <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-1 leading-none">System Core</h2>
-          <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/40">Configure Natura Lodge infrastructure</p>
+          <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-1 leading-none">{t('settings.systemCore')}</h2>
+          <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/40">{t('settings.configure')}</p>
         </div>
-        <button 
+        <button
           onClick={handleSave}
           disabled={isSaving}
           className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10 disabled:opacity-50"
         >
           {isSaving ? (
-            <motion.div 
-              animate={{ rotate: 360 }} 
+            <motion.div
+              animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
             >
               <Save className="w-4 h-4" />
             </motion.div>
           ) : <Save className="w-4 h-4" />}
-          {isSaving ? 'Syncing...' : 'Save Configuration'}
+          {isSaving ? t('settings.syncing') : t('settings.saveConfiguration')}
         </button>
       </div>
 
@@ -179,13 +178,30 @@ export const Settings: React.FC = () => {
                </motion.div>
              )}
 
+             {/* Localisation section — language switcher */}
+             {activeSection === 'localization' && (
+               <motion.div
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="p-8 md:p-12 space-y-8"
+               >
+                 <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-6 flex items-center gap-2">
+                   <Globe className="w-4 h-4 text-primary" /> {t('settings.language')}
+                 </h3>
+                 <div className="flex items-center gap-6">
+                   <p className="text-sm text-on-surface-variant font-light">{t('settings.language')}</p>
+                   <LanguageSwitcher />
+                 </div>
+               </motion.div>
+             )}
+
              {/* Placeholder for other sections */}
-             {activeSection !== 'property' && (
+             {activeSection !== 'property' && activeSection !== 'localization' && (
                <div className="p-20 flex flex-col items-center justify-center text-center">
                   <div className="w-20 h-20 rounded-full bg-stone-50 flex items-center justify-center mb-6">
                      {SECTIONS.find(s => s.id === activeSection)?.icon && React.createElement(SECTIONS.find(s => s.id === activeSection)!.icon, { className: "w-8 h-8 text-on-surface-variant/20" })}
                   </div>
-                  <h3 className="font-display italic text-2xl text-on-surface mb-2">{SECTIONS.find(s => s.id === activeSection)?.label} Subsystem</h3>
+                  <h3 className="font-display italic text-2xl text-on-surface mb-2">{SECTIONS.find(s => s.id === activeSection)?.label}</h3>
                   <p className="text-xs text-on-surface-variant/60 max-w-xs mx-auto leading-relaxed">
                     This administrative module is currently being optimized for high-security environments. Deployment expected in version 2.5.
                   </p>
