@@ -27,7 +27,18 @@ const bookingSchema = z.object({
 
 const include = {
   guest:     { select: { id: true, name: true, email: true, avatar: true, status: true } },
-  rooms:     { include: { room: { select: { id: true, number: true, type: true, category: true, rate: true } } } },
+  rooms:     {
+    include: {
+      room: {
+        select: {
+          id:           true,
+          number:       true,
+          rateOverride: true,
+          roomType:     { select: { id: true, name: true, category: true, rate: true } },
+        },
+      },
+    },
+  },
   createdBy: { select: { id: true, name: true, role: true } },
 };
 

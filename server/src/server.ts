@@ -3,6 +3,8 @@ import express from 'express';
 import cors from 'cors';
 import { authRouter } from './routes/auth';
 import { roomsRouter } from './routes/rooms';
+import { roomTypesRouter } from './routes/roomTypes';
+import { invoicesRouter } from './routes/invoices';
 import { guestsRouter } from './routes/guests';
 import { bookingsRouter } from './routes/bookings';
 import { staffRouter } from './routes/staff';
@@ -18,6 +20,8 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 
 app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
+app.use('/api/room-types', roomTypesRouter);
+app.use('/api/invoices', invoicesRouter);
 app.use('/api/guests', guestsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/staff', staffRouter);

@@ -81,23 +81,33 @@ model GuestNote {
 
 // ─── Rooms ───────────────────────────────────────────────────────
 
-model Room {
+model RoomType {
   id          String        @id @default(cuid())
-  number      String        @unique
-  type        String
+  name        String
   category    RoomCategory
-  area        Int
-  bedType     String
-  capacity    Int
   rate        Int
-  status      RoomStatus    @default(AVAILABLE)
-  view        String?
-  images      String[]
-  description String?
-  features      RoomFeature[]      @relation("RoomToFeature")
-  bookings      BookingRoom[]
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  description String        @default("")
+  area        Int           @default(30)
+  bedType     String        @default("King Size")
+  capacity    Int           @default(2)
+  view        String        @default("Garden View")
+  features    RoomFeature[] @relation("RoomTypeToFeature")
+  rooms       Room[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Room {
+  id           String        @id @default(cuid())
+  number       String        @unique
+  status       RoomStatus    @default(AVAILABLE)
+  images       String[]      @default([])
+  rateOverride Int?
+  roomType     RoomType      @relation(fields: [roomTypeId], references: [id])
+  roomTypeId   String
+  bookings     BookingRoom[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 enum RoomCategory {
@@ -117,10 +127,10 @@ enum RoomStatus {
 }
 
 model RoomFeature {
-  id       String @id @default(cuid())
-  label    String
-  iconName String
-  rooms    Room[] @relation("RoomToFeature")
+  id        String     @id @default(cuid())
+  label     String
+  iconName  String
+  roomTypes RoomType[] @relation("RoomTypeToFeature")
 }
 
 // ─── Bookings ────────────────────────────────────────────────────

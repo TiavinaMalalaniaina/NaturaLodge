@@ -1,41 +1,48 @@
 import { api } from './client';
-import { Room } from '../types';
+import { Room, RoomFeature } from '../types';
 
-export interface ApiFeature { id: string; label: string; iconName: string }
+// ─── Raw API shape (flattened by server) ─────────────────────────
+
 interface ApiRoom {
-  id: string; number: string; type: string; category: string;
-  area: number; bedType: string; capacity: number; rate: number;
-  status: string; view?: string; images: string[];
-  description?: string; features: ApiFeature[];
+  id: string; number: string; status: string;
+  images: string[]; rateOverride: number | null; roomTypeId: string;
+  type: string; category: string; rate: number;
+  description: string; area: number; bedType: string;
+  capacity: number; view: string;
+  features: { id: string; label: string; iconName: string }[];
 }
-
-const ROOM_STATUS: Record<string, Room['status']> = {
-  AVAILABLE: 'available', OCCUPIED: 'occupied',
-  MAINTENANCE: 'maintenance', RESERVED: 'reserved',
-};
 
 const CATEGORY_MAP: Record<string, Room['category']> = {
   SUPERIOR: 'Superior', DELUXE: 'Deluxe', SUITE: 'Suite',
   PENTHOUSE: 'Penthouse', VILLA: 'Villa', LUXURY: 'Luxury',
 };
 
+const STATUS_MAP: Record<string, Room['status']> = {
+  AVAILABLE: 'available', OCCUPIED: 'occupied',
+  MAINTENANCE: 'maintenance', RESERVED: 'reserved',
+};
+
 export function normalizeRoom(r: ApiRoom): Room {
   return {
-    id: r.id,
-    number: r.number,
-    type: r.type,
-    category: CATEGORY_MAP[r.category] ?? 'Suite',
-    area: r.area,
-    bedType: r.bedType,
-    capacity: r.capacity,
-    rate: r.rate,
-    status: ROOM_STATUS[r.status] ?? 'available',
-    view: r.view ?? '',
-    images: r.images,
-    description: r.description ?? '',
-    features: r.features.map(f => f.id),
+    id:           r.id,
+    number:       r.number,
+    roomTypeId:   r.roomTypeId,
+    type:         r.type,
+    category:     CATEGORY_MAP[r.category] ?? (r.category as Room['category']),
+    rate:         r.rate,
+    rateOverride: r.rateOverride,
+    status:       STATUS_MAP[r.status] ?? 'available',
+    area:         r.area,
+    bedType:      r.bedType,
+    capacity:     r.capacity,
+    view:         r.view ?? '',
+    images:       r.images,
+    description:  r.description ?? '',
+    features:     r.features.map(f => f.id),
   };
 }
+
+// ─── Conflict bookings (maintenance) ─────────────────────────────
 
 export interface ConflictBooking {
   id:        string;
@@ -63,6 +70,8 @@ export const setRoomStatus = async (id: string, status: string): Promise<RoomSta
   };
 };
 
+// ─── Params & fetchers ────────────────────────────────────────────
+
 export interface RoomsParams {
   search?:   string;
   category?: string;
@@ -79,8 +88,6 @@ export const fetchRoom = async (id: string): Promise<Room> => {
   return normalizeRoom(data);
 };
 
-// ─── Availability ────────────────────────────────────────────────
-
 export const fetchAvailableRooms = async (
   arrival: string,
   departure: string,
@@ -94,13 +101,13 @@ export const fetchAvailableRooms = async (
 
 // ─── Features ────────────────────────────────────────────────────
 
-export const fetchRoomFeatures = async (): Promise<ApiFeature[]> => {
-  const { data } = await api.get<ApiFeature[]>('/rooms/features');
+export const fetchRoomFeatures = async (): Promise<RoomFeature[]> => {
+  const { data } = await api.get<RoomFeature[]>('/rooms/features');
   return data;
 };
 
-export const createRoomFeature = async (payload: { label: string; iconName: string }): Promise<ApiFeature> => {
-  const { data } = await api.post<ApiFeature>('/rooms/features', payload);
+export const createRoomFeature = async (payload: { label: string; iconName: string }): Promise<RoomFeature> => {
+  const { data } = await api.post<RoomFeature>('/rooms/features', payload);
   return data;
 };
 
@@ -108,27 +115,21 @@ export const deleteRoomFeature = async (id: string): Promise<void> => {
   await api.delete(`/rooms/features/${id}`);
 };
 
-// ─── Create / Update ─────────────────────────────────────────────
+// ─── Room CRUD ────────────────────────────────────────────────────
 
 export interface RoomPayload {
-  number: string; type: string; category: string;
-  area: number; bedType: string; capacity: number; rate: number;
-  view?: string; images?: string[]; description?: string;
-  featureIds?: string[];
+  number:       string;
+  roomTypeId:   string;
+  images?:      string[];
+  rateOverride?: number | null;
 }
 
 export const createRoom = async (payload: RoomPayload): Promise<Room> => {
-  const { data } = await api.post<ApiRoom>('/rooms', {
-    ...payload,
-    category: payload.category.toUpperCase(),
-  });
+  const { data } = await api.post<ApiRoom>('/rooms', payload);
   return normalizeRoom(data);
 };
 
 export const updateRoom = async (id: string, payload: Partial<RoomPayload>): Promise<Room> => {
-  const { data } = await api.patch<ApiRoom>(`/rooms/${id}`, {
-    ...payload,
-    ...(payload.category ? { category: payload.category.toUpperCase() } : {}),
-  });
+  const { data } = await api.patch<ApiRoom>(`/rooms/${id}`, payload);
   return normalizeRoom(data);
 };

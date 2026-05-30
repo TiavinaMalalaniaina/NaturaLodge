@@ -279,7 +279,10 @@ export const Rooms: React.FC = () => {
 
             <div className="flex justify-between items-center mt-auto font-sans">
               <div className="flex items-center gap-3">
-                <p className="font-display text-2xl text-gold-500">{room.rate.toLocaleString()} Ar</p>
+                <p className="font-display text-2xl text-gold-500">
+                  {room.rate.toLocaleString()} Ar
+                  {room.rateOverride && <span className="text-[10px] text-on-surface-variant/40 font-sans ml-1">(spécifique)</span>}
+                </p>
                 {room.status === 'available' && (
                   <button
                     onClick={e => { e.stopPropagation(); setSelectedRoomForBooking(room.id); }}

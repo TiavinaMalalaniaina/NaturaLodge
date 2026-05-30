@@ -77,7 +77,18 @@ guestsRouter.get('/:id', async (req: AuthRequest, res: Response): Promise<void> 
       ...notesInclude,
       bookings: {
         include: {
-          rooms: { include: { room: { select: { id: true, number: true, type: true, category: true } } } },
+          rooms: {
+            include: {
+              room: {
+                select: {
+                  id:           true,
+                  number:       true,
+                  rateOverride: true,
+                  roomType:     { select: { name: true, category: true, rate: true } },
+                },
+              },
+            },
+          },
         },
         orderBy: { arrival: 'desc' },
       },

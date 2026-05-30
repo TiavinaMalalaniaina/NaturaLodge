@@ -11,7 +11,12 @@ interface ApiNote {
 }
 
 interface ApiBookingRoom {
-  room: { id: string; number: string; type: string };
+  room: {
+    id: string;
+    number: string;
+    rateOverride: number | null;
+    roomType: { name: string; category: string; rate: number };
+  };
 }
 
 interface ApiBooking {
@@ -36,7 +41,7 @@ export interface GuestBooking {
   departure: string;
   status: string;
   totalAmount: number;
-  rooms: { room: { id: string; number: string; type: string } }[];
+  rooms: { room: { id: string; number: string; type: string; category: string; rate: number } }[];
 }
 
 // ─── Status maps ──────────────────────────────────────────────────
@@ -74,7 +79,15 @@ export function normalizeGuest(g: ApiGuest): Guest & { bookings?: GuestBooking[]
       departure: b.departure.split('T')[0],
       status: b.status,
       totalAmount: b.totalAmount,
-      rooms: b.rooms,
+      rooms: b.rooms.map(br => ({
+        room: {
+          id:       br.room.id,
+          number:   br.room.number,
+          type:     br.room.roomType.name,
+          category: br.room.roomType.category,
+          rate:     br.room.rateOverride ?? br.room.roomType.rate,
+        },
+      })),
     })),
   };
 }

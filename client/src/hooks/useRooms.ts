@@ -3,7 +3,7 @@ import {
   fetchRooms, fetchRoom, fetchAvailableRooms, createRoom, updateRoom,
   fetchRoomFeatures, createRoomFeature, deleteRoomFeature,
   setRoomStatus,
-  RoomPayload, RoomsParams,
+  RoomPayload, RoomsParams, // RoomPayload now only has number/roomTypeId/images/rateOverride
 } from '../api/rooms';
 
 export const ROOMS_KEY     = ['rooms'] as const;

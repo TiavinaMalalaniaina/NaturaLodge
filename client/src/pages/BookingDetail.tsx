@@ -239,7 +239,7 @@ export const BookingDetail: React.FC = () => {
       <InvoiceModal
         isOpen={invoiceOpen}
         onClose={() => setInvoiceOpen(false)}
-        booking={booking}
+        bookingId={booking.id}
       />
       <ConfirmModal
         isOpen={cancelOpen}

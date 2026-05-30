@@ -12,7 +12,27 @@ export interface BookingRoomEntry {
 interface ApiBookingRoom {
   id: string; roomId: string;
   arrival: string; departure: string; roomRate: number;
-  room: { id: string; number: string; type: string; category: string; rate: number };
+  room: {
+    id: string; number: string; rateOverride: number | null;
+    roomType: { id: string; name: string; category: string; rate: number };
+  };
+}
+
+function normalizeBookingRoom(br: ApiBookingRoom): BookingRoomEntry {
+  return {
+    id:        br.id,
+    roomId:    br.roomId,
+    arrival:   br.arrival.split('T')[0],
+    departure: br.departure.split('T')[0],
+    roomRate:  br.roomRate,
+    room: {
+      id:       br.room.id,
+      number:   br.room.number,
+      type:     br.room.roomType.name,
+      category: br.room.roomType.category,
+      rate:     br.room.rateOverride ?? br.room.roomType.rate,
+    },
+  };
 }
 
 interface ApiBooking {
@@ -77,11 +97,7 @@ export function normalizeBooking(b: ApiBooking): RichBooking {
   const effectiveStatus: EffectiveStatus = (b.effectiveStatus as EffectiveStatus)
     ?? deriveEffectiveStatus(arrival, departure, status);
 
-  const rooms: BookingRoomEntry[] = b.rooms.map(br => ({
-    id: br.id, roomId: br.roomId, roomRate: br.roomRate,
-    arrival: br.arrival.split('T')[0], departure: br.departure.split('T')[0],
-    room: br.room,
-  }));
+  const rooms: BookingRoomEntry[] = b.rooms.map(normalizeBookingRoom);
 
   return {
     id: b.id, guestId: b.guestId, guestName: b.guest.name,

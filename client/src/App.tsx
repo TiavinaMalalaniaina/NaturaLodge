@@ -14,6 +14,7 @@ import { RoomDetail } from './pages/RoomDetail';
 import { BookingDetail } from './pages/BookingDetail';
 import { Amenities } from './pages/Amenities';
 import { Staff } from './pages/Staff';
+import { Invoices } from './pages/Invoices';
 import { Settings } from './pages/Settings';
 
 const App: React.FC = () => {
@@ -34,6 +35,7 @@ const App: React.FC = () => {
               <Route path="guests" element={<Guests />} />
               <Route path="guests/:id" element={<GuestProfile />} />
               <Route path="amenities" element={<Amenities />} />
+              <Route path="invoices" element={<Invoices />} />
               <Route path="settings" element={<Settings />} />
 
               <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
