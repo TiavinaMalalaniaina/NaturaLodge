@@ -6,9 +6,10 @@ import { config } from 'dotenv'
 
 config()
 
+const sslDisabled = process.env.DATABASE_SSL === 'false' || process.env.DATABASE_URL?.includes('localhost')
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
+  ssl: sslDisabled ? false : { rejectUnauthorized: false },
 })
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
 
