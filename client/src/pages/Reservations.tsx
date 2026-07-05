@@ -63,7 +63,7 @@ export const Reservations: React.FC = () => {
   const { t } = useTranslation();
 
   // View
-  const [viewMode, setViewMode]         = useState<'grid' | 'list' | 'calendar'>('grid');
+  const [viewMode, setViewMode]         = useState<'grid' | 'list' | 'calendar'>('list');
 
   // Filters (shared)
   const [searchQuery, setSearchQuery]   = useState('');
@@ -79,7 +79,7 @@ export const Reservations: React.FC = () => {
   const monthBarRef = useRef<HTMLDivElement>(null); // month nav bar (synced)
 
   const windowStart = useMemo(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() - 1); d.setHours(0, 0, 0, 0); return d;
+    const d = new Date(); d.setFullYear(d.getFullYear()-1); d.setHours(0, 0, 0, 0); return d;
   }, []);
   const windowEnd = useMemo(() => {
     const d = new Date(); d.setFullYear(d.getFullYear() + 4); d.setHours(23, 59, 59, 999); return d;
