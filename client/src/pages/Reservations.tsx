@@ -15,6 +15,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { ReservationCalendar } from '../components/ReservationCalendar';
 import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
 import { useRooms } from '../hooks/useRooms';
+import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
@@ -49,7 +50,6 @@ const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
 const LIMIT          = 20;
 const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT'];
 const ROOM_STATUS    = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
-const CATEGORIES     = ['ALL', 'Suite', 'Deluxe', 'Superior', 'Penthouse', 'Villa', 'Luxury'];
 
 // Grid constants
 const COL_W        = 52;   // px per day column
@@ -66,7 +66,7 @@ export const Reservations: React.FC = () => {
   // Filters (shared)
   const [searchQuery, setSearchQuery]   = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
 
   // List pagination
   const [page, setPage] = useState(1);
@@ -219,6 +219,7 @@ export const Reservations: React.FC = () => {
   const { data: allGridRooms = [], isLoading: roomsLoading } = useRooms(
     viewMode === 'grid' ? {} : undefined
   );
+  const { data: roomTypes = [] } = useRoomTypes();
 
   const gridRooms = useMemo(() => {
     if (viewMode !== 'grid') return [];
@@ -226,10 +227,10 @@ export const Reservations: React.FC = () => {
     return allGridRooms.filter(room => {
       if (q && !room.number.toLowerCase().includes(q) && !room.type.toLowerCase().includes(q)) return false;
       if (statusFilter !== 'ALL' && room.status.toUpperCase() !== statusFilter) return false;
-      if (categoryFilter !== 'ALL' && room.category !== categoryFilter) return false;
+      if (roomTypeFilter !== 'ALL' && room.type !== roomTypeFilter) return false;
       return true;
     });
-  }, [allGridRooms, searchQuery, statusFilter, categoryFilter, viewMode]);
+  }, [allGridRooms, searchQuery, statusFilter, roomTypeFilter, viewMode]);
 
   // ── Grid helpers ──────────────────────────────────────────────────
 
@@ -358,11 +359,11 @@ export const Reservations: React.FC = () => {
               {t('reservations.filterCategory')}
             </span>
             <div className="flex gap-1.5">
-              {CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => handleFilterChange(setCategoryFilter)(cat)}
+              {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
+                <button key={rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}
                   className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
-                    categoryFilter === cat ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
-                  {cat === 'ALL' ? t('common.all') : cat}
+                    roomTypeFilter === rt ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                  {rt === 'ALL' ? t('common.all') : rt}
                 </button>
               ))}
             </div>
@@ -540,7 +541,7 @@ export const Reservations: React.FC = () => {
                     style={{ minHeight: 300 }}>
                     <Filter className="w-12 h-12 mb-4 opacity-10" />
                     <p className="font-display italic text-2xl">{t('reservations.noUnitsMatch')}</p>
-                    <button onClick={() => { setStatusFilter('ALL'); setCategoryFilter('ALL'); setSearchQuery(''); }}
+                    <button onClick={() => { setStatusFilter('ALL'); setRoomTypeFilter('ALL'); setSearchQuery(''); }}
                       className="mt-4 text-[10px] font-bold text-primary uppercase tracking-widest hover:underline">
                       {t('reservations.clearAllFilters')}
                     </button>

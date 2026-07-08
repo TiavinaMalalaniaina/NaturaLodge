@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useRooms, useUpdateRoomStatus } from '../hooks/useRooms';
+import { useRoomTypes } from '../hooks/useRoomTypes';
 import { AddRoomModal } from '../components/AddRoomModal';
 import { FeatureManagerModal } from '../components/FeatureManagerModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
@@ -12,12 +13,12 @@ import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
 
 type StatusTab = 'all' | 'available' | 'occupied' | 'maintenance';
-const CATEGORIES = ['ALL', 'Superior', 'Deluxe', 'Suite', 'Penthouse', 'Villa', 'Luxury'] as const;
 
 export const Rooms: React.FC = () => {
   const navigate  = useNavigate();
   const { t }     = useTranslation();
   const { data: apiRooms, isLoading, isError } = useRooms(undefined, { refetchInterval: 60_000 });
+  const { data: roomTypes = [] } = useRoomTypes();
 
   const updateStatus = useUpdateRoomStatus();
 
@@ -26,10 +27,10 @@ export const Rooms: React.FC = () => {
   const [activeDropdown, setActiveDropdown]                 = useState<string | null>(null);
   const [conflictsInfo, setConflictsInfo]                   = useState<{ roomNumber: string; list: ConflictBooking[] } | null>(null);
 
-  const [statusTab,      setStatusTab]      = useState<StatusTab>('all');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [search,         setSearch]         = useState('');
-  const [showFilters,    setShowFilters]    = useState(false);
+  const [statusTab,       setStatusTab]       = useState<StatusTab>('all');
+  const [roomTypeFilter,  setRoomTypeFilter]  = useState('ALL');
+  const [search,          setSearch]          = useState('');
+  const [showFilters,     setShowFilters]     = useState(false);
 
   // Fermer le dropdown sur clic extérieur
   React.useEffect(() => {
@@ -53,11 +54,11 @@ export const Rooms: React.FC = () => {
     const q = search.toLowerCase();
     return allRooms.filter(room => {
       if (statusTab !== 'all' && room.status !== statusTab) return false;
-      if (categoryFilter !== 'ALL' && room.category !== categoryFilter) return false;
+      if (roomTypeFilter !== 'ALL' && room.type !== roomTypeFilter) return false;
       if (q && !room.number.toLowerCase().includes(q) && !room.type.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [allRooms, statusTab, categoryFilter, search]);
+  }, [allRooms, statusTab, roomTypeFilter, search]);
 
   const STATUS_TABS: { key: StatusTab; label: string }[] = [
     { key: 'all',         label: t('common.all') },
@@ -66,7 +67,7 @@ export const Rooms: React.FC = () => {
     { key: 'maintenance', label: t('status.maintenance') },
   ];
 
-  const activeFiltersCount = (statusTab !== 'all' ? 1 : 0) + (categoryFilter !== 'ALL' ? 1 : 0) + (search ? 1 : 0);
+  const activeFiltersCount = (statusTab !== 'all' ? 1 : 0) + (roomTypeFilter !== 'ALL' ? 1 : 0) + (search ? 1 : 0);
 
   if (isLoading) return <PageLoader />;
   if (isError)   return <PageError />;
@@ -143,21 +144,21 @@ export const Rooms: React.FC = () => {
               onClick={() => setShowFilters(v => !v)}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl border text-[9px] font-bold uppercase tracking-[0.2em] transition-all cursor-pointer',
-                showFilters || categoryFilter !== 'ALL'
+                showFilters || roomTypeFilter !== 'ALL'
                   ? 'bg-primary text-white border-primary'
                   : 'bg-white border-stone-200 text-on-surface-variant hover:bg-stone-50',
               )}
             >
               <Filter className="w-3.5 h-3.5" />
-              {t('rooms.category')}
-              {categoryFilter !== 'ALL' && (
+              {t('rooms.typeName')}
+              {roomTypeFilter !== 'ALL' && (
                 <span className="w-4 h-4 rounded-full bg-white/30 text-[8px] font-bold flex items-center justify-center">1</span>
               )}
             </button>
 
             {activeFiltersCount > 0 && (
               <button
-                onClick={() => { setStatusTab('all'); setCategoryFilter('ALL'); setSearch(''); }}
+                onClick={() => { setStatusTab('all'); setRoomTypeFilter('ALL'); setSearch(''); }}
                 className="text-[9px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors whitespace-nowrap"
               >
                 {t('reservations.clearAllFilters')}
@@ -166,7 +167,7 @@ export const Rooms: React.FC = () => {
           </div>
         </div>
 
-        {/* Category chips */}
+        {/* Room type chips */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -176,18 +177,18 @@ export const Rooms: React.FC = () => {
               className="overflow-hidden"
             >
               <div className="flex gap-2 flex-wrap py-1">
-                {CATEGORIES.map(cat => (
+                {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
                   <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(cat)}
+                    key={rt}
+                    onClick={() => setRoomTypeFilter(rt)}
                     className={cn(
                       'px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all',
-                      categoryFilter === cat
+                      roomTypeFilter === rt
                         ? 'bg-primary text-white border-primary'
                         : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400',
                     )}
                   >
-                    {cat === 'ALL' ? t('common.all') : cat}
+                    {rt === 'ALL' ? t('common.all') : rt}
                   </button>
                 ))}
               </div>
@@ -310,7 +311,7 @@ export const Rooms: React.FC = () => {
             <Filter className="w-12 h-12 mb-4 opacity-20" />
             <p className="font-display italic text-2xl mb-4">{t('rooms.noRoomsFound')}</p>
             <button
-              onClick={() => { setStatusTab('all'); setCategoryFilter('ALL'); setSearch(''); }}
+              onClick={() => { setStatusTab('all'); setRoomTypeFilter('ALL'); setSearch(''); }}
               className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
             >
               {t('reservations.clearAllFilters')}

@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useGuests } from '../hooks/useGuests';
 import { useAvailableRooms } from '../hooks/useRooms';
+import { useRoomTypes } from '../hooks/useRoomTypes';
 import { useCreateBooking } from '../hooks/useBookings';
 import { useNotifications } from '../context/NotificationContext';
 import { AddGuestModal } from '../components/AddGuestModal';
@@ -60,20 +61,21 @@ export const NewReservation: React.FC = () => {
   const { data: guestsPage }                                    = useGuests(debouncedSearch ? { search: debouncedSearch } : undefined);
   const guests = guestsPage?.data ?? [];
   const { data: availableRooms = [], isLoading: roomsLoading }  = useAvailableRooms(arrival, departure);
+  const { data: roomTypes = [] } = useRoomTypes();
 
   // ─── Room filters (step 2) ────────────────────────────────────
   const [roomSearch,   setRoomSearch]   = useState('');
-  const [roomCategory, setRoomCategory] = useState('ALL');
+  const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
   const [roomCapacity, setRoomCapacity] = useState(0);
   const [dateEditRoomIds, setDateEditRoomIds] = useState<Set<string>>(new Set());
 
   const filteredRooms = useMemo(() => availableRooms.filter(r => {
     const s = roomSearch.toLowerCase();
     if (s && !r.number.toLowerCase().includes(s) && !r.type.toLowerCase().includes(s)) return false;
-    if (roomCategory !== 'ALL' && r.category !== roomCategory) return false;
+    if (roomTypeFilter !== 'ALL' && r.type !== roomTypeFilter) return false;
     if (roomCapacity > 0 && r.capacity < roomCapacity) return false;
     return true;
-  }), [availableRooms, roomSearch, roomCategory, roomCapacity]);
+  }), [availableRooms, roomSearch, roomTypeFilter, roomCapacity]);
 
   const selectedGuest = guests.find(g => g.id === guestId) ?? (pendingGuest?.id === guestId ? pendingGuest : null);
   const selectedRooms = useMemo(
@@ -461,15 +463,15 @@ export const NewReservation: React.FC = () => {
                   />
                 </div>
 
-                {/* Category filter */}
+                {/* Room type filter */}
                 <div className="flex gap-1.5 flex-wrap">
-                  {['ALL','Superior','Deluxe','Suite','Penthouse','Villa','Luxury'].map(cat => (
-                    <button key={cat} type="button" onClick={() => setRoomCategory(cat)}
+                  {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
+                    <button key={rt} type="button" onClick={() => setRoomTypeFilter(rt)}
                       className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all',
-                        roomCategory === cat
+                        roomTypeFilter === rt
                           ? 'bg-primary text-white border-primary'
                           : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
-                      {cat === 'ALL' ? t('common.all') : cat}
+                      {rt === 'ALL' ? t('common.all') : rt}
                     </button>
                   ))}
                 </div>
@@ -508,7 +510,7 @@ export const NewReservation: React.FC = () => {
                     <div className="flex flex-col items-center justify-center py-10 gap-2 text-on-surface-variant/40">
                       <p className="text-sm font-display italic">{t('reservations.noMatch')}</p>
                       <button type="button"
-                        onClick={() => { setRoomSearch(''); setRoomCategory('ALL'); setRoomCapacity(0); }}
+                        onClick={() => { setRoomSearch(''); setRoomTypeFilter('ALL'); setRoomCapacity(0); }}
                         className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline">
                         {t('reservations.clearFilters')}
                       </button>
@@ -539,7 +541,7 @@ export const NewReservation: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-on-surface">{room.type}</p>
                             <p className="text-[10px] text-on-surface-variant/50 uppercase tracking-widest mt-0.5">
-                              {room.category} · {room.capacity} {t('common.guests_count')}
+                              {room.capacity} {t('common.guests_count')}
                             </p>
                           </div>
                           <div className="text-right shrink-0">
