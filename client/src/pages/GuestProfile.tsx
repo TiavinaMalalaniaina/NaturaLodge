@@ -8,7 +8,6 @@ import { motion } from 'motion/react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useGuest, useAddGuestNote } from '../hooks/useGuests';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { InvoiceModal } from '../components/InvoiceModal';
 import { GuestBooking } from '../api/guests';
 import { useTranslation } from 'react-i18next';
 
@@ -38,8 +37,7 @@ export const GuestProfile: React.FC = () => {
   const { data: guest, isLoading, isError } = useGuest(id!);
   const addNote = useAddGuestNote();
 
-  const [noteInput,       setNoteInput]      = useState('');
-  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [noteInput, setNoteInput] = useState('');
 
   if (isLoading) return <PageLoader />;
   if (isError || !guest) return <PageError />;
@@ -215,7 +213,7 @@ export const GuestProfile: React.FC = () => {
                           className="p-2 border border-stone-100 rounded-xl hover:bg-stone-50 hover:border-stone-200 text-stone-400 hover:text-primary transition-all">
                           <ChevronRight className="w-4 h-4" />
                         </Link>
-                        <button onClick={() => setSelectedInvoice(b)}
+                        <button onClick={() => navigate(`/invoices/${b.id}`)}
                           className="p-2 border border-stone-100 rounded-xl hover:bg-stone-50 hover:border-stone-200 text-stone-400 hover:text-primary transition-all">
                           <FileText className="w-4 h-4" />
                         </button>
@@ -277,11 +275,6 @@ export const GuestProfile: React.FC = () => {
         </div>
       </div>
 
-      <InvoiceModal
-        isOpen={!!selectedInvoice}
-        onClose={() => setSelectedInvoice(null)}
-        booking={selectedInvoice}
-      />
     </motion.div>
   );
 };

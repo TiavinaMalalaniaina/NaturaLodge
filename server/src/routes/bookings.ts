@@ -84,7 +84,9 @@ bookingsRouter.get('/', async (req: AuthRequest, res: Response): Promise<void> =
   const skip = (page - 1) * limit;
 
   const where = {
-    ...(status ? { status } : {}),
+    // Par défaut (pas de statut choisi, pas de recherche) : cacher les réservations
+    // clôturées pour que la liste priorise les séjours en cours/en retard puis à venir.
+    ...(status ? { status } : search ? {} : { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } }),
     ...(startDate && endDate ? {
       arrival:   { lt: new Date(endDate) },
       departure: { gt: new Date(startDate) },

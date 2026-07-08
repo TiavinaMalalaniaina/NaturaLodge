@@ -1,10 +1,37 @@
 COMPOSE = docker compose
 
-.PHONY: help build up down restart stop logs logs-server logs-client ps clean migrate seed studio sh-server sh-client sh-db
+.PHONY: help build up down restart stop logs logs-server logs-client ps clean migrate seed studio sh-server sh-client sh-db \
+	install install-server install-client dev dev-server dev-client db-up db-down local-migrate local-seed local-studio
 
 help: ## Affiche cette aide
-	@echo "Cibles disponibles :"
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo Cibles disponibles :
+	@echo   [Docker]
+	@echo     build         Build les images (server + client)
+	@echo     up            Build puis demarre la stack (db + server + client)
+	@echo     down          Arrete et supprime les conteneurs (donnees conservees)
+	@echo     restart       Redemarre toute la stack
+	@echo     stop          Stoppe les conteneurs sans les supprimer
+	@echo     logs          Suit les logs de tous les services
+	@echo     logs-server   Suit les logs du serveur
+	@echo     logs-client   Suit les logs du client
+	@echo     ps            Liste les conteneurs et leur statut
+	@echo     clean         Down + suppression des volumes (efface la DB)
+	@echo     migrate       Applique les migrations Prisma (conteneur)
+	@echo     seed          Injecte les donnees de demo (conteneur)
+	@echo     studio        Ouvre Prisma Studio (conteneur, port 5555)
+	@echo     sh-server     Shell dans le conteneur server
+	@echo     sh-client     Shell dans le conteneur client
+	@echo     sh-db         Shell psql dans le conteneur db
+	@echo   [Local, sans Docker]
+	@echo     install       Installe les dependances npm (client + serveur)
+	@echo     dev           Rappel pour lancer serveur+client en local
+	@echo     dev-server    Lance le serveur en local (port 4000)
+	@echo     dev-client    Lance le client en local (port 3000)
+	@echo     db-up         Optionnel: Postgres via Docker si vous n'en avez pas
+	@echo     db-down       Arrete le Postgres lance par db-up
+	@echo     local-migrate Migrations Prisma en local
+	@echo     local-seed    Seed en local
+	@echo     local-studio  Prisma Studio en local
 
 build: ## Build les images (server + client)
 	$(COMPOSE) build
@@ -52,3 +79,43 @@ sh-client: ## Ouvre un shell dans le conteneur client
 
 sh-db: ## Ouvre un shell psql dans le conteneur db
 	$(COMPOSE) exec db psql -U naturalodge -d naturalodge
+
+# ─── Lancement en local (sans Docker) ──────────────────────────────────────
+# Utilise npm run dev directement (client + serveur tournent sur la machine hôte).
+# Nécessite server/.env avec un DATABASE_URL pointant vers un Postgres déjà
+# accessible (natif ou autre) — voir CLAUDE.md. db-up/db-down sont de simples
+# raccourcis optionnels si vous n'avez pas encore de Postgres local.
+
+install: install-server install-client ## Installe les dépendances npm (client + serveur)
+
+install-server: ## Installe les dépendances npm du serveur
+	cd server && npm install
+
+install-client: ## Installe les dépendances npm du client
+	cd client && npm install
+
+db-up: ## (optionnel) Démarre un Postgres via Docker sur le port 5432, si vous n'en avez pas déjà un local
+	$(COMPOSE) up -d db
+
+db-down: ## Arrête le Postgres lancé par db-up
+	$(COMPOSE) stop db
+
+dev-server: ## Lance le serveur en local avec hot-reload (npm run dev, port 4000)
+	cd server && npm run dev
+
+dev-client: ## Lance le client en local avec hot-reload (npm run dev, port 3000)
+	cd client && npm run dev
+
+dev: ## Rappel : lance serveur + client dans 2 terminaux (pas de job control portable sous cmd.exe)
+	@echo Ouvrez 2 terminaux et lancez :
+	@echo   make dev-server
+	@echo   make dev-client
+
+local-migrate: ## Applique les migrations Prisma en local (contre server/.env)
+	cd server && npm run db:migrate
+
+local-seed: ## Injecte les données de démo en local (contre server/.env)
+	cd server && npm run db:seed
+
+local-studio: ## Ouvre Prisma Studio en local (http://localhost:5555)
+	cd server && npm run db:studio

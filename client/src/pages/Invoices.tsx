@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { FileText, Search, X, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useInvoices } from '../hooks/useInvoices';
-import { InvoiceModal } from '../components/InvoiceModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { InvoiceStatus } from '../api/invoices';
 
@@ -27,12 +27,11 @@ const STATUS_CLASS: Record<InvoiceStatus, string> = {
 
 export const Invoices: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
-  const [statusFilter,       setStatusFilter]       = useState<StatusFilter>('all');
-  const [search,             setSearch]             = useState('');
-  const [page,               setPage]               = useState(1);
-  const [selectedBookingId,  setSelectedBookingId]  = useState<string | null>(null);
-  const [modalOpen,          setModalOpen]          = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search,       setSearch]       = useState('');
+  const [page,         setPage]         = useState(1);
 
   const { data, isLoading, isError } = useInvoices({
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -60,8 +59,7 @@ export const Invoices: React.FC = () => {
   ];
 
   const handleOpen = (bookingId: string) => {
-    setSelectedBookingId(bookingId);
-    setModalOpen(true);
+    navigate(`/invoices/${bookingId}`);
   };
 
   if (isLoading) return <PageLoader />;
@@ -195,12 +193,6 @@ export const Invoices: React.FC = () => {
           </button>
         </div>
       )}
-
-      <InvoiceModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setSelectedBookingId(null); }}
-        bookingId={selectedBookingId}
-      />
     </div>
   );
 };

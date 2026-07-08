@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed left-0 top-0 h-screen w-60 bg-surface-container-low border-r border-outline-variant flex flex-col z-[70] transition-transform duration-300 lg:translate-x-0 overflow-y-auto",
+        "no-print fixed left-0 top-0 h-screen w-60 bg-surface-container-low border-r border-outline-variant flex flex-col z-[70] transition-transform duration-300 lg:translate-x-0 overflow-y-auto",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-8 flex items-center justify-between">
@@ -143,7 +143,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
   }, []);
 
   return (
-    <header className="h-16 px-4 md:px-8 bg-white border-b border-outline-variant flex items-center justify-between sticky top-0 z-40">
+    <header className="no-print h-16 px-4 md:px-8 bg-white border-b border-outline-variant flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-4 flex-1">
         <button 
           onClick={onMenuClick}

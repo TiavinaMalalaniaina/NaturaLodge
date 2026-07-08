@@ -12,7 +12,6 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '../hooks/useDebounce';
 import { AddReservationModal } from '../components/AddReservationModal';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
-import { InvoiceModal } from '../components/InvoiceModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ReservationCalendar } from '../components/ReservationCalendar';
 import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
@@ -141,7 +140,6 @@ export const Reservations: React.FC = () => {
   const [addModalRoom, setAddModalRoom]         = useState<string | null>(null);
   const [addModalDate, setAddModalDate]         = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
-  const [invoiceBooking, setInvoiceBooking]     = useState<RichBooking | null>(null);
   const [reassignBooking, setReassignBooking]   = useState<{ id: string; roomId: string; room: string; arrival: string; departure: string } | null>(null);
   const [cancelBookingId, setCancelBookingId]   = useState<string | null>(null);
 
@@ -735,7 +733,7 @@ export const Reservations: React.FC = () => {
                       </td>
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => setInvoiceBooking(b)}
+                          <button onClick={e => { e.stopPropagation(); navigate(`/invoices/${b.id}`); }}
                             className="p-2 hover:bg-white rounded-xl transition-all border border-transparent hover:border-stone-200 text-stone-400 hover:text-primary group/btn" title={t('invoice.title')}>
                             <FileText className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
                           </button>
@@ -882,7 +880,7 @@ export const Reservations: React.FC = () => {
                   <RefreshCw className="w-3.5 h-3.5" /> {t('reservations.reassign')}
                 </button>
                 <button
-                  onClick={() => { setInvoiceBooking(selectedBooking); setSelectedBooking(null); }}
+                  onClick={() => navigate(`/invoices/${selectedBooking.id}`)}
                   className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
                   <FileText className="w-3.5 h-3.5" /> {t('invoice.title')}
                 </button>
@@ -912,11 +910,6 @@ export const Reservations: React.FC = () => {
         currentRoomNumber={reassignBooking?.room ?? ''}
         arrival={reassignBooking?.arrival ?? ''}
         departure={reassignBooking?.departure ?? ''}
-      />
-      <InvoiceModal
-        isOpen={!!invoiceBooking}
-        onClose={() => setInvoiceBooking(null)}
-        booking={invoiceBooking}
       />
       <ConfirmModal
         isOpen={!!cancelBookingId}

@@ -9,7 +9,6 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useBooking, useUpdateBookingStatus } from '../hooks/useBookings';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { InvoiceModal } from '../components/InvoiceModal';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
@@ -31,7 +30,6 @@ export const BookingDetail: React.FC = () => {
   const { data: booking, isLoading, isError } = useBooking(id!);
   const updateStatus = useUpdateBookingStatus();
 
-  const [invoiceOpen,  setInvoiceOpen]  = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [cancelOpen,   setCancelOpen]   = useState(false);
 
@@ -104,7 +102,7 @@ export const BookingDetail: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 text-on-surface-variant rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
             <RefreshCw className="w-3.5 h-3.5" /> {t('bookingDetail.reassign')}
           </button>
-          <button onClick={() => setInvoiceOpen(true)}
+          <button onClick={() => navigate(`/invoices/${booking.id}`)}
             className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 text-on-surface-variant rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
             <FileText className="w-3.5 h-3.5" /> {t('invoice.title')}
           </button>
@@ -236,11 +234,6 @@ export const BookingDetail: React.FC = () => {
       </div>
 
       {/* ── Modals ── */}
-      <InvoiceModal
-        isOpen={invoiceOpen}
-        onClose={() => setInvoiceOpen(false)}
-        bookingId={booking.id}
-      />
       <ConfirmModal
         isOpen={cancelOpen}
         onClose={() => setCancelOpen(false)}
