@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router-dom';
 import { useRooms, useUpdateRoomStatus } from '../hooks/useRooms';
 import { AddRoomModal } from '../components/AddRoomModal';
 import { FeatureManagerModal } from '../components/FeatureManagerModal';
-import { AddReservationModal } from '../components/AddReservationModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { Room } from '../types';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +23,6 @@ export const Rooms: React.FC = () => {
 
   const [isAddModalOpen, setIsAddModalOpen]                 = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen]         = useState(false);
-  const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<string | null>(null);
   const [activeDropdown, setActiveDropdown]                 = useState<string | null>(null);
   const [conflictsInfo, setConflictsInfo]                   = useState<{ roomNumber: string; list: ConflictBooking[] } | null>(null);
 
@@ -285,7 +283,7 @@ export const Rooms: React.FC = () => {
                 </p>
                 {room.status === 'available' && (
                   <button
-                    onClick={e => { e.stopPropagation(); setSelectedRoomForBooking(room.id); }}
+                    onClick={e => { e.stopPropagation(); navigate(`/reservations/new?roomId=${room.id}&arrival=${new Date().toISOString().split('T')[0]}`); }}
                     className="p-2 bg-teal-50 text-status-available rounded-lg hover:bg-teal-600 hover:text-white transition-all border border-teal-100 cursor-pointer"
                     title={t('rooms.instantBook')}
                   >
@@ -393,12 +391,6 @@ export const Rooms: React.FC = () => {
         onRoomAdded={() => setIsAddModalOpen(false)}
       />
       <FeatureManagerModal isOpen={isFeatureModalOpen} onClose={() => setIsFeatureModalOpen(false)} />
-      <AddReservationModal
-        isOpen={!!selectedRoomForBooking}
-        onClose={() => setSelectedRoomForBooking(null)}
-        initialRoomId={selectedRoomForBooking}
-        initialArrival={new Date().toISOString().split('T')[0]}
-      />
     </div>
   );
 };

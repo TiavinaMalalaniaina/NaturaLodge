@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { TrendingUp, Users, LogIn, Construction, Plus, Check } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { CheckInQueue } from '../components/CheckInQueue';
 import { NewBookingsFeed } from '../components/NewBookingsFeed';
-import { AddReservationModal } from '../components/AddReservationModal';
 import { useNotifications } from '../context/NotificationContext';
 import { useRooms } from '../hooks/useRooms';
 import { useBookings } from '../hooks/useBookings';
@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 export const Dashboard: React.FC = () => {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const [isAlertDispatched, setIsAlertDispatched] = useState(false);
   const { user } = useAuth();
@@ -66,7 +66,7 @@ export const Dashboard: React.FC = () => {
           <h2 className="font-display italic text-5xl text-primary leading-none">{t('dashboard.title')}</h2>
         </div>
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={() => navigate('/reservations/new')}
           className="bg-primary text-white px-8 py-3.5 rounded-2xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center gap-3 shadow-xl shadow-primary/20"
         >
           <Plus className="w-5 h-5" /> {t('dashboard.newBooking')}
@@ -210,7 +210,6 @@ export const Dashboard: React.FC = () => {
         </aside>
       </div>
 
-      <AddReservationModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
     </div>
   );
 };

@@ -8,7 +8,6 @@ import { MOCK_FEATURES } from '../mockData';
 import { useRoom, useUpdateRoomStatus } from '../hooks/useRooms';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EditRoomModal } from '../components/EditRoomModal';
-import { AddReservationModal } from '../components/AddReservationModal';
 import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
 
@@ -29,7 +28,6 @@ export const RoomDetail: React.FC = () => {
   const updateStatus = useUpdateRoomStatus();
 
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [roomState, setRoomState]                 = useState<Room | undefined>(undefined);
   const [conflicts, setConflicts]                 = useState<ConflictBooking[]>([]);
 
@@ -89,7 +87,7 @@ export const RoomDetail: React.FC = () => {
         <div className="flex gap-3 w-full sm:w-auto">
           {room.status === 'available' && (
             <button
-              onClick={() => setIsBookingModalOpen(true)}
+              onClick={() => navigate(`/reservations/new?roomId=${room.id}&arrival=${new Date().toISOString().split('T')[0]}`)}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-teal-700 shadow-lg shadow-teal-500/10 transition-all cursor-pointer"
             >
               <Zap className="w-3.5 h-3.5 fill-current" /> {t('rooms.instantBook')}
@@ -251,12 +249,6 @@ export const RoomDetail: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         room={room}
         onUpdate={(updated) => setRoomState(updated)}
-      />
-      <AddReservationModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        initialRoomId={room.id}
-        initialArrival={new Date().toISOString().split('T')[0]}
       />
     </motion.div>
   );

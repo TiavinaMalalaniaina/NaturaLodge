@@ -7,6 +7,7 @@ import { AppLayout } from './components/AppLayout';
 import { LoginPage } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Reservations } from './pages/Reservations';
+import { NewReservation } from './pages/NewReservation';
 import { Guests } from './pages/Guests';
 import { GuestProfile } from './pages/GuestProfile';
 import { Rooms } from './pages/Rooms';
@@ -30,6 +31,7 @@ const App: React.FC = () => {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="reservations" element={<Reservations />} />
+              <Route path="reservations/new" element={<NewReservation />} />
               <Route path="reservations/:id" element={<BookingDetail />} />
               <Route path="rooms" element={<Rooms />} />
               <Route path="rooms/:id" element={<RoomDetail />} />

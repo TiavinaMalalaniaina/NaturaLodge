@@ -10,7 +10,6 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '../hooks/useDebounce';
-import { AddReservationModal } from '../components/AddReservationModal';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ReservationCalendar } from '../components/ReservationCalendar';
@@ -136,9 +135,6 @@ export const Reservations: React.FC = () => {
   );
 
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen]     = useState(false);
-  const [addModalRoom, setAddModalRoom]         = useState<string | null>(null);
-  const [addModalDate, setAddModalDate]         = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
   const [reassignBooking, setReassignBooking]   = useState<{ id: string; roomId: string; room: string; arrival: string; departure: string } | null>(null);
   const [cancelBookingId, setCancelBookingId]   = useState<string | null>(null);
@@ -335,7 +331,7 @@ export const Reservations: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-end gap-4 w-full sm:w-auto">
-          <button onClick={() => { setAddModalRoom(null); setIsAddModalOpen(true); }}
+          <button onClick={() => navigate('/reservations/new')}
             className="w-full sm:w-auto bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-sans text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 shrink-0">
             <Plus className="w-4 h-4" /> {t('reservations.addReservation')}
           </button>
@@ -582,7 +578,7 @@ export const Reservations: React.FC = () => {
                           const isToday = toStr(date) === todayStr;
                           return (
                             <div key={i} style={{ width: COL_W, minWidth: COL_W }}
-                              onClick={() => { if (!isMaint) { setAddModalRoom(room.id); setAddModalDate(toStr(date)); setIsAddModalOpen(true); } }}
+                              onClick={() => { if (!isMaint) navigate(`/reservations/new?roomId=${room.id}&arrival=${toStr(date)}`); }}
                               className={cn(
                                 'border-r border-stone-50 h-full',
                                 isToday && 'bg-teal-50/25',
@@ -896,12 +892,6 @@ export const Reservations: React.FC = () => {
       </AnimatePresence>
 
       {/* ── Modals ── */}
-      <AddReservationModal
-        isOpen={isAddModalOpen}
-        onClose={() => { setIsAddModalOpen(false); setAddModalRoom(null); setAddModalDate(null); }}
-        initialRoomId={addModalRoom}
-        initialArrival={addModalDate}
-      />
       <ReassignRoomModal
         isOpen={!!reassignBooking}
         onClose={() => setReassignBooking(null)}
