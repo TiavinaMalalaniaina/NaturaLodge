@@ -1,0 +1,5 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
+  <rect x="368" y="40" width="72" height="72" rx="16" fill="#D4A017" transform="rotate(45 404 76)"/>
+  <text x="256" y="340" font-family="Georgia, 'EB Garamond', serif" font-style="italic" font-size="300" font-weight="600" fill="#ffffff" text-anchor="middle">N</text>
+</svg>
