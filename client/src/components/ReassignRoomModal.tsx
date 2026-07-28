@@ -17,15 +17,6 @@ interface ReassignRoomModalProps {
   departure:         string;
 }
 
-const CATEGORY_COLOR: Record<string, string> = {
-  Superior:  'bg-stone-50  text-stone-500  border-stone-200',
-  Deluxe:    'bg-teal-50   text-teal-700   border-teal-200',
-  Suite:     'bg-amber-50  text-amber-700  border-amber-200',
-  Penthouse: 'bg-purple-50 text-purple-700 border-purple-200',
-  Villa:     'bg-green-50  text-green-700  border-green-200',
-  Luxury:    'bg-rose-50   text-rose-700   border-rose-200',
-};
-
 function fmtAmount(n: number) { return n.toLocaleString('fr-MG') + ' Ar'; }
 
 // ─── Comparison row ────────────────────────────────────────────────────────────
@@ -248,15 +239,6 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                     </div>
 
                     <div className="mt-3">
-                      {/* Category */}
-                      <CompareRow
-                        label="Category"
-                        oldVal={currentRoom.category}
-                        newVal={selectedRoom.category}
-                        delta={currentRoom.category !== selectedRoom.category ? 'diff' : 'same'}
-                        highlight
-                      />
-
                       {/* Rate */}
                       <CompareRow
                         label="Rate / night"
@@ -328,10 +310,10 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                       </div>
                     )}
 
-                    {rateDiff === 0 && selectedRoom.category === currentRoom.category && (
+                    {rateDiff === 0 && selectedRoom.type === currentRoom.type && (
                       <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-stone-50 border border-stone-100 text-stone-500">
                         <Minus className="w-4 h-4 shrink-0" />
-                        Same category and rate — lateral reassignment
+                        Same room type and rate — lateral reassignment
                       </div>
                     )}
                   </div>
@@ -395,7 +377,6 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                   {/* Room cards */}
                   {!isLoading && candidates.map(room => {
                     const isSelected = selectedRoom?.id === room.id;
-                    const catClass   = CATEGORY_COLOR[room.category] ?? 'bg-stone-50 text-stone-500 border-stone-200';
                     const rate       = room.rateOverride ?? room.rate;
                     const diff       = oldRate > 0 ? rate - oldRate : 0;
 
@@ -422,9 +403,6 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-on-surface">{room.type}</span>
-                              <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', catClass)}>
-                                {room.category}
-                              </span>
                             </div>
                             <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
                               {room.view} · {room.bedType} · {room.capacity} {t('common.guests_count')} · {room.area}m²

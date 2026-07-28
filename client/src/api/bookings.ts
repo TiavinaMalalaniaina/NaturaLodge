@@ -6,7 +6,7 @@ export interface BookingRoomEntry {
   arrival: string;
   departure: string;
   roomRate: number;
-  room: { id: string; number: string; type: string; category: string; rate: number };
+  room: { id: string; number: string; type: string; rate: number };
 }
 
 interface ApiBookingRoom {
@@ -14,7 +14,7 @@ interface ApiBookingRoom {
   arrival: string; departure: string; roomRate: number;
   room: {
     id: string; number: string; rateOverride: number | null;
-    roomType: { id: string; name: string; category: string; rate: number };
+    roomType: { id: string; name: string; rate: number };
   };
 }
 
@@ -26,11 +26,10 @@ function normalizeBookingRoom(br: ApiBookingRoom): BookingRoomEntry {
     departure: br.departure.split('T')[0],
     roomRate:  br.roomRate,
     room: {
-      id:       br.room.id,
-      number:   br.room.number,
-      type:     br.room.roomType.name,
-      category: br.room.roomType.category,
-      rate:     br.room.rateOverride ?? br.room.roomType.rate,
+      id:     br.room.id,
+      number: br.room.number,
+      type:   br.room.roomType.name,
+      rate:   br.room.rateOverride ?? br.room.roomType.rate,
     },
   };
 }

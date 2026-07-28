@@ -165,7 +165,7 @@ export const Reservations: React.FC = () => {
   const bookingsByRoomId = useMemo(() => {
     const map = new Map<string, RichBooking[]>();
     for (const b of gridBookings) {
-      if (b.status === 'cancelled') continue;
+      if (b.status === 'cancelled' || b.status === 'checked-out') continue;
       for (const br of b.rooms) {
         const existing = map.get(br.room.id);
         if (existing) existing.push(b);

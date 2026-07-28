@@ -98,7 +98,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'SUP',
     name: 'Natura Superior',
-    category: 'SUPERIOR' as const,
     rate: 580_000,
     area: 32,
     bedType: 'Double',
@@ -110,7 +109,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'DEL',
     name: 'Canopy Deluxe',
-    category: 'DELUXE' as const,
     rate: 980_000,
     area: 48,
     bedType: 'King Size',
@@ -122,7 +120,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'SUI',
     name: 'Lagoon Suite',
-    category: 'SUITE' as const,
     rate: 1_750_000,
     area: 62,
     bedType: 'Super King',
@@ -134,7 +131,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'PEN',
     name: 'Jungle Penthouse',
-    category: 'PENTHOUSE' as const,
     rate: 3_800_000,
     area: 105,
     bedType: 'Super King',
@@ -257,7 +253,6 @@ async function main() {
       existing = await prisma.roomType.create({
         data: {
           name:        rt.name,
-          category:    rt.category,
           rate:        rt.rate,
           area:        rt.area,
           bedType:     rt.bedType,

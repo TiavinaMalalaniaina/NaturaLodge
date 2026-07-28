@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { RoomCategory, RoomStatus } from '@prisma/client';
+import { RoomStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
@@ -86,7 +86,6 @@ function flattenRoom(r: any) {
     createdAt:    r.createdAt,
     // Flattened from RoomType
     type:         rt.name,
-    category:     rt.category,
     rate:         r.rateOverride ?? rt.rate,
     description:  rt.description,
     area:         rt.area,
@@ -98,7 +97,7 @@ function flattenRoom(r: any) {
 }
 
 roomsRouter.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
-  const { search, category, status } = req.query;
+  const { search, status } = req.query;
 
   const rooms = await prisma.room.findMany({
     where: {
@@ -108,7 +107,6 @@ roomsRouter.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
           { roomType: { name: { contains: String(search), mode: 'insensitive' } } },
         ],
       } : {}),
-      ...(category && category !== 'ALL' ? { roomType: { category: String(category).toUpperCase() as RoomCategory } } : {}),
       ...(status && status !== 'ALL' ? { status: String(status) as RoomStatus } : {}),
     },
     include: roomInclude,

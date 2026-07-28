@@ -80,7 +80,7 @@ export const EditRoomModal: React.FC<EditRoomModalProps> = ({ isOpen, onClose, r
               <div>
                 <h3 className="font-display italic text-2xl text-on-surface">{t('rooms.modifyUnit')}</h3>
                 <p className="text-[10px] text-on-surface-variant/50 mt-1 uppercase tracking-widest">
-                  {room.type} · {room.category}
+                  {room.type}
                 </p>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">

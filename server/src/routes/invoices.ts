@@ -24,7 +24,7 @@ const invoiceInclude = {
           room: {
             select: {
               id: true, number: true, rateOverride: true,
-              roomType: { select: { name: true, category: true } },
+              roomType: { select: { name: true } },
             },
           },
         },

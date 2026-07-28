@@ -6,16 +6,11 @@ import { Room, RoomFeature } from '../types';
 interface ApiRoom {
   id: string; number: string; status: string;
   images: string[]; rateOverride: number | null; roomTypeId: string;
-  type: string; category: string; rate: number;
+  type: string; rate: number;
   description: string; area: number; bedType: string;
   capacity: number; view: string;
   features: { id: string; label: string; iconName: string }[];
 }
-
-const CATEGORY_MAP: Record<string, Room['category']> = {
-  SUPERIOR: 'Superior', DELUXE: 'Deluxe', SUITE: 'Suite',
-  PENTHOUSE: 'Penthouse', VILLA: 'Villa', LUXURY: 'Luxury',
-};
 
 const STATUS_MAP: Record<string, Room['status']> = {
   AVAILABLE: 'available', OCCUPIED: 'occupied',
@@ -28,7 +23,6 @@ export function normalizeRoom(r: ApiRoom): Room {
     number:       r.number,
     roomTypeId:   r.roomTypeId,
     type:         r.type,
-    category:     CATEGORY_MAP[r.category] ?? (r.category as Room['category']),
     rate:         r.rate,
     rateOverride: r.rateOverride,
     status:       STATUS_MAP[r.status] ?? 'available',
@@ -73,9 +67,8 @@ export const setRoomStatus = async (id: string, status: string): Promise<RoomSta
 // ─── Params & fetchers ────────────────────────────────────────────
 
 export interface RoomsParams {
-  search?:   string;
-  category?: string;
-  status?:   string;
+  search?: string;
+  status?: string;
 }
 
 export const fetchRooms = async (params?: RoomsParams): Promise<Room[]> => {

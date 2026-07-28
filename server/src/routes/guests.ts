@@ -84,7 +84,7 @@ guestsRouter.get('/:id', async (req: AuthRequest, res: Response): Promise<void> 
                   id:           true,
                   number:       true,
                   rateOverride: true,
-                  roomType:     { select: { name: true, category: true, rate: true } },
+                  roomType:     { select: { name: true, rate: true } },
                 },
               },
             },

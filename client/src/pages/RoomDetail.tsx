@@ -156,7 +156,7 @@ export const RoomDetail: React.FC = () => {
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-bottom p-8">
               <div className="mt-auto">
-                <span className="text-[10px] font-bold text-white uppercase tracking-[0.3em] opacity-80">{t('rooms.category')}: {room.category}</span>
+                <span className="text-[10px] font-bold text-white uppercase tracking-[0.3em] opacity-80">{room.type}</span>
                 <h3 className="font-display italic text-5xl text-white mt-2">Suite {room.number}</h3>
               </div>
             </div>

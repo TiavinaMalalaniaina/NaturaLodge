@@ -1,6 +1,5 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
-import { RoomCategory } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
@@ -9,7 +8,6 @@ roomTypesRouter.use(authenticate);
 
 const roomTypeSchema = z.object({
   name:        z.string().min(1),
-  category:    z.nativeEnum(RoomCategory),
   rate:        z.number().int().positive(),
   description: z.string().optional().default(''),
   area:        z.number().int().positive().optional().default(30),
@@ -27,7 +25,7 @@ const include = {
 roomTypesRouter.get('/', async (_req: AuthRequest, res: Response): Promise<void> => {
   const types = await prisma.roomType.findMany({
     include,
-    orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    orderBy: { name: 'asc' },
   });
   res.json(types);
 });

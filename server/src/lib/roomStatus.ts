@@ -4,6 +4,9 @@ import { prisma } from './prisma';
 /**
  * Calcule le statut réel de chaque chambre en interrogeant les réservations actives.
  * OCCUPIED  = une réservation est en cours (arrival <= now <= departure, non annulée/terminée)
+ *             OU un client est CHECKED_IN sans avoir été checkouté (overstay/en retard —
+ *             la chambre reste occupée même après la date de départ prévue tant que le
+ *             checkout n'a pas été fait explicitement).
  * AVAILABLE = aucune réservation active
  * MAINTENANCE n'est jamais retourné ici — il est géré manuellement en base.
  */
@@ -14,10 +17,13 @@ export async function computeRoomStatuses(roomIds: string[]): Promise<Map<string
 
   const active = await prisma.bookingRoom.findMany({
     where: {
-      roomId:    { in: roomIds },
-      arrival:   { lte: now },
-      departure: { gte: now },
-      booking:   { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+      roomId:  { in: roomIds },
+      arrival: { lte: now },
+      booking: { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+      OR: [
+        { departure: { gte: now } },
+        { booking: { status: 'CHECKED_IN' } },
+      ],
     },
     select: { roomId: true },
   });

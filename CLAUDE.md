@@ -216,8 +216,8 @@ Mapping dans `src/lib/bookingStatus.ts`.
 - `InvoiceView.tsx` utilise `useSettings()` pour afficher la TVA — pas d'input manuel
 - L'échéance (`dueAt`) est fixée automatiquement au jour de génération, non visible dans l'UI
 
-### Filtrage des chambres — par RoomType, pas par catégorie
-`Room`/`RoomType` ont un champ `category` (enum `RoomCategory` : SUPERIOR/DELUXE/SUITE/PENTHOUSE/VILLA/LUXURY), mais les filtres UI (Rooms.tsx, Reservations.tsx vue grille, NewReservation.tsx étape 2) filtrent sur `RoomType.name` (via `useRoomTypes()`), pas sur `category`. `category` reste un champ légitime du modèle `RoomType` (formulaire de création dans `AddRoomModal.tsx`, badges d'affichage dans `RoomDetail.tsx`/`BookingDetail.tsx`/`ReassignRoomModal.tsx`) — ne pas le réintroduire comme filtre, c'était redondant avec `RoomType`.
+### Filtrage des chambres — par RoomType uniquement
+Le champ `category` (enum `RoomCategory`) a été entièrement retiré du modèle `RoomType` (redondant avec `RoomType.name`) — supprimé du schéma Prisma, des routes serveur, des DTOs client et de tous les badges/formulaires d'affichage. Le filtrage et la catégorisation des chambres se font uniquement via `RoomType.name` (`useRoomTypes()`). Ne pas réintroduire un champ `category` séparé.
 
 ### Grille de réservation (performance)
 La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : seules les colonnes visibles ± 50 jours sont rendues. Les réservations sont pré-indexées par chambre via `bookingsByRoomId` (Map). Ne pas revenir à un rendu de toutes les colonnes.

@@ -34,7 +34,7 @@ const include = {
           id:           true,
           number:       true,
           rateOverride: true,
-          roomType:     { select: { id: true, name: true, category: true, rate: true } },
+          roomType:     { select: { id: true, name: true, rate: true } },
         },
       },
     },
@@ -193,8 +193,9 @@ bookingsRouter.post('/', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), async (r
     include,
   });
 
-  // Pas de changement de statut chambre à la création :
-  // le scheduler de minuit mettra OCCUPIED le jour de l'arrivée.
+  // Recalcule immédiatement le statut des chambres concernées (ex: réservation
+  // avec arrivée aujourd'hui → OCCUPIED tout de suite, sans attendre le scheduler de minuit).
+  await applyRoomStatuses(booking.rooms.map(br => br.roomId));
 
   res.status(201).json(booking);
 });

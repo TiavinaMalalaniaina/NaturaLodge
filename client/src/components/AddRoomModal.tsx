@@ -7,7 +7,6 @@ import { useRoomTypes, useCreateRoomType } from '../hooks/useRoomTypes';
 import { RoomType } from '../types';
 import { useTranslation } from 'react-i18next';
 
-const CATEGORIES = ['Superior', 'Deluxe', 'Suite', 'Penthouse', 'Villa', 'Luxury'] as const;
 const BED_TYPES  = ['King Size', 'Super King', 'Twin Signature', 'Double'];
 const VIEWS      = ['Garden View', 'Ocean View', 'Valley View', 'Pool View', 'Mountain View', 'Courtyard'];
 
@@ -38,7 +37,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
 
   // New type form
   const [newType, setNewType] = useState({
-    name: '', category: 'Suite' as typeof CATEGORIES[number],
+    name: '',
     rate: '', description: '', area: '', bedType: 'King Size',
     capacity: '2', view: 'Garden View',
     selectedFeatures: [] as string[],
@@ -56,7 +55,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
   useEffect(() => {
     if (isOpen) {
       setStep('type'); setSelectedType(null); setCreatingNew(false);
-      setNewType({ name: '', category: 'Suite', rate: '', description: '', area: '', bedType: 'King Size', capacity: '2', view: 'Garden View', selectedFeatures: [] });
+      setNewType({ name: '', rate: '', description: '', area: '', bedType: 'King Size', capacity: '2', view: 'Garden View', selectedFeatures: [] });
       setNumber(''); setRateOverride(''); setImages([]); setImageUrl(''); setApiError('');
     }
   }, [isOpen]);
@@ -77,7 +76,6 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
       if (creatingNew) {
         const rt = await createRoomType.mutateAsync({
           name:        newType.name,
-          category:    newType.category,
           rate:        Number(newType.rate),
           description: newType.description,
           area:        Number(newType.area) || 30,
@@ -152,7 +150,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   {!creatingNew && (
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60">
-                        {t('rooms.category')} existants ({roomTypes.length})
+                        {t('rooms.typeName')} existants ({roomTypes.length})
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {roomTypes.map(rt => (
@@ -169,7 +167,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                               {selectedType?.id === rt.id && <Check className="w-4 h-4 text-primary" />}
                             </div>
                             <p className="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">
-                              {rt.category} · {rt.capacity} pers. · {rt.rate.toLocaleString()} Ar/n
+                              {rt.capacity} pers. · {rt.rate.toLocaleString()} Ar/n
                             </p>
                             <p className="text-[10px] text-on-surface-variant/40 mt-1">
                               {rt.rooms.length} chambre{rt.rooms.length !== 1 ? 's' : ''}
@@ -202,13 +200,6 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                           <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.typeName')}</label>
                           <input type="text" placeholder="ex. Natura Suite" value={newType.name}
                             onChange={e => setNewType(p => ({ ...p, name: e.target.value }))} required={creatingNew} className={field} />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.category')}</label>
-                          <select value={newType.category} onChange={e => setNewType(p => ({ ...p, category: e.target.value as any }))}
-                            className={field + ' appearance-none'}>
-                            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                          </select>
                         </div>
                         <div>
                           <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.nightlyRate')}</label>
@@ -281,7 +272,6 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                         <div className="flex-1">
                           <p className="text-xs font-bold text-primary">{creatingNew ? newType.name : selectedType?.name}</p>
                           <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-                            {creatingNew ? newType.category : selectedType?.category} ·{' '}
                             {(creatingNew ? Number(newType.rate) : selectedType?.rate ?? 0).toLocaleString()} Ar/n
                           </p>
                         </div>
