@@ -215,15 +215,31 @@ export const Reservations: React.FC = () => {
     syncScrollTo(startDay * COL_W);
   }, [syncScrollTo]);
 
-  // Scroll to today when switching to grid view
-  useEffect(() => {
-    if (viewMode === 'grid') setTimeout(scrollToToday, 50);
-  }, [viewMode, scrollToToday]);
-
   // Grid : toutes les chambres chargées une fois, filtrées côté client
   const { data: allGridRooms = [], isLoading: roomsLoading } = useRooms(
     viewMode === 'grid' ? {} : undefined
   );
+
+  // Scroll to today the moment the scrollable grid body actually mounts.
+  // Les colonnes virtualisées sont déjà centrées sur `visibleDate` (= aujourd'hui
+  // au montage) dès le premier rendu — le vrai problème était que `scrollLeft`
+  // restait à 0 pendant ce temps, donc le viewport montrait le spacer vide avant
+  // ces colonnes. Un useEffect basé sur isLoading n'est pas fiable ici (les hooks
+  // useBookings/useRooms utilisent `placeholderData`, donc `isLoading` peut déjà
+  // être false avec des données d'une requête précédente). On synchronise plutôt
+  // directement sur le montage du DOM via une ref-callback.
+  const hasScrolledToTodayRef = useRef(false);
+  useEffect(() => {
+    if (viewMode !== 'grid') hasScrolledToTodayRef.current = false;
+  }, [viewMode]);
+
+  const setBodyRef = useCallback((el: HTMLDivElement | null) => {
+    bodyRef.current = el;
+    if (el && viewMode === 'grid' && !hasScrolledToTodayRef.current) {
+      hasScrolledToTodayRef.current = true;
+      scrollToToday();
+    }
+  }, [viewMode, scrollToToday]);
   const { data: roomTypes = [] } = useRoomTypes();
 
   const gridRooms = useMemo(() => {
@@ -562,7 +578,7 @@ export const Reservations: React.FC = () => {
 
             {/* ── Body — scrolls both x and y, syncs header on scroll ── */}
             <div
-              ref={bodyRef}
+              ref={setBodyRef}
               onScroll={handleBodyScroll}
               className="flex-1 overflow-auto min-h-0"
               style={{ scrollbarWidth: 'thin', scrollbarColor: '#d6d3d1 transparent' }}
