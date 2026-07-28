@@ -9,6 +9,7 @@ import { guestsRouter } from './routes/guests';
 import { bookingsRouter } from './routes/bookings';
 import { staffRouter } from './routes/staff';
 import { startScheduler } from './lib/scheduler';
+import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -28,9 +29,10 @@ app.use('/api/staff', staffRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Erreur serveur interne' });
+app.use(errorHandler);
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
 });
 
 app.listen(PORT, () => {

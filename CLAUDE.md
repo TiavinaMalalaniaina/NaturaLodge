@@ -146,29 +146,48 @@ Fichiers de traduction dans `src/locales/{en,fr,mg}.json`. Toujours utiliser `t(
 
 ## Architecture serveur
 
-### Routes (`src/routes/`)
+Deux couches : **routes (HTTP) → services (métier + Prisma)**. Pas de couche repository — Prisma est déjà l'abstraction d'accès aux données pour une seule base Postgres, un repository par-dessus n'ajouterait que de l'indirection.
+
+```
+src/
+├── routes/       # parse Zod → asyncHandler(appel service) → res.json. Aucun appel Prisma direct.
+├── services/     # logique métier + tous les appels Prisma. Un fichier par domaine.
+├── validation/   # schémas Zod par domaine (auth, booking, guest, invoice, roomType, room, staff)
+├── errors/       # AppError + sous-classes (NotFoundError, ConflictError, ForbiddenError, UnauthorizedError)
+├── middleware/   # auth.ts, asyncHandler.ts, errorHandler.ts
+└── lib/          # prisma.ts, roomStatus.ts, scheduler.ts
+```
+
 Toutes les routes sont protégées par `authenticate`. Certaines nécessitent `authorize(roles)`.
 
 ```
 /api/auth        # POST /login, GET /me
 /api/rooms       # CRUD chambres
 /api/room-types  # CRUD types de chambre
-/api/bookings    # CRUD réservations + PATCH /:id/status
+/api/bookings    # CRUD réservations + PATCH /:id/status + PATCH /:id/reassign
 /api/guests      # CRUD clients
 /api/invoices    # Génération + paiements
 /api/staff       # CRUD staff
-/api/settings    # GET + PATCH config globale (HotelConfig)
 ```
+
+⚠️ `/api/settings` + modèle `HotelConfig` ne sont **pas implémentés** — ce ne sont que des projets non commencés, à ne pas confondre avec de l'existant.
 
 ### Middleware auth
 - `authenticate` — vérifie le token JWT Bearer, injecte `req.user`
 - `authorize(...roles)` — restreint aux rôles spécifiés (`ADMIN`, `MANAGER`, `RECEPTIONIST`, `HOUSEKEEPING`)
 
+### Gestion des erreurs (`errors/`, `middleware/asyncHandler.ts`, `middleware/errorHandler.ts`)
+Chaque handler de route est enveloppé dans `asyncHandler(...)`, qui capture les rejets de promesses et les transmet à `errorHandler` (monté en dernier dans `server.ts`) — **Express 4 ne rattrape pas nativement les rejets async**, sans ce wrapper une seule requête invalide plante tout le process. Les services lèvent des `AppError` (`NotFoundError`, `ConflictError`, `ForbiddenError`, `UnauthorizedError`) que `errorHandler` traduit en réponse JSON avec le bon code HTTP ; les erreurs Prisma connues (P2025/P2002/P2003) sont aussi mappées en filet de sécurité. Un `process.on('unhandledRejection', ...)` couvre le code hors cycle de requête (ex. `lib/scheduler.ts`).
+
+### Transactions
+Les écritures multi-étapes non atomiques passent par `prisma.$transaction` : création de réservation (vérification de conflit + create + statut chambres), réassignation (idem + recalcul montant/dates), génération de facture (vérification d'existence + génération du numéro + create), paiement (create/update + resynchronisation du statut facture). `lib/roomStatus.ts` accepte un client Prisma optionnel (`tx`) pour participer à ces transactions.
+
 ### Validation
-Toutes les entrées sont validées avec **Zod** avant toute opération DB. Pattern :
+Toutes les entrées sont validées avec **Zod** avant toute opération métier, schémas centralisés dans `validation/*.schema.ts`. Pattern dans les routes :
 ```ts
-const parsed = z.object({ ... }).safeParse(req.body);
+const parsed = xxxSchema.safeParse(req.body);
 if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+res.json(await xxxService.someMethod(parsed.data));
 ```
 
 ---

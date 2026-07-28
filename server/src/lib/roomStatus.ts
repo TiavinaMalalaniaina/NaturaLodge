@@ -1,5 +1,7 @@
-import { RoomStatus } from '@prisma/client';
+import { Prisma, RoomStatus } from '@prisma/client';
 import { prisma } from './prisma';
+
+type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
 /**
  * Calcule le statut réel de chaque chambre en interrogeant les réservations actives.
@@ -10,12 +12,12 @@ import { prisma } from './prisma';
  * AVAILABLE = aucune réservation active
  * MAINTENANCE n'est jamais retourné ici — il est géré manuellement en base.
  */
-export async function computeRoomStatuses(roomIds: string[]): Promise<Map<string, RoomStatus>> {
+export async function computeRoomStatuses(roomIds: string[], client: PrismaOrTx = prisma): Promise<Map<string, RoomStatus>> {
   if (roomIds.length === 0) return new Map();
 
   const now = new Date();
 
-  const active = await prisma.bookingRoom.findMany({
+  const active = await client.bookingRoom.findMany({
     where: {
       roomId:  { in: roomIds },
       arrival: { lte: now },
@@ -40,13 +42,13 @@ export async function computeRoomStatuses(roomIds: string[]): Promise<Map<string
 /**
  * Applique les statuts calculés en base, sans jamais écraser MAINTENANCE.
  */
-export async function applyRoomStatuses(roomIds: string[]): Promise<void> {
-  const computed    = await computeRoomStatuses(roomIds);
+export async function applyRoomStatuses(roomIds: string[], client: PrismaOrTx = prisma): Promise<void> {
+  const computed    = await computeRoomStatuses(roomIds, client);
   const occupiedIds = [...computed.entries()].filter(([, s]) => s === 'OCCUPIED') .map(([id]) => id);
   const availableIds= [...computed.entries()].filter(([, s]) => s === 'AVAILABLE').map(([id]) => id);
 
   await Promise.all([
-    occupiedIds.length  && prisma.room.updateMany({ where: { id: { in: occupiedIds  }, status: { not: 'MAINTENANCE' } }, data: { status: 'OCCUPIED'  } }),
-    availableIds.length && prisma.room.updateMany({ where: { id: { in: availableIds }, status: { not: 'MAINTENANCE' } }, data: { status: 'AVAILABLE' } }),
+    occupiedIds.length  && client.room.updateMany({ where: { id: { in: occupiedIds  }, status: { not: 'MAINTENANCE' } }, data: { status: 'OCCUPIED'  } }),
+    availableIds.length && client.room.updateMany({ where: { id: { in: availableIds }, status: { not: 'MAINTENANCE' } }, data: { status: 'AVAILABLE' } }),
   ]);
 }
