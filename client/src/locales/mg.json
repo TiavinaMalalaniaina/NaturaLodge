@@ -134,6 +134,7 @@
     "noMatchingReservations":  "Tsy misy firesevana mifanaraka",
     "pageInfo":                "Pejy {{page}} amin'ny {{total}} · {{count}} firesevana",
     "reassign":                "Hanova efitrano",
+    "reassignHint":            "Ovay ny efitrano na ny daty",
     "newStay":                 "Fiatoana vaovao",
     "reservationEntry":        "Fanoratana firesevana",
     "selectGuest":             "Misafidy mombamomba",

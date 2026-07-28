@@ -134,6 +134,7 @@
     "noMatchingReservations":  "No matching reservations",
     "pageInfo":                "Page {{page}} of {{total}} · {{count}} bookings",
     "reassign":                "Reassign",
+    "reassignHint":            "Change unit and/or dates",
     "newStay":                 "New Stay",
     "reservationEntry":        "Reservation Entry",
     "selectGuest":             "Select Guest Profile",

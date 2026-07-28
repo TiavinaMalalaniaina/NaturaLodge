@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ArrowRight, Check, Search, AlertTriangle, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ArrowRight, Check, Search, AlertTriangle, Loader2, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,14 @@ interface ReassignRoomModalProps {
 }
 
 function fmtAmount(n: number) { return n.toLocaleString('fr-MG') + ' Ar'; }
+function nightsBetween(a: string, b: string) {
+  return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000));
+}
+// Date locale (pas toISOString — décale d'un jour dans un fuseau en avance sur UTC)
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // ─── Comparison row ────────────────────────────────────────────────────────────
 
@@ -78,17 +86,36 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
   const [search,       setSearch]       = useState('');
   const [serverError,  setServerError]  = useState<string | null>(null);
   const [showList,     setShowList]     = useState(true);
+  const [newArrival,   setNewArrival]   = useState(arrival);
+  const [newDeparture, setNewDeparture] = useState(departure);
+
+  // Reset au réouverture (nouvelle réservation ciblée, ou même réservation rouverte)
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedRoom(null);
+      setSearch('');
+      setServerError(null);
+      setShowList(true);
+      setNewArrival(arrival);
+      setNewDeparture(departure);
+    }
+  }, [isOpen, arrival, departure]);
 
   const { data: currentRoom }           = useRoom(currentRoomId);
-  const { data: rooms = [], isLoading } = useAvailableRooms(arrival, departure, bookingId);
+  const { data: rooms = [], isLoading } = useAvailableRooms(newArrival, newDeparture, bookingId);
   const reassign                        = useReassignRoom();
 
+  // La chambre actuelle reste sélectionnable : ça permet de ne changer que les
+  // dates en gardant la même chambre (elle apparaît car `bookingId` est exclu
+  // des conflits par le backend).
   const candidates = rooms.filter(
-    r => r.id !== currentRoomId &&
-         (search === '' ||
-          r.number.toLowerCase().includes(search.toLowerCase()) ||
-          r.type.toLowerCase().includes(search.toLowerCase())),
+    r => search === '' ||
+         r.number.toLowerCase().includes(search.toLowerCase()) ||
+         r.type.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const datesChanged = newArrival !== arrival || newDeparture !== departure;
+  const hasChanges = !!selectedRoom && (selectedRoom.id !== currentRoomId || datesChanged);
 
   const handleSelect = (room: Room) => {
     const next = selectedRoom?.id === room.id ? null : room;
@@ -97,10 +124,14 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
   };
 
   const handleConfirm = () => {
-    if (!selectedRoom) return;
+    if (!selectedRoom || !hasChanges) return;
     setServerError(null);
     reassign.mutate(
-      { bookingId, oldRoomId: currentRoomId, newRoomId: selectedRoom.id },
+      {
+        bookingId, oldRoomId: currentRoomId, newRoomId: selectedRoom.id,
+        arrival: datesChanged ? newArrival : undefined,
+        departure: datesChanged ? newDeparture : undefined,
+      },
       {
         onSuccess: () => { setSelectedRoom(null); setSearch(''); onClose(); },
         onError:   (err: any) => {
@@ -123,6 +154,10 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
   const oldRate = currentRoom?.rateOverride ?? currentRoom?.rate ?? 0;
   const newRate = selectedRoom ? (selectedRoom.rateOverride ?? selectedRoom.rate) : 0;
   const rateDiff = newRate - oldRate;
+  const oldNights = nightsBetween(arrival, departure);
+  const newNights = nightsBetween(newArrival, newDeparture);
+  const oldTotal = oldRate * oldNights;
+  const newTotal = newRate * newNights;
 
   function numDelta(oldN: number, newN: number): Delta {
     if (newN === oldN) return 'same';
@@ -152,13 +187,42 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                 <div>
                   <h3 className="font-display italic text-3xl text-on-surface">{t('reservations.reassign')}</h3>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 mt-1">
-                    {arrival} → {departure}
+                    {t('reservations.reassignHint')}
                   </p>
                 </div>
                 <button onClick={handleClose} disabled={reassign.isPending}
                   className="p-2 hover:bg-white rounded-full transition-colors border border-stone-200 disabled:opacity-40">
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
+              </div>
+
+              {/* Date fields — changing these re-checks availability for the new window */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 block mb-1.5">
+                    {t('reservations.arrivalDate')}
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-on-surface-variant/30" />
+                    <input type="date" min={todayStr()} value={newArrival}
+                      onChange={e => {
+                        setNewArrival(e.target.value);
+                        if (newDeparture && e.target.value >= newDeparture) setNewDeparture('');
+                      }}
+                      className="w-full h-11 pl-9 pr-3 bg-white border border-stone-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 block mb-1.5">
+                    {t('reservations.departureDate')}
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-on-surface-variant/30" />
+                    <input type="date" min={newArrival || todayStr()} value={newDeparture}
+                      onChange={e => setNewDeparture(e.target.value)}
+                      className="w-full h-11 pl-9 pr-3 bg-white border border-stone-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
+                  </div>
+                </div>
               </div>
 
               {/* Current → Target pill */}
@@ -239,6 +303,24 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                     </div>
 
                     <div className="mt-3">
+                      {/* Dates */}
+                      <CompareRow
+                        label="Dates"
+                        oldVal={`${arrival} → ${departure}`}
+                        newVal={`${newArrival} → ${newDeparture}`}
+                        delta={datesChanged ? 'diff' : 'same'}
+                        highlight
+                      />
+
+                      {/* Nights */}
+                      <CompareRow
+                        label="Nights"
+                        oldVal={`${oldNights}n`}
+                        newVal={`${newNights}n`}
+                        delta={numDelta(oldNights, newNights)}
+                        deltaLbl={newNights !== oldNights ? `${newNights > oldNights ? '+' : ''}${newNights - oldNights}n` : ''}
+                      />
+
                       {/* Rate */}
                       <CompareRow
                         label="Rate / night"
@@ -247,6 +329,18 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                         delta={numDelta(oldRate, newRate)}
                         deltaLbl={rateDiff !== 0
                           ? `${rateDiff > 0 ? '+' : ''}${fmtAmount(Math.abs(rateDiff))}`
+                          : ''}
+                        highlight
+                      />
+
+                      {/* Total */}
+                      <CompareRow
+                        label="Total"
+                        oldVal={fmtAmount(oldTotal)}
+                        newVal={fmtAmount(newTotal)}
+                        delta={numDelta(oldTotal, newTotal)}
+                        deltaLbl={newTotal !== oldTotal
+                          ? `${newTotal > oldTotal ? '+' : ''}${fmtAmount(Math.abs(newTotal - oldTotal))}`
                           : ''}
                         highlight
                       />
@@ -290,30 +384,30 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                       />
                     </div>
 
-                    {/* Rate delta summary */}
-                    {rateDiff !== 0 && (
+                    {/* Total delta summary — reflète l'impact combiné chambre + dates */}
+                    {newTotal !== oldTotal && (
                       <div className={cn(
                         'mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold',
-                        rateDiff > 0
+                        newTotal > oldTotal
                           ? 'bg-rose-50 border border-rose-100 text-rose-700'
                           : 'bg-teal-50 border border-teal-100 text-teal-700',
                       )}>
-                        {rateDiff > 0
+                        {newTotal > oldTotal
                           ? <TrendingUp className="w-4 h-4 shrink-0" />
                           : <TrendingDown className="w-4 h-4 shrink-0" />}
-                        {rateDiff > 0
-                          ? `Rate increase of ${fmtAmount(rateDiff)} per night`
-                          : `Rate decrease of ${fmtAmount(Math.abs(rateDiff))} per night`}
+                        {newTotal > oldTotal
+                          ? `Total increase of ${fmtAmount(newTotal - oldTotal)}`
+                          : `Total decrease of ${fmtAmount(Math.abs(newTotal - oldTotal))}`}
                         <span className="ml-auto text-[9px] font-bold uppercase tracking-widest opacity-60">
-                          {t('rooms.rate')}
+                          {t('common.total')}
                         </span>
                       </div>
                     )}
 
-                    {rateDiff === 0 && selectedRoom.type === currentRoom.type && (
+                    {newTotal === oldTotal && selectedRoom.id === currentRoomId && !datesChanged && (
                       <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-stone-50 border border-stone-100 text-stone-500">
                         <Minus className="w-4 h-4 shrink-0" />
-                        Same room type and rate — lateral reassignment
+                        No changes yet
                       </div>
                     )}
                   </div>
@@ -403,6 +497,11 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-on-surface">{room.type}</span>
+                              {room.id === currentRoomId && (
+                                <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200">
+                                  Current
+                                </span>
+                              )}
                             </div>
                             <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
                               {room.view} · {room.bedType} · {room.capacity} {t('common.guests_count')} · {room.area}m²
@@ -446,11 +545,11 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                 {t('common.cancel')}
               </button>
               <button
-                disabled={!selectedRoom || reassign.isPending}
+                disabled={!hasChanges || reassign.isPending}
                 onClick={handleConfirm}
                 className={cn(
                   'flex-1 py-3.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3',
-                  selectedRoom && !reassign.isPending
+                  hasChanges && !reassign.isPending
                     ? 'bg-zinc-900 text-white hover:bg-black shadow-xl shadow-black/10'
                     : 'bg-stone-200 text-stone-400 cursor-not-allowed',
                 )}

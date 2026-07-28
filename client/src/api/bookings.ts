@@ -144,8 +144,14 @@ export const reassignRoom = async (
   bookingId: string,
   oldRoomId: string,
   newRoomId: string,
+  arrival?: string,
+  departure?: string,
 ): Promise<RichBooking> => {
-  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/reassign`, { oldRoomId, newRoomId });
+  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/reassign`, {
+    oldRoomId, newRoomId,
+    ...(arrival   ? { arrival:   `${arrival}T00:00:00.000Z` }   : {}),
+    ...(departure ? { departure: `${departure}T00:00:00.000Z` } : {}),
+  });
   return normalizeBooking(data);
 };
 

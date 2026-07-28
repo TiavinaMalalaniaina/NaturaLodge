@@ -134,6 +134,7 @@
     "noMatchingReservations":  "Aucune réservation correspondante",
     "pageInfo":                "Page {{page}} sur {{total}} · {{count}} réservations",
     "reassign":                "Réassigner",
+    "reassignHint":            "Changer de chambre et/ou de dates",
     "newStay":                 "Nouveau séjour",
     "reservationEntry":        "Saisie de réservation",
     "selectGuest":             "Sélectionner un profil client",

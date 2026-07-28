@@ -46,8 +46,9 @@ export function useUpdateBookingStatus() {
 export function useReassignRoom() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ bookingId, oldRoomId, newRoomId }: { bookingId: string; oldRoomId: string; newRoomId: string }) =>
-      reassignRoom(bookingId, oldRoomId, newRoomId),
+    mutationFn: ({ bookingId, oldRoomId, newRoomId, arrival, departure }: {
+      bookingId: string; oldRoomId: string; newRoomId: string; arrival?: string; departure?: string;
+    }) => reassignRoom(bookingId, oldRoomId, newRoomId, arrival, departure),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ROOMS_KEY });
