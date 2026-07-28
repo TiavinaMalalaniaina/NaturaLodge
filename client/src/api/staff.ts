@@ -46,3 +46,25 @@ export const fetchStaff = async (): Promise<StaffMember[]> => {
   const { data } = await api.get<ApiStaff[]>('/staff');
   return data.map(normalizeStaff);
 };
+
+const ROLE_TO_API: Record<StaffRole, string> = {
+  admin: 'ADMIN', manager: 'MANAGER',
+  receptionist: 'RECEPTIONIST', housekeeping: 'HOUSEKEEPING',
+};
+
+export interface CreateStaffPayload {
+  name:     string;
+  email:    string;
+  password: string;
+  role:     StaffRole;
+}
+
+export const createStaff = async (payload: CreateStaffPayload): Promise<StaffMember> => {
+  const { data } = await api.post<ApiStaff>('/staff', {
+    name:     payload.name,
+    email:    payload.email,
+    password: payload.password,
+    role:     ROLE_TO_API[payload.role],
+  });
+  return normalizeStaff(data);
+};

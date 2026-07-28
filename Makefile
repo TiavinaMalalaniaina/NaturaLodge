@@ -24,7 +24,7 @@ help: ## Affiche cette aide
 	@echo     sh-db         Shell psql dans le conteneur db
 	@echo   [Local, sans Docker]
 	@echo     install       Installe les dependances npm (client + serveur)
-	@echo     dev           Rappel pour lancer serveur+client en local
+	@echo     dev           Lance serveur+client en parallele (meme terminal)
 	@echo     dev-server    Lance le serveur en local (port 4000)
 	@echo     dev-client    Lance le client en local (port 3000)
 	@echo     db-up         Optionnel: Postgres via Docker si vous n'en avez pas
@@ -106,10 +106,8 @@ dev-server: ## Lance le serveur en local avec hot-reload (npm run dev, port 4000
 dev-client: ## Lance le client en local avec hot-reload (npm run dev, port 3000)
 	cd client && npm run dev
 
-dev: ## Rappel : lance serveur + client dans 2 terminaux (pas de job control portable sous cmd.exe)
-	@echo Ouvrez 2 terminaux et lancez :
-	@echo   make dev-server
-	@echo   make dev-client
+dev: ## Lance serveur + client en local en parallele dans le meme terminal (via concurrently)
+	npx --yes concurrently -n server,client -c blue,green "cd server && npm run dev" "cd client && npm run dev"
 
 local-migrate: ## Applique les migrations Prisma en local (contre server/.env)
 	cd server && npm run db:migrate

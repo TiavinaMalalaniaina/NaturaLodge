@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { Role, UserStatus } from '@prisma/client';
+import { Prisma, Role, UserStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 
@@ -38,11 +38,19 @@ staffRouter.post('/', authorize('ADMIN'), async (req: AuthRequest, res: Response
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
 
   const hashed = await bcrypt.hash(parsed.data.password, 12);
-  const member = await prisma.user.create({
-    data: { ...parsed.data, password: hashed },
-    select,
-  });
-  res.status(201).json(member);
+  try {
+    const member = await prisma.user.create({
+      data: { ...parsed.data, password: hashed },
+      select,
+    });
+    res.status(201).json(member);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      res.status(409).json({ error: 'Un compte existe déjà avec cet email.' });
+      return;
+    }
+    throw err;
+  }
 });
 
 staffRouter.patch('/:id', authorize('ADMIN', 'MANAGER'), async (req: AuthRequest, res: Response): Promise<void> => {
