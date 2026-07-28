@@ -67,6 +67,8 @@ export const Reservations: React.FC = () => {
   const [searchQuery, setSearchQuery]   = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
 
   // List pagination
   const [page, setPage] = useState(1);
@@ -150,7 +152,10 @@ export const Reservations: React.FC = () => {
 
   const { data: listPage, isLoading: listLoading, isError: listError } = useBookings(
     viewMode === 'list'
-      ? { page, limit: LIMIT, search: debouncedSearch || undefined, status: apiStatus }
+      ? {
+          page, limit: LIMIT, search: debouncedSearch || undefined, status: apiStatus,
+          startDate: dateFrom || undefined, endDate: dateTo || undefined,
+        }
       : { limit: 1 }
   );
 
@@ -385,6 +390,34 @@ export const Reservations: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Date filter — list view only */}
+          {viewMode === 'list' && (
+            <>
+              <div className="h-4 w-px bg-stone-200 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+                  {t('reservations.filterDate')}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <input type="date" value={dateFrom} max={dateTo || undefined}
+                    onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                    className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
+                  <span className="text-on-surface-variant/30 text-[9px]">→</span>
+                  <input type="date" value={dateTo} min={dateFrom || undefined}
+                    onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                    className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
+                  {(dateFrom || dateTo) && (
+                    <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                      title={t('common.clear')}
+                      className="p-1 rounded-full hover:bg-stone-100 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Month quick-nav — grid mode only */}
           {viewMode === 'grid' && (

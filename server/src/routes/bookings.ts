@@ -84,12 +84,15 @@ bookingsRouter.get('/', async (req: AuthRequest, res: Response): Promise<void> =
   const skip = (page - 1) * limit;
 
   const where = {
-    // Par défaut (pas de statut choisi, pas de recherche) : cacher les réservations
-    // clôturées pour que la liste priorise les séjours en cours/en retard puis à venir.
-    ...(status ? { status } : search ? {} : { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } }),
-    ...(startDate && endDate ? {
-      arrival:   { lt: new Date(endDate) },
-      departure: { gt: new Date(startDate) },
+    // Par défaut (pas de statut/date/recherche) : cacher les réservations clôturées
+    // pour que la liste priorise les séjours en cours/en retard puis à venir. Dès qu'un
+    // filtre explicite est posé (statut, date ou recherche), on montre tout ce qui matche.
+    ...(status ? { status } : (search || startDate || endDate || date) ? {} : { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } }),
+    ...(startDate || endDate ? {
+      // Chevauchement : une réservation matche si son séjour croise la fenêtre donnée.
+      // Une seule borne fournie = fenêtre ouverte de ce côté ("à partir de" / "jusqu'à").
+      ...(endDate   ? { arrival:   { lt: new Date(endDate) } }   : {}),
+      ...(startDate ? { departure: { gt: new Date(startDate) } } : {}),
     } : date ? {
       arrival:   { lte: new Date(date) },
       departure: { gte: new Date(date) },

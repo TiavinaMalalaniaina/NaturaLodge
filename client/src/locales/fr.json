@@ -126,6 +126,7 @@
     "searchGuestOrRoom":       "Chercher client ou chambre…",
     "filterCategory":          "Type :",
     "filterStatus":            "Statut :",
+    "filterDate":              "Date :",
     "unit":                    "Unité",
     "noUnitsMatch":            "Aucune unité ne correspond aux filtres",
     "clearAllFilters":         "Effacer tous les filtres",
