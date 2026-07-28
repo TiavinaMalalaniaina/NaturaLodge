@@ -4,14 +4,15 @@ import { Room } from '../types';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MOCK_FEATURES } from '../mockData';
-import { useRoom, useUpdateRoomStatus } from '../hooks/useRooms';
+import { useRoom, useUpdateRoomStatus, useRoomFeatures } from '../hooks/useRooms';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EditRoomModal } from '../components/EditRoomModal';
 import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
+import { useNotifications } from '../context/NotificationContext';
+import { getApiErrorMessage } from '../lib/apiError';
 
-const ICON_MAP: Record<string, any> = {
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Wifi,
   Coffee,
   Wind,
@@ -25,7 +26,9 @@ export const RoomDetail: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { data: roomData, isLoading, isError } = useRoom(id!);
+  const { data: allFeatures = [] } = useRoomFeatures();
   const updateStatus = useUpdateRoomStatus();
+  const { addNotification } = useNotifications();
 
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
   const [roomState, setRoomState]                 = useState<Room | undefined>(undefined);
@@ -38,7 +41,7 @@ export const RoomDetail: React.FC = () => {
 
   const onBack = () => navigate(-1);
 
-  const roomFeatures = MOCK_FEATURES.filter(f => room.features?.includes(f.id));
+  const roomFeatures = allFeatures.filter(f => room.features?.includes(f.id));
 
   const handleMaintenanceToggle = () => {
     const newStatus = room.status === 'maintenance' ? 'AVAILABLE' : 'MAINTENANCE';
@@ -47,6 +50,10 @@ export const RoomDetail: React.FC = () => {
         setRoomState(updated);
         setConflicts(c);
       },
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
     });
   };
 
@@ -87,7 +94,11 @@ export const RoomDetail: React.FC = () => {
         <div className="flex gap-3 w-full sm:w-auto">
           {room.status === 'available' && (
             <button
-              onClick={() => navigate(`/reservations/new?roomId=${room.id}&arrival=${new Date().toISOString().split('T')[0]}`)}
+              onClick={() => {
+                const now = new Date();
+                const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                navigate(`/reservations/new?roomId=${room.id}&arrival=${todayLocal}`);
+              }}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-teal-600 text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-teal-700 shadow-lg shadow-teal-500/10 transition-all cursor-pointer"
             >
               <Zap className="w-3.5 h-3.5 fill-current" /> {t('rooms.instantBook')}

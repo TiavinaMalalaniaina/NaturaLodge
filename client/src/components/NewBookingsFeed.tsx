@@ -3,9 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Zap, ExternalLink, Check, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useNotifications } from '../context/NotificationContext';
+import { useNow } from '../hooks/useNow';
+import { formatRelativeTime } from '../lib/relativeTime';
 
 export const NewBookingsFeed: React.FC = () => {
   const { notifications, markAsRead, clearNotification } = useNotifications();
+  const now = useNow();
 
   return (
     <div className="space-y-4">
@@ -66,7 +69,7 @@ export const NewBookingsFeed: React.FC = () => {
                       <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase text-[7px] font-bold tracking-wider leading-none">New</span>
                     )}
                   </div>
-                  <span className="text-[9px] font-mono text-on-surface-variant/30 group-hover:opacity-0 transition-opacity whitespace-nowrap">{notif.time}</span>
+                  <span className="text-[9px] font-mono text-on-surface-variant/30 group-hover:opacity-0 transition-opacity whitespace-nowrap">{formatRelativeTime(notif.createdAt, now)}</span>
                 </div>
                 
                 <div className="flex justify-between items-end">

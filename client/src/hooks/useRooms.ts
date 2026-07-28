@@ -5,6 +5,7 @@ import {
   setRoomStatus,
   RoomPayload, RoomsParams, // RoomPayload now only has number/roomTypeId/images/rateOverride
 } from '../api/rooms';
+import { ROOM_TYPES_KEY } from './useRoomTypes';
 
 export const ROOMS_KEY     = ['rooms'] as const;
 export const FEATURES_KEY  = [...ROOMS_KEY, 'features'] as const;
@@ -59,11 +60,17 @@ export function useUpdateRoomStatus() {
   });
 }
 
+// Les features sont rattachées aux types de chambre — toute mutation doit aussi
+// invalider les types de chambre (et les chambres, qui affichent leurs features) en cache.
 export function useCreateRoomFeature() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createRoomFeature,
-    onSuccess: () => qc.invalidateQueries({ queryKey: FEATURES_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: FEATURES_KEY });
+      qc.invalidateQueries({ queryKey: ROOM_TYPES_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+    },
   });
 }
 
@@ -71,6 +78,10 @@ export function useDeleteRoomFeature() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: deleteRoomFeature,
-    onSuccess: () => qc.invalidateQueries({ queryKey: FEATURES_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: FEATURES_KEY });
+      qc.invalidateQueries({ queryKey: ROOM_TYPES_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+    },
   });
 }

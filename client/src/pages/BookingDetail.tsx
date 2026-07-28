@@ -13,19 +13,15 @@ import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
 import { useTranslation } from 'react-i18next';
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function fmtAmount(n: number) {
-  return n.toLocaleString('fr-MG') + ' Ar';
-}
+import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
+import { getApiErrorMessage } from '../lib/apiError';
+import { useNotifications } from '../context/NotificationContext';
 
 export const BookingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { addNotification } = useNotifications();
 
   const { data: booking, isLoading, isError } = useBooking(id!);
   const updateStatus = useUpdateBookingStatus();
@@ -45,6 +41,10 @@ export const BookingDetail: React.FC = () => {
   const handleStatus = (status: string) => {
     updateStatus.mutate({ id: booking.id, status }, {
       onSuccess: () => navigate(-1),
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
     });
   };
 

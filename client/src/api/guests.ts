@@ -126,3 +126,12 @@ export const createGuest = async (payload: {
   const { data } = await api.post<ApiGuest>('/guests', payload);
   return normalizeGuest(data);
 };
+
+export const updateGuest = async (id: string, payload: {
+  name?: string; email?: string; phone?: string;
+  city?: string; country?: string; status?: string;
+  preferences?: string[];
+}): Promise<Guest> => {
+  const { data } = await api.patch<ApiGuest>(`/guests/${id}`, payload);
+  return normalizeGuest(data);
+};

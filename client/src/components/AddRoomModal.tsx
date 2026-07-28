@@ -1,21 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Star, ChevronDown, Check, Upload, Link, Trash2, AlertCircle, Plus } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { X, Check, AlertCircle, Plus } from 'lucide-react';
+import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useRoomFeatures, useCreateRoom } from '../hooks/useRooms';
 import { useRoomTypes, useCreateRoomType } from '../hooks/useRoomTypes';
 import { RoomType } from '../types';
 import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../lib/apiError';
+import { formatCurrency } from '../lib/format';
+import { RoomImagePicker, PRESET_PHOTOS } from './RoomImagePicker';
+import { Modal } from './Modal';
 
 const BED_TYPES  = ['King Size', 'Super King', 'Twin Signature', 'Double'];
 const VIEWS      = ['Garden View', 'Ocean View', 'Valley View', 'Pool View', 'Mountain View', 'Courtyard'];
-
-const PRESET_PHOTOS = [
-  { url: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=600&q=80', label: 'Suite Classic' },
-  { url: 'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=600&q=80', label: 'Earthy Luxury' },
-  { url: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=600&q=80', label: 'Tropical Vista' },
-  { url: 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=600&q=80', label: 'Cozy Organic' },
-];
 
 interface AddRoomModalProps {
   isOpen: boolean;
@@ -47,25 +44,18 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
   const [number,       setNumber]       = useState('');
   const [rateOverride, setRateOverride] = useState('');
   const [images,       setImages]       = useState<string[]>([]);
-  const [imageUrl,     setImageUrl]     = useState('');
-  const [isDragging,   setIsDragging]   = useState(false);
   const [apiError,     setApiError]     = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setStep('type'); setSelectedType(null); setCreatingNew(false);
       setNewType({ name: '', rate: '', description: '', area: '', bedType: 'King Size', capacity: '2', view: 'Garden View', selectedFeatures: [] });
-      setNumber(''); setRateOverride(''); setImages([]); setImageUrl(''); setApiError('');
+      setNumber(''); setRateOverride(''); setImages([]); setApiError('');
     }
   }, [isOpen]);
 
   const toggleFeature = (id: string) =>
     setNewType(p => ({ ...p, selectedFeatures: p.selectedFeatures.includes(id) ? p.selectedFeatures.filter(f => f !== id) : [...p.selectedFeatures, id] }));
-
-  const handleFile = (file: File) => {
-    if (file.type.startsWith('image/')) setImages([URL.createObjectURL(file)]);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,9 +86,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
 
       onRoomAdded?.();
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error;
-      setApiError(typeof msg === 'string' ? msg : t('common.error'));
+    } catch (err) {
+      setApiError(getApiErrorMessage(err, t('common.error')));
     }
   };
 
@@ -106,15 +95,8 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
   const isPending = createRoom.isPending || createRoomType.isPending;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={onClose} className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm" />
-
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('rooms.unitRegistration')}
+      className="max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col">
 
             {/* Header */}
             <div className="flex items-center justify-between px-10 pt-8 pb-6 border-b border-stone-100">
@@ -167,7 +149,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                               {selectedType?.id === rt.id && <Check className="w-4 h-4 text-primary" />}
                             </div>
                             <p className="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">
-                              {rt.capacity} pers. · {rt.rate.toLocaleString()} Ar/n
+                              {rt.capacity} pers. · {formatCurrency(rt.rate)}/n
                             </p>
                             <p className="text-[10px] text-on-surface-variant/40 mt-1">
                               {rt.rooms.length} chambre{rt.rooms.length !== 1 ? 's' : ''}
@@ -272,7 +254,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                         <div className="flex-1">
                           <p className="text-xs font-bold text-primary">{creatingNew ? newType.name : selectedType?.name}</p>
                           <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-                            {(creatingNew ? Number(newType.rate) : selectedType?.rate ?? 0).toLocaleString()} Ar/n
+                            {formatCurrency(creatingNew ? Number(newType.rate) : selectedType?.rate ?? 0)}/n
                           </p>
                         </div>
                         <button type="button" onClick={() => setStep('type')}
@@ -302,64 +284,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                     </div>
 
                     {/* Image upload */}
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-3">{t('rooms.uploadImage')}</label>
-                      <div
-                        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                        onDragLeave={() => setIsDragging(false)}
-                        onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
-                        onClick={() => fileRef.current?.click()}
-                        className={cn('aspect-video bg-stone-100 rounded-2xl overflow-hidden border border-dashed border-stone-300 hover:border-primary/40 cursor-pointer transition-all flex flex-col items-center justify-center relative group',
-                          isDragging && 'border-primary bg-teal-50', images[0] && 'border-solid border-stone-200')}
-                      >
-                        <input type="file" ref={fileRef} accept="image/*" className="hidden"
-                          onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
-                        {images[0] ? (
-                          <>
-                            <img src={images[0]} alt="preview" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-2">
-                              <Upload className="w-5 h-5 text-white" />
-                              <span className="text-[10px] font-bold text-white uppercase tracking-widest">{t('rooms.uploadImage')}</span>
-                            </div>
-                            <button type="button" onClick={e => { e.stopPropagation(); setImages([]); }}
-                              className="absolute top-3 right-3 bg-black/60 p-1.5 rounded-lg text-red-400">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        ) : (
-                          <div className="text-center p-4">
-                            <Upload className="w-8 h-8 opacity-30 mx-auto mb-2" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('rooms.dragDropImage')}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Presets */}
-                      <div className="grid grid-cols-4 gap-2 mt-3">
-                        {PRESET_PHOTOS.map((p, i) => (
-                          <button key={i} type="button" onClick={() => setImages([p.url])}
-                            className={cn('h-14 rounded-xl overflow-hidden relative border transition-all',
-                              images[0] === p.url ? 'border-primary ring-1 ring-primary' : 'border-stone-200 hover:border-stone-400')}>
-                            <img src={p.url} alt={p.label} className="w-full h-full object-cover opacity-70" />
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* URL */}
-                      <div className="flex gap-2 mt-3">
-                        <div className="flex items-center gap-2 text-[9px] font-bold text-on-surface-variant/40 uppercase shrink-0">
-                          <Link className="w-3 h-3" /> URL
-                        </div>
-                        <input type="text" placeholder="https://..." value={imageUrl}
-                          onChange={e => setImageUrl(e.target.value)}
-                          className="flex-1 h-9 px-3 bg-stone-50 border border-stone-200 rounded-lg text-xs outline-none focus:border-primary transition-all" />
-                        <button type="button"
-                          onClick={() => { if (imageUrl.startsWith('http')) { setImages([imageUrl]); setImageUrl(''); } }}
-                          className="px-3 h-9 bg-stone-100 text-on-surface-variant rounded-lg text-[9px] font-bold uppercase hover:bg-stone-200 transition-all">
-                          {t('common.apply')}
-                        </button>
-                      </div>
-                    </div>
+                    <RoomImagePicker images={images} onChange={setImages} previewAlt={number} />
 
                     <div className="flex gap-4 pt-2">
                       <button type="button" onClick={() => { setStep('type'); setApiError(''); }}
@@ -375,9 +300,6 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                 </motion.div>
               )}
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </Modal>
   );
 };

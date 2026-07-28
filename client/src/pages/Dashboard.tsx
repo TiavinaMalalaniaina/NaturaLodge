@@ -22,7 +22,8 @@ export const Dashboard: React.FC = () => {
   const { data: bookingsPage } = useBookings({ limit: 100 });
   const bookings = bookingsPage?.data ?? [];
 
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const occupied = rooms.filter(r => r.status === 'occupied').length;
   const occupancyRate = rooms.length > 0 ? Math.round((occupied / rooms.length) * 100) : 0;
   const issues = rooms.filter(r => r.status === 'maintenance').length;
@@ -53,7 +54,9 @@ export const Dashboard: React.FC = () => {
     room: b.rooms[0]?.room.number ?? '—',
     type: b.rooms[0]?.room.type   ?? '—',
     eta: '—',
-    status: 'Standard',
+    status:
+      b.guest.status === 'VIP_ELITE' || b.guest.status === 'VIP_MEMBER' ? 'VIP' :
+      b.guest.status === 'PLATINUM_TIER' ? 'PREMIUM' : 'Standard',
   }));
 
   return (

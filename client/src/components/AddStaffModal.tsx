@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X, Shield, Mail, User, Lock, AlertCircle, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { StaffRole } from '../types';
 import { useCreateStaff } from '../hooks/useStaff';
+import { getApiErrorMessage } from '../lib/apiError';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { staffFormSchema, StaffFormValues } from '../lib/schemas/staff.schema';
+import { Modal } from './Modal';
 
 interface AddStaffModalProps {
   isOpen: boolean;
@@ -17,63 +21,37 @@ const ROLES: { value: StaffRole; label: string; desc: string }[] = [
   { value: 'housekeeping', label: 'Housekeeping', desc: 'Unit status & maintenance tasks' },
 ];
 
-const EMPTY_FORM = { name: '', email: '', password: '', confirmPassword: '', role: 'receptionist' as StaffRole };
+const DEFAULT_VALUES: StaffFormValues = { name: '', email: '', password: '', confirmPassword: '', role: 'receptionist' };
 
 export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState(EMPTY_FORM);
-  const [formError, setFormError] = useState('');
   const createStaff = useCreateStaff();
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<StaffFormValues>({
+    resolver: zodResolver(staffFormSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
+  const role = watch('role');
 
   const handleClose = () => {
     if (createStaff.isPending) return;
-    setFormData(EMPTY_FORM);
-    setFormError('');
+    reset(DEFAULT_VALUES);
     createStaff.reset();
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-
-    if (formData.password.length < 8) {
-      setFormError('Password must be at least 8 characters.');
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setFormError('Passwords do not match.');
-      return;
-    }
-
+  const onSubmit = (data: StaffFormValues) => {
     createStaff.mutate(
-      { name: formData.name, email: formData.email, password: formData.password, role: formData.role },
+      { name: data.name, email: data.email, password: data.password, role: data.role },
       { onSuccess: handleClose },
     );
   };
 
   const apiError = createStaff.isError
-    ? ((createStaff.error as any)?.response?.data?.error ?? 'Something went wrong. Please try again.')
+    ? getApiErrorMessage(createStaff.error, 'Something went wrong. Please try again.')
     : '';
-  const errorMessage = formError || (typeof apiError === 'string' ? apiError : '');
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
-          />
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row"
-          >
+    <Modal isOpen={isOpen} onClose={handleClose} title="Onboard Talent"
+      className="max-w-4xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row">
             {/* Left Decor */}
             <div className="w-full md:w-80 bg-zinc-900 p-10 text-white flex flex-col">
               <div className="mb-12">
@@ -105,42 +83,40 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                 </button>
               </div>
 
-              {errorMessage && (
+              {apiError && (
                 <div className="flex items-center gap-3 p-4 mb-6 bg-red-50 border border-red-100 rounded-xl text-red-600">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  <p className="text-xs font-medium">{errorMessage}</p>
+                  <p className="text-xs font-medium">{apiError}</p>
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-8">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Full Legal Name</label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Johnathan Doe"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        {...register('name')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
-                        required
                       />
                     </div>
+                    {errors.name && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.name.message}</p>}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Work Email Address</label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
-                      <input 
+                      <input
                         type="email"
                         placeholder="j.doe@verdana-retreat.com"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        {...register('email')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
-                        required
                       />
                     </div>
+                    {errors.email && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.email.message}</p>}
                   </div>
                 </div>
 
@@ -152,13 +128,11 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                       <input
                         type="password"
                         placeholder="Min. 8 characters"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        {...register('password')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
-                        required
-                        minLength={8}
                       />
                     </div>
+                    {errors.password && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.password.message}</p>}
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Confirm Password</label>
@@ -167,41 +141,39 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                       <input
                         type="password"
                         placeholder="Re-enter password"
-                        value={formData.confirmPassword}
-                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        {...register('confirmPassword')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
-                        required
-                        minLength={8}
                       />
                     </div>
+                    {errors.confirmPassword && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.confirmPassword.message}</p>}
                   </div>
                 </div>
 
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-5 text-center">Assign Organizational Role</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {ROLES.map((role) => (
+                    {ROLES.map((r) => (
                       <button
-                        key={role.value}
+                        key={r.value}
                         type="button"
-                        onClick={() => setFormData({ ...formData, role: role.value })}
+                        onClick={() => setValue('role', r.value, { shouldValidate: true })}
                         className={cn(
                           "p-5 text-left border rounded-2xl transition-all relative group",
-                          formData.role === role.value 
-                            ? "bg-teal-50/50 border-teal-600 ring-4 ring-teal-50" 
+                          role === r.value
+                            ? "bg-teal-50/50 border-teal-600 ring-4 ring-teal-50"
                             : "bg-white border-stone-200 hover:border-stone-400"
                         )}
                       >
                         <div className="flex justify-between items-start mb-2">
                            <p className={cn(
                              "text-[10px] font-bold uppercase tracking-widest",
-                             formData.role === role.value ? "text-teal-600" : "text-on-surface-variant"
+                             role === r.value ? "text-teal-600" : "text-on-surface-variant"
                            )}>
-                             {role.label}
+                             {r.label}
                            </p>
-                           {formData.role === role.value && <div className="w-5 h-5 bg-teal-600 rounded-full flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                           {role === r.value && <div className="w-5 h-5 bg-teal-600 rounded-full flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
                         </div>
-                        <p className="text-[11px] text-on-surface-variant/60 font-light leading-snug">{role.desc}</p>
+                        <p className="text-[11px] text-on-surface-variant/60 font-light leading-snug">{r.desc}</p>
                       </button>
                     ))}
                   </div>
@@ -226,9 +198,6 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                 </div>
               </form>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </Modal>
   );
 };

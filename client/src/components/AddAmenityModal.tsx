@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Waves, Trees, Dumbbell, Coffee, Clock, ShieldCheck, Check, ChevronDown, Activity } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { Modal } from './Modal';
 
 interface AddAmenityModalProps {
   isOpen: boolean;
@@ -44,23 +44,8 @@ export const AddAmenityModal: React.FC<AddAmenityModalProps> = ({ isOpen, onClos
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
-          />
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row"
-          >
+    <Modal isOpen={isOpen} onClose={onClose} title="Facility Registration"
+      className="max-w-4xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row">
             {/* Left: Branding/Preview */}
             <div className="w-full md:w-80 bg-zinc-900 p-8 text-white flex flex-col">
               <div className="mb-10">
@@ -213,9 +198,6 @@ export const AddAmenityModal: React.FC<AddAmenityModalProps> = ({ isOpen, onClos
                 </div>
               </form>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </Modal>
   );
 };

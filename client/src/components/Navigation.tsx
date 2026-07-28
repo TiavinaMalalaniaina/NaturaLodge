@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { useNow } from '../hooks/useNow';
+import { formatRelativeTime } from '../lib/relativeTime';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -118,6 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
 export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification, clearAll } = useNotifications();
+  const now = useNow();
   const { logout } = useAuth();
   const navigate   = useNavigate();
   const { t }      = useTranslation();
@@ -234,7 +237,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                         <div className="flex-1 space-y-1 pr-6">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">{notif.title}</span>
-                            <span className="text-[9px] font-mono text-on-surface-variant/30">{notif.time}</span>
+                            <span className="text-[9px] font-mono text-on-surface-variant/30">{formatRelativeTime(notif.createdAt, now)}</span>
                           </div>
                           <p className="text-xs font-medium text-on-surface leading-tight">{notif.subtitle}</p>
                           {notif.amount && notif.amount !== '--' && (

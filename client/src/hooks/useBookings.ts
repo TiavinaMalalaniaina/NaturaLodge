@@ -55,11 +55,3 @@ export function useReassignRoom() {
     },
   });
 }
-
-export function useTodayArrivals() {
-  const today = new Date().toISOString().split('T')[0];
-  return useQuery({
-    queryKey: [...BOOKINGS_KEY, 'arrivals', today],
-    queryFn: () => fetchBookings({ date: today, status: 'CONFIRMED', limit: 100 }),
-  });
-}

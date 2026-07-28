@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowRight, Check, Search, AlertTriangle, Loader2, TrendingUp, TrendingDown, Minus, Calendar } from 'lucide-react';
+import { X, ArrowRight, Check, Search, AlertTriangle, Loader2, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useRoom, useAvailableRooms } from '../hooks/useRooms';
 import { useReassignRoom } from '../hooks/useBookings';
 import { Room } from '../types';
+import { formatCurrency as fmtAmount, nightsBetween, todayLocalStr as todayStr, resetDepartureIfInvalid } from '../lib/format';
+import { getApiErrorMessage } from '../lib/apiError';
+import { Modal } from './Modal';
+import { CompareRow } from './CompareRow';
+import { Delta } from './DeltaBadge';
 
 interface ReassignRoomModalProps {
   isOpen:            boolean;
@@ -15,63 +20,6 @@ interface ReassignRoomModalProps {
   currentRoomNumber: string;
   arrival:           string;
   departure:         string;
-}
-
-function fmtAmount(n: number) { return n.toLocaleString('fr-MG') + ' Ar'; }
-function nightsBetween(a: string, b: string) {
-  return Math.max(1, Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86_400_000));
-}
-// Date locale (pas toISOString — décale d'un jour dans un fuseau en avance sur UTC)
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// ─── Comparison row ────────────────────────────────────────────────────────────
-
-type Delta = 'up' | 'down' | 'same' | 'diff';
-
-function DeltaBadge({ delta, label }: { delta: Delta; label: string }) {
-  if (delta === 'same') return null;
-  if (delta === 'diff') return (
-    <span className="ml-1.5 text-[9px] font-bold text-amber-600 uppercase tracking-widest">≠</span>
-  );
-  const isUp = delta === 'up';
-  return (
-    <span className={cn(
-      'inline-flex items-center gap-0.5 ml-1.5 text-[9px] font-bold',
-      isUp ? 'text-rose-500' : 'text-teal-600',
-    )}>
-      {isUp ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-      {label}
-    </span>
-  );
-}
-
-interface CompareRowProps {
-  label:    string;
-  oldVal:   string;
-  newVal:   string;
-  delta?:   Delta;
-  deltaLbl?: string;
-  highlight?: boolean;
-}
-
-function CompareRow({ label, oldVal, newVal, delta = 'same', deltaLbl = '', highlight }: CompareRowProps) {
-  const changed = oldVal !== newVal;
-  return (
-    <div className={cn(
-      'grid grid-cols-[120px_1fr_1fr] gap-x-4 py-2.5 border-b border-stone-100 last:border-0 items-start',
-      highlight && changed && 'bg-amber-50/50 -mx-4 px-4 rounded-lg',
-    )}>
-      <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 pt-0.5">{label}</span>
-      <span className="text-xs text-on-surface-variant/60 line-through decoration-stone-300">{oldVal}</span>
-      <span className={cn('text-xs font-semibold', changed ? 'text-on-surface' : 'text-on-surface-variant/50')}>
-        {newVal}
-        <DeltaBadge delta={delta} label={deltaLbl} />
-      </span>
-    </div>
-  );
 }
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
@@ -134,8 +82,8 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
       },
       {
         onSuccess: () => { setSelectedRoom(null); setSearch(''); onClose(); },
-        onError:   (err: any) => {
-          setServerError(err?.response?.data?.error ?? t('common.error'));
+        onError:   (err: unknown) => {
+          setServerError(getApiErrorMessage(err, t('common.error')));
         },
       },
     );
@@ -165,21 +113,8 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="absolute inset-0 bg-stone-900/60 backdrop-blur-md"
-          />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh]"
-          >
+    <Modal isOpen={isOpen} onClose={handleClose} title={t('reservations.reassign')} zIndexClassName="z-[120]"
+      className="max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh]">
 
             {/* ── Header ── */}
             <div className="p-8 pb-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
@@ -207,7 +142,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
                     <input type="date" min={todayStr()} value={newArrival}
                       onChange={e => {
                         setNewArrival(e.target.value);
-                        if (newDeparture && e.target.value >= newDeparture) setNewDeparture('');
+                        setNewDeparture(d => resetDepartureIfInvalid(e.target.value, d));
                       }}
                       className="w-full h-11 pl-9 pr-3 bg-white border border-stone-200 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
                   </div>
@@ -562,9 +497,6 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({
               </button>
             </div>
 
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </Modal>
   );
 };

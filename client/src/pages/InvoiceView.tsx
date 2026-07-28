@@ -8,21 +8,9 @@ import { useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayme
 import { PaymentMethod, InvoiceStatus } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader } from '../components/QueryLoader';
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-function fmtAmount(n: number) {
-  return n.toLocaleString('fr-MG') + ' Ar';
-}
-
-const STATUS_CLASS: Record<InvoiceStatus, string> = {
-  pending:        'bg-amber-50 text-amber-700 border-amber-200',
-  partially_paid: 'bg-blue-50 text-blue-700 border-blue-200',
-  paid:           'bg-teal-50 text-teal-700 border-teal-200',
-  refunded:       'bg-purple-50 text-purple-700 border-purple-200',
-  cancelled:      'bg-stone-100 text-stone-500 border-stone-200',
-};
+import { formatDate as fmtDate, formatCurrency as fmtAmount, todayLocalStr } from '../lib/format';
+import { INVOICE_STATUS_CLASS as STATUS_CLASS } from '../lib/statusColors';
+import { getApiErrorMessage } from '../lib/apiError';
 
 export const InvoiceView: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -37,21 +25,25 @@ export const InvoiceView: React.FC = () => {
 
   const [taxRate, setTaxRate] = useState(0);
   const [notes,   setNotes]   = useState('');
-  const [dueAt] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dueAt] = useState(() => todayLocalStr());
 
   const [payAmount,    setPayAmount]    = useState('');
   const [payMethod,    setPayMethod]    = useState<PaymentMethod>('cash');
   const [payReference, setPayReference] = useState('');
   const [payNotes,     setPayNotes]     = useState('');
   const [showPayForm,  setShowPayForm]  = useState(false);
+  const [apiError,     setApiError]     = useState('');
 
   const handleGenerate = () => {
     if (!bookingId) return;
+    setApiError('');
     generateInvoice.mutate({
       bookingId,
       taxRate,
       notes: notes || undefined,
       dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
+    }, {
+      onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
     });
   };
 
@@ -59,6 +51,7 @@ export const InvoiceView: React.FC = () => {
     if (!invoice) return;
     const amount = parseInt(payAmount, 10);
     if (!amount || amount <= 0) return;
+    setApiError('');
     recordPayment.mutate(
       { invoiceId: invoice.id, amount, method: payMethod, reference: payReference || undefined, notes: payNotes || undefined },
       {
@@ -68,13 +61,17 @@ export const InvoiceView: React.FC = () => {
           setPayNotes('');
           setShowPayForm(false);
         },
+        onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
       },
     );
   };
 
   const handleVoidPayment = (paymentId: string) => {
     if (!invoice) return;
-    voidPayment.mutate({ invoiceId: invoice.id, paymentId });
+    setApiError('');
+    voidPayment.mutate({ invoiceId: invoice.id, paymentId }, {
+      onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+    });
   };
 
   const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'RECEPTIONIST';
@@ -125,6 +122,13 @@ export const InvoiceView: React.FC = () => {
           </button>
         )}
       </div>
+
+      {apiError && (
+        <div className="no-print flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <p className="text-xs font-medium">{apiError}</p>
+        </div>
+      )}
 
       {/* No invoice – generate form */}
       {noInvoice && (

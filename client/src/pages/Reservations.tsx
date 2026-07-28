@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, Users, Calendar, Filter,
   Download, Info, Construction, RefreshCw, LayoutGrid, List,
@@ -19,29 +19,11 @@ import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
-
-// ── Date helpers ──────────────────────────────────────────────────
-
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
-// Formatte en date locale (pas toISOString — qui convertit en UTC et décale
-// d'un jour dans un fuseau en avance sur UTC, ex: UTC+3 à Madagascar, puisque
-// tous les objets Date manipulés ici (windowStart, gridDates, visibleDate…)
-// sont construits en minuit local, pas en minuit UTC).
-function toStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-function dayDiff(from: Date, to: Date): number {
-  return Math.round((to.getTime() - from.getTime()) / 86_400_000);
-}
-function fmtDate(d: Date): string {
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+import { FilterChip } from '../components/FilterChip';
+import { useNotifications } from '../context/NotificationContext';
+import { getApiErrorMessage } from '../lib/apiError';
+import { useVirtualDayGrid } from '../hooks/useVirtualDayGrid';
+import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
 
 // ── Block styles by effectiveStatus ──────────────────────────────
 
@@ -60,8 +42,6 @@ const LIMIT          = 20;
 const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT'];
 const ROOM_STATUS    = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
-// Grid constants
-const COL_W        = 52;   // px per day column
 const LABEL_W      = 176;  // px for room label column
 
 // ── Main component ────────────────────────────────────────────────
@@ -82,68 +62,15 @@ export const Reservations: React.FC = () => {
   // List pagination
   const [page, setPage] = useState(1);
 
-  // Grid — window: 1 year before today → 4 years after today
-  const bodyRef   = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const monthBarRef = useRef<HTMLDivElement>(null); // month nav bar (synced)
-
-  const windowStart = useMemo(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear()-1); d.setHours(0, 0, 0, 0); return d;
-  }, []);
-  const windowEnd = useMemo(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() + 4); d.setHours(23, 59, 59, 999); return d;
-  }, []);
-  const totalDays = useMemo(
-    () => Math.ceil((windowEnd.getTime() - windowStart.getTime()) / 86_400_000),
-    [windowStart, windowEnd],
-  );
-  const gridDates = useMemo(
-    () => Array.from({ length: totalDays }, (_, i) => addDays(windowStart, i)),
-    [windowStart, totalDays],
-  );
+  // Grid — window: 1 year before today → 4 years after today (virtualisation + scroll-sync)
+  const {
+    COL_W, windowStart, windowEnd, totalDays,
+    visibleDate, allMonths, virtualStartIdx, virtualEndIdx, virtualDates,
+    headerRef, monthBarRef, setBodyRef,
+    handleBodyScroll, scrollToToday, scrollByDays, scrollToMonth,
+    toStr, addDays, dayDiff,
+  } = useVirtualDayGrid(viewMode === 'grid');
   const todayStr = toStr(new Date());
-
-  // Visible date (leftmost visible day, updated on scroll)
-  const [visibleDate, setVisibleDate] = useState<Date>(() => new Date());
-
-  // All months in the window, for the month navigator
-  const allMonths = useMemo(() => {
-    const months: Array<{ year: number; month: number; label: string; startDay: number; isNewYear: boolean }> = [];
-    let d = new Date(windowStart.getFullYear(), windowStart.getMonth(), 1);
-    while (d <= windowEnd) {
-      const startDay = Math.max(0, dayDiff(windowStart, d));
-      months.push({
-        year:      d.getFullYear(),
-        month:     d.getMonth(),
-        label:     d.toLocaleString('en', { month: 'short' }).toUpperCase(),
-        startDay,
-        isNewYear: d.getMonth() === 0,
-      });
-      d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    }
-    return months;
-  }, [windowStart, windowEnd]);
-
-  const visibleDayCount = useMemo(
-    () => Math.round((bodyRef.current?.clientWidth ?? 800) / COL_W),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visibleDate],
-  );
-  const visibleEnd = addDays(visibleDate, visibleDayCount);
-
-  // Horizontal virtualization — only render visible columns + 50-day buffer on each side
-  const virtualStartIdx = useMemo(() => {
-    const offset = Math.max(0, dayDiff(windowStart, visibleDate));
-    return Math.max(0, offset - 50);
-  }, [windowStart, visibleDate]);
-  const virtualEndIdx = useMemo(() => {
-    const offset = Math.max(0, dayDiff(windowStart, visibleDate));
-    return Math.min(totalDays, offset + visibleDayCount + 50);
-  }, [windowStart, visibleDate, visibleDayCount, totalDays]);
-  const virtualDates = useMemo(
-    () => gridDates.slice(virtualStartIdx, virtualEndIdx),
-    [gridDates, virtualStartIdx, virtualEndIdx],
-  );
 
   // Modals
   const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
@@ -152,6 +79,16 @@ export const Reservations: React.FC = () => {
 
   const navigate     = useNavigate();
   const updateStatus = useUpdateBookingStatus();
+  const { addNotification } = useNotifications();
+
+  const changeBookingStatus = (id: string, status: string) => {
+    updateStatus.mutate({ id, status }, {
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
+    });
+  };
 
   const debouncedSearch = useDebounce(searchQuery);
 
@@ -176,79 +113,12 @@ export const Reservations: React.FC = () => {
   const gridBookings = gridPage?.data ?? [];
 
   // Pre-index bookings by room to avoid O(rooms × bookings) scan on every render
-  const bookingsByRoomId = useMemo(() => {
-    const map = new Map<string, RichBooking[]>();
-    for (const b of gridBookings) {
-      if (b.status === 'cancelled' || b.status === 'checked-out') continue;
-      for (const br of b.rooms) {
-        const existing = map.get(br.room.id);
-        if (existing) existing.push(b);
-        else map.set(br.room.id, [b]);
-      }
-    }
-    return map;
-  }, [gridBookings]);
-
-  // Sync frozen headers on every scroll frame — update visible date only on month change
-  const handleBodyScroll = useCallback(() => {
-    const sl = bodyRef.current?.scrollLeft ?? 0;
-    if (headerRef.current)   headerRef.current.scrollLeft   = sl;
-    if (monthBarRef.current) monthBarRef.current.scrollLeft = sl;
-    setVisibleDate(prev => {
-      const next = addDays(windowStart, Math.round(sl / COL_W));
-      return prev.getFullYear() === next.getFullYear() && prev.getMonth() === next.getMonth()
-        ? prev   // same month → skip re-render
-        : next;  // new month → update
-    });
-  }, [windowStart]);
-
-  const syncScrollTo = useCallback((target: number) => {
-    const clamped = Math.max(0, Math.min(target, (totalDays - 1) * COL_W));
-    if (bodyRef.current)     bodyRef.current.scrollLeft     = clamped;
-    if (headerRef.current)   headerRef.current.scrollLeft   = clamped;
-    if (monthBarRef.current) monthBarRef.current.scrollLeft = clamped;
-    setVisibleDate(addDays(windowStart, Math.round(clamped / COL_W)));
-  }, [windowStart, totalDays]);
-
-  const scrollToToday = useCallback(() => {
-    const offset = Math.max(0, dayDiff(windowStart, new Date()) - 1) * COL_W;
-    syncScrollTo(offset);
-  }, [windowStart, syncScrollTo]);
-
-  const scrollByDays = useCallback((days: number) => {
-    const current = bodyRef.current?.scrollLeft ?? 0;
-    syncScrollTo(Math.max(0, current + days * COL_W));
-  }, [syncScrollTo]);
-
-  const scrollToMonth = useCallback((startDay: number) => {
-    syncScrollTo(startDay * COL_W);
-  }, [syncScrollTo]);
+  const bookingsByRoomId = useBookingsByRoom(gridBookings);
 
   // Grid : toutes les chambres chargées une fois, filtrées côté client
   const { data: allGridRooms = [], isLoading: roomsLoading } = useRooms(
     viewMode === 'grid' ? {} : undefined
   );
-
-  // Scroll to today the moment the scrollable grid body actually mounts.
-  // Les colonnes virtualisées sont déjà centrées sur `visibleDate` (= aujourd'hui
-  // au montage) dès le premier rendu — le vrai problème était que `scrollLeft`
-  // restait à 0 pendant ce temps, donc le viewport montrait le spacer vide avant
-  // ces colonnes. Un useEffect basé sur isLoading n'est pas fiable ici (les hooks
-  // useBookings/useRooms utilisent `placeholderData`, donc `isLoading` peut déjà
-  // être false avec des données d'une requête précédente). On synchronise plutôt
-  // directement sur le montage du DOM via une ref-callback.
-  const hasScrolledToTodayRef = useRef(false);
-  useEffect(() => {
-    if (viewMode !== 'grid') hasScrolledToTodayRef.current = false;
-  }, [viewMode]);
-
-  const setBodyRef = useCallback((el: HTMLDivElement | null) => {
-    bodyRef.current = el;
-    if (el && viewMode === 'grid' && !hasScrolledToTodayRef.current) {
-      hasScrolledToTodayRef.current = true;
-      scrollToToday();
-    }
-  }, [viewMode, scrollToToday]);
   const { data: roomTypes = [] } = useRoomTypes();
 
   const gridRooms = useMemo(() => {
@@ -390,11 +260,9 @@ export const Reservations: React.FC = () => {
             </span>
             <div className="flex gap-1.5">
               {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
-                <button key={rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}
-                  className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
-                    roomTypeFilter === rt ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}>
                   {rt === 'ALL' ? t('common.all') : rt}
-                </button>
+                </FilterChip>
               ))}
             </div>
           </div>
@@ -407,11 +275,10 @@ export const Reservations: React.FC = () => {
             </span>
             <div className="flex gap-1.5">
               {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
-                <button key={s} onClick={() => handleFilterChange(setStatusFilter)(s)}
-                  className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
-                    statusFilter === s ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                <FilterChip key={s} active={statusFilter === s} onClick={() => handleFilterChange(setStatusFilter)(s)}
+                  activeClassName="bg-zinc-900 text-white border-zinc-900">
                   {s === 'ALL' ? t('common.all') : s}
-                </button>
+                </FilterChip>
               ))}
             </div>
           </div>
@@ -893,28 +760,28 @@ export const Reservations: React.FC = () => {
               <div className="px-5 py-3 border-t border-stone-100 flex items-center gap-2 flex-wrap">
                 {selectedBooking.effectiveStatus === 'due_checkin' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_IN' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CHECKED_IN'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-teal-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-teal-900 transition-colors">
                     <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
                   </button>
                 )}
                 {selectedBooking.effectiveStatus === 'in_progress' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_OUT' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CHECKED_OUT'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors">
                     <LogOut className="w-3.5 h-3.5" /> {t('reservations.checkout')}
                   </button>
                 )}
                 {selectedBooking.effectiveStatus === 'in_progress' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CONFIRMED' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CONFIRMED'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors">
                     <RotateCcw className="w-3.5 h-3.5" /> {t('reservations.revert')}
                   </button>
                 )}
                 {selectedBooking.effectiveStatus === 'overdue' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_OUT' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CHECKED_OUT'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-700 transition-colors">
                     <AlertTriangle className="w-3.5 h-3.5" /> {t('reservations.forceOut')}
                   </button>
@@ -964,7 +831,7 @@ export const Reservations: React.FC = () => {
         isOpen={!!cancelBookingId}
         onClose={() => setCancelBookingId(null)}
         onConfirm={() => {
-          updateStatus.mutate({ id: cancelBookingId!, status: 'CANCELLED' });
+          changeBookingStatus(cancelBookingId!, 'CANCELLED');
           setCancelBookingId(null);
           setSelectedBooking(null);
         }}

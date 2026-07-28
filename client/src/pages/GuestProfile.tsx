@@ -10,24 +10,13 @@ import { useGuest, useAddGuestNote } from '../hooks/useGuests';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { GuestBooking } from '../api/guests';
 import { useTranslation } from 'react-i18next';
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+import { formatDate as fmtDate, nightsBetween, formatCurrency } from '../lib/format';
+import { BOOKING_STATUS_CLASS } from '../lib/statusColors';
+import { AddGuestModal } from '../components/AddGuestModal';
 
 function bookingNights(b: GuestBooking) {
-  return Math.max(1, Math.round(
-    (new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / 86_400_000,
-  ));
+  return nightsBetween(b.arrival, b.departure);
 }
-
-const STATUS_CLASS: Record<string, string> = {
-  CONFIRMED:   'text-teal-600',
-  CHECKED_IN:  'text-zinc-900',
-  CHECKED_OUT: 'text-stone-400',
-  CANCELLED:   'text-red-400',
-  AWAITING:    'text-amber-600',
-};
 
 export const GuestProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,11 +27,12 @@ export const GuestProfile: React.FC = () => {
   const addNote = useAddGuestNote();
 
   const [noteInput, setNoteInput] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   if (isLoading) return <PageLoader />;
   if (isError || !guest) return <PageError />;
 
-  const bookings = (guest as any).bookings as GuestBooking[] | undefined ?? [];
+  const bookings = guest.bookings ?? [];
 
   const handleSendNote = () => {
     if (!noteInput.trim()) return;
@@ -70,11 +60,14 @@ export const GuestProfile: React.FC = () => {
           <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-5 py-2.5 rounded-xl border border-primary/30 text-primary font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-teal-50 transition-colors">
             <Printer className="w-3.5 h-3.5" /> Summary
           </button>
-          <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-primary-container shadow-lg shadow-primary/10 transition-all">
+          <button onClick={() => setIsEditModalOpen(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-primary-container shadow-lg shadow-primary/10 transition-all">
             <Edit className="w-3.5 h-3.5" /> {t('common.edit')}
           </button>
         </div>
       </div>
+
+      <AddGuestModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} guest={guest} />
 
       {/* ── Hero card ── */}
       <section className="bg-white rounded-3xl border border-stone-200/60 p-6 md:p-8 organic-shadow overflow-hidden relative">
@@ -95,7 +88,7 @@ export const GuestProfile: React.FC = () => {
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-6 w-full">
             {[
               { label: t('guests.totalStays'),    value: guest.totalStays,                             type: 'display' },
-              { label: t('guests.lifetimeValue'), value: `${guest.lifetimeValue.toLocaleString()} Ar`, type: 'mono' },
+              { label: t('guests.lifetimeValue'), value: formatCurrency(guest.lifetimeValue), type: 'mono' },
               { label: t('guests.lastStay'),      value: guest.lastStay,                              type: 'mono' },
               { label: t('guests.memberSince'),   value: guest.memberSince,                           type: 'mono' },
             ].map(stat => (
@@ -204,8 +197,8 @@ export const GuestProfile: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-4 shrink-0">
                         <div className="text-right">
-                          <p className="font-mono text-sm font-bold text-on-surface">{b.totalAmount.toLocaleString()} Ar</p>
-                          <span className={cn('text-[8px] font-bold uppercase tracking-widest', STATUS_CLASS[b.status] ?? 'text-stone-400')}>
+                          <p className="font-mono text-sm font-bold text-on-surface">{formatCurrency(b.totalAmount)}</p>
+                          <span className={cn('text-[8px] font-bold uppercase tracking-widest', BOOKING_STATUS_CLASS[b.status] ?? 'text-stone-400')}>
                             {b.status.replace('_', ' ')}
                           </span>
                         </div>
@@ -246,7 +239,7 @@ export const GuestProfile: React.FC = () => {
                       <p className="text-[8px] text-on-surface-variant/60 uppercase">{note.author.role}</p>
                     </div>
                     <span className="font-mono text-[9px] text-on-surface-variant/40">
-                      {new Date(note.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {fmtDate(note.createdAt)}
                     </span>
                   </div>
                   <p className="text-sm text-on-surface-variant leading-relaxed font-light">{note.content}</p>

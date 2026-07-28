@@ -11,6 +11,11 @@ import { PageLoader, PageError } from '../components/QueryLoader';
 import { Room } from '../types';
 import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
+import { formatCurrency, todayLocalStr } from '../lib/format';
+import { ROOM_STATUS_BORDER_CLASS, ROOM_STATUS_BADGE_CLASS } from '../lib/statusColors';
+import { FilterChip } from '../components/FilterChip';
+import { useNotifications } from '../context/NotificationContext';
+import { getApiErrorMessage } from '../lib/apiError';
 
 type StatusTab = 'all' | 'available' | 'occupied' | 'maintenance';
 
@@ -21,6 +26,7 @@ export const Rooms: React.FC = () => {
   const { data: roomTypes = [] } = useRoomTypes();
 
   const updateStatus = useUpdateRoomStatus();
+  const { addNotification } = useNotifications();
 
   const [isAddModalOpen, setIsAddModalOpen]                 = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen]         = useState(false);
@@ -45,6 +51,10 @@ export const Rooms: React.FC = () => {
       onSuccess: ({ conflicts }) => {
         if (conflicts.length > 0) setConflictsInfo({ roomNumber: room.number, list: conflicts });
       },
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
     });
   };
 
@@ -178,18 +188,9 @@ export const Rooms: React.FC = () => {
             >
               <div className="flex gap-2 flex-wrap py-1">
                 {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
-                  <button
-                    key={rt}
-                    onClick={() => setRoomTypeFilter(rt)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all',
-                      roomTypeFilter === rt
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400',
-                    )}
-                  >
+                  <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => setRoomTypeFilter(rt)}>
                     {rt === 'ALL' ? t('common.all') : rt}
-                  </button>
+                  </FilterChip>
                 ))}
               </div>
             </motion.div>
@@ -208,18 +209,14 @@ export const Rooms: React.FC = () => {
             onClick={() => navigate(`/rooms/${room.id}`)}
             className={cn(
               'bg-white rounded-3xl border border-stone-200/60 p-6 organic-shadow group cursor-pointer hover:border-primary/20 transition-all flex flex-col relative overflow-hidden border-l-[6px]',
-              room.status === 'available'   ? 'border-l-status-available'   :
-              room.status === 'occupied'    ? 'border-l-status-occupied'    :
-                                             'border-l-status-maintenance',
+              ROOM_STATUS_BORDER_CLASS[room.status] ?? 'border-l-status-maintenance',
             )}
           >
             <div className="flex justify-between items-start mb-6">
               <div>
                 <span className={cn(
                   'px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest shadow-sm border font-sans',
-                  room.status === 'available'   ? 'bg-teal-50 text-status-available border-teal-200' :
-                  room.status === 'occupied'    ? 'bg-orange-50 text-status-occupied border-orange-200' :
-                  'bg-stone-50 text-status-maintenance border-stone-200',
+                  ROOM_STATUS_BADGE_CLASS[room.status] ?? 'bg-stone-50 text-status-maintenance border-stone-200',
                 )}>
                   {t(`status.${room.status}`, room.status)}
                 </span>
@@ -279,12 +276,12 @@ export const Rooms: React.FC = () => {
             <div className="flex justify-between items-center mt-auto font-sans">
               <div className="flex items-center gap-3">
                 <p className="font-display text-2xl text-gold-500">
-                  {room.rate.toLocaleString()} Ar
+                  {formatCurrency(room.rate)}
                   {room.rateOverride && <span className="text-[10px] text-on-surface-variant/40 font-sans ml-1">(spécifique)</span>}
                 </p>
                 {room.status === 'available' && (
                   <button
-                    onClick={e => { e.stopPropagation(); navigate(`/reservations/new?roomId=${room.id}&arrival=${new Date().toISOString().split('T')[0]}`); }}
+                    onClick={e => { e.stopPropagation(); navigate(`/reservations/new?roomId=${room.id}&arrival=${todayLocalStr()}`); }}
                     className="p-2 bg-teal-50 text-status-available rounded-lg hover:bg-teal-600 hover:text-white transition-all border border-teal-100 cursor-pointer"
                     title={t('rooms.instantBook')}
                   >

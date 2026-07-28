@@ -1,27 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, MapPin, Phone, Mail, Shield, Star, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-import { useCreateGuest } from '../hooks/useGuests';
+import { useCreateGuest, useUpdateGuest } from '../hooks/useGuests';
 import { useNotifications } from '../context/NotificationContext';
 import { useTranslation } from 'react-i18next';
+import { getApiErrorMessage } from '../lib/apiError';
+import { Guest } from '../types';
+import { Modal } from './Modal';
 
 interface AddGuestModalProps {
   isOpen: boolean;
   onClose: () => void;
+  guest?: Guest;
   onCreated?: (guest: { id: string; name: string; city: string; status: string }) => void;
+  onUpdated?: (guest: Guest) => void;
 }
 
 const STATUSES = [
-  { labelKey: 'Standard',   value: 'STANDARD'   },
-  { labelKey: 'VIP Member', value: 'VIP_MEMBER'  },
-  { labelKey: 'VIP Elite',  value: 'VIP_ELITE'   },
+  { labelKey: 'Standard',      value: 'STANDARD'      },
+  { labelKey: 'VIP Member',    value: 'VIP_MEMBER'     },
+  { labelKey: 'VIP Elite',     value: 'VIP_ELITE'      },
+  { labelKey: 'Platinum Tier', value: 'PLATINUM_TIER'  },
 ] as const;
 
-export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, onCreated }) => {
+const STATUS_TO_API: Record<Guest['status'], typeof STATUSES[number]['value']> = {
+  Standard: 'STANDARD', 'VIP Member': 'VIP_MEMBER',
+  'VIP Elite': 'VIP_ELITE', 'Platinum Tier': 'PLATINUM_TIER',
+};
+
+export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, guest, onCreated, onUpdated }) => {
   const { t } = useTranslation();
   const createGuest = useCreateGuest();
+  const updateGuest  = useUpdateGuest();
   const { addNotification } = useNotifications();
+  const isEditMode = !!guest;
 
   const [name,        setName]        = useState('');
   const [email,       setEmail]       = useState('');
@@ -33,54 +45,58 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, o
   const [apiError,    setApiError]    = useState('');
 
   const reset = () => {
-    setName(''); setEmail(''); setPhone('');
-    setCity(''); setCountry(''); setStatus('STANDARD');
-    setPreferences(''); setApiError('');
+    if (guest) {
+      setName(guest.name); setEmail(guest.email); setPhone(guest.phone);
+      setCity(guest.city); setCountry(guest.country); setStatus(STATUS_TO_API[guest.status]);
+      setPreferences(guest.preferences.join(', '));
+    } else {
+      setName(''); setEmail(''); setPhone('');
+      setCity(''); setCountry(''); setStatus('STANDARD');
+      setPreferences('');
+    }
+    setApiError('');
   };
 
+  useEffect(() => { if (isOpen) reset(); }, [isOpen, guest]);
+
   const handleClose = () => { reset(); onClose(); };
+
+  const isPending = createGuest.isPending || updateGuest.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApiError('');
+    const payload = {
+      name, email,
+      phone:       phone || undefined,
+      city:        city || undefined,
+      country:     country || undefined,
+      status,
+      preferences: preferences ? preferences.split(',').map(p => p.trim()).filter(Boolean) : [],
+    };
     try {
-      const newGuest = await createGuest.mutateAsync({
-        name, email,
-        phone:       phone || undefined,
-        city:        city || undefined,
-        country:     country || undefined,
-        status,
-        preferences: preferences ? preferences.split(',').map(p => p.trim()).filter(Boolean) : [],
-      });
-      addNotification({
-        source:   'direct',
-        title:    'Guest Profile Created',
-        subtitle: `${name} — ${STATUSES.find(s => s.value === status)?.labelKey}`,
-      });
-      onCreated?.({ id: newGuest.id, name: newGuest.name, city: newGuest.city, status: newGuest.status });
+      if (isEditMode && guest) {
+        const updated = await updateGuest.mutateAsync({ id: guest.id, ...payload });
+        onUpdated?.(updated);
+      } else {
+        const newGuest = await createGuest.mutateAsync(payload);
+        addNotification({
+          source:   'direct',
+          title:    'Guest Profile Created',
+          subtitle: `${name} — ${STATUSES.find(s => s.value === status)?.labelKey}`,
+          amount:   '--',
+        });
+        onCreated?.({ id: newGuest.id, name: newGuest.name, city: newGuest.city, status: newGuest.status });
+      }
       handleClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error;
-      setApiError(typeof msg === 'string' ? msg : t('common.error'));
+    } catch (err) {
+      setApiError(getApiErrorMessage(err, t('common.error')));
     }
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={handleClose}
-            className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
-          />
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row"
-          >
+    <Modal isOpen={isOpen} onClose={handleClose} title={t('guests.curatedProfile')}
+      className="max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row">
             {/* Sidebar */}
             <div className="w-full md:w-72 bg-zinc-900 p-8 text-white flex flex-col shrink-0">
               <div className="mb-10">
@@ -210,16 +226,13 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, o
                     className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
                     {t('common.cancel')}
                   </button>
-                  <button type="submit" disabled={createGuest.isPending}
+                  <button type="submit" disabled={isPending}
                     className="flex-1 py-4 bg-zinc-900 text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-black transition-all shadow-xl shadow-black/20 disabled:opacity-50">
-                    {createGuest.isPending ? t('common.creating') : t('guests.createProfile')}
+                    {isPending ? (isEditMode ? t('common.saving') : t('common.creating')) : (isEditMode ? t('common.save') : t('guests.createProfile'))}
                   </button>
                 </div>
               </form>
             </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    </Modal>
   );
 };

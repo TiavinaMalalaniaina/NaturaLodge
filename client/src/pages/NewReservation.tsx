@@ -14,6 +14,9 @@ import { useNotifications } from '../context/NotificationContext';
 import { AddGuestModal } from '../components/AddGuestModal';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '../hooks/useDebounce';
+import { getApiErrorMessage } from '../lib/apiError';
+import { formatCurrency, resetDepartureIfInvalid, todayLocalStr, addDaysToLocalStr } from '../lib/format';
+import { FilterChip } from '../components/FilterChip';
 
 interface RoomDates { arrival: string; departure: string }
 
@@ -23,11 +26,6 @@ function roomNights(sel: RoomDates) {
   ));
 }
 
-function nextDay(date: string): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
-}
 
 export const NewReservation: React.FC = () => {
   const { t } = useTranslation();
@@ -42,12 +40,12 @@ export const NewReservation: React.FC = () => {
   const [step, setStep]       = useState(1);
   const [guestId, setGuestId] = useState('');
   const [arrival, setArrival]     = useState(() => initialArrival ?? '');
-  const [departure, setDeparture] = useState(() => initialArrival ? nextDay(initialArrival) : '');
+  const [departure, setDeparture] = useState(() => initialArrival ? addDaysToLocalStr(initialArrival, 1) : '');
   const [apiError, setApiError]   = useState('');
 
   const [roomSelections, setRoomSelections] = useState<Map<string, RoomDates>>(() =>
     initialRoomId
-      ? new Map([[initialRoomId, { arrival: initialArrival ?? '', departure: initialArrival ? nextDay(initialArrival) : '' }]])
+      ? new Map([[initialRoomId, { arrival: initialArrival ?? '', departure: initialArrival ? addDaysToLocalStr(initialArrival, 1) : '' }]])
       : new Map(),
   );
 
@@ -117,7 +115,7 @@ export const NewReservation: React.FC = () => {
 
   // ─── Helpers ──────────────────────────────────────────────────
 
-  const today      = new Date().toISOString().split('T')[0];
+  const today      = todayLocalStr();
   const step1Valid = !!guestId && !!arrival && !!departure && globalNights > 0;
   const step2Valid = roomSelections.size > 0 &&
     [...roomSelections.values()].every(s => s.arrival && s.departure && roomNights(s) > 0);
@@ -179,13 +177,12 @@ export const NewReservation: React.FC = () => {
         source:   'direct',
         title:    'New Direct Stay',
         subtitle: `${selectedGuest?.name ?? 'Guest'} • ${selectedRooms.length} unit${selectedRooms.length > 1 ? 's' : ''}`,
-        amount:   `${totalAmount.toLocaleString()} Ar`,
+        amount:   formatCurrency(totalAmount),
       });
 
       navigate('/reservations');
-    } catch (err: any) {
-      const msg = err?.response?.data?.error;
-      setApiError(typeof msg === 'string' ? msg : t('common.error'));
+    } catch (err) {
+      setApiError(getApiErrorMessage(err, t('common.error')));
     }
   };
 
@@ -251,7 +248,7 @@ export const NewReservation: React.FC = () => {
                           </div>
                           {sel.arrival && sel.departure && n > 0 && (
                             <p className="text-[9px] opacity-50 mt-0.5">
-                              {sel.arrival} → {sel.departure} · {n}n · {(r.rate * n).toLocaleString()} Ar
+                              {sel.arrival} → {sel.departure} · {n}n · {formatCurrency(r.rate * n)}
                             </p>
                           )}
                         </div>
@@ -265,7 +262,7 @@ export const NewReservation: React.FC = () => {
             {/* Total */}
             <div className="mt-8 pt-6 border-t border-white/10">
               <p className="text-[8px] font-bold uppercase tracking-widest opacity-40 mb-1">{t('reservations.estimatedTotal')}</p>
-              <span className="text-2xl font-display italic">{totalAmount.toLocaleString()} Ar</span>
+              <span className="text-2xl font-display italic">{formatCurrency(totalAmount)}</span>
               {roomSelections.size > 1 && (
                 <p className="text-[9px] opacity-50 mt-0.5">
                   {t('reservations.roomsSelected', { count: roomSelections.size })}
@@ -400,7 +397,7 @@ export const NewReservation: React.FC = () => {
                     <div>
                       <label className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 block mb-2">{t('reservations.arrivalDate')}</label>
                       <input type="date" min={today} value={arrival}
-                        onChange={e => { setArrival(e.target.value); if (departure && e.target.value >= departure) setDeparture(''); }}
+                        onChange={e => { setArrival(e.target.value); setDeparture(d => resetDepartureIfInvalid(e.target.value, d)); }}
                         className="w-full h-12 px-4 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                         required />
                     </div>
@@ -466,13 +463,9 @@ export const NewReservation: React.FC = () => {
                 {/* Room type filter */}
                 <div className="flex gap-1.5 flex-wrap">
                   {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
-                    <button key={rt} type="button" onClick={() => setRoomTypeFilter(rt)}
-                      className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all',
-                        roomTypeFilter === rt
-                          ? 'bg-primary text-white border-primary'
-                          : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                    <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => setRoomTypeFilter(rt)}>
                       {rt === 'ALL' ? t('common.all') : rt}
-                    </button>
+                    </FilterChip>
                   ))}
                 </div>
 
@@ -528,7 +521,13 @@ export const NewReservation: React.FC = () => {
                           selected ? 'bg-teal-50 border-primary shadow-sm' : 'bg-stone-50 border-stone-100',
                         )}>
                         {/* Room row */}
-                        <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => toggleRoom(room.id)}>
+                        <div className="flex items-center gap-3 p-4 cursor-pointer"
+                          role="checkbox"
+                          aria-checked={selected}
+                          tabIndex={0}
+                          onClick={() => toggleRoom(room.id)}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRoom(room.id); } }}
+                        >
                           <div className={cn(
                             'w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all',
                             selected ? 'bg-primary border-primary' : 'border-stone-300 hover:border-stone-400',
@@ -546,10 +545,10 @@ export const NewReservation: React.FC = () => {
                           </div>
                           <div className="text-right shrink-0">
                             <p className={cn('text-sm font-display italic', selected ? 'text-primary' : 'text-on-surface-variant/50')}>
-                              {(room.rate * Math.max(n, 1)).toLocaleString()} Ar
+                              {formatCurrency(room.rate * Math.max(n, 1))}
                             </p>
                             <p className="text-[9px] text-on-surface-variant/30 font-mono">
-                              {room.rate.toLocaleString()} Ar/n · {n}n
+                              {formatCurrency(room.rate)}/n · {n}n
                             </p>
                           </div>
                         </div>
@@ -574,8 +573,7 @@ export const NewReservation: React.FC = () => {
                                       value={sel.arrival}
                                       onChange={e => {
                                         updateRoomDate(room.id, 'arrival', e.target.value);
-                                        if (sel.departure && e.target.value >= sel.departure)
-                                          updateRoomDate(room.id, 'departure', '');
+                                        updateRoomDate(room.id, 'departure', resetDepartureIfInvalid(e.target.value, sel.departure));
                                       }}
                                       className="w-full h-10 px-3 bg-stone-50 border border-stone-200 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                                     />
@@ -615,7 +613,7 @@ export const NewReservation: React.FC = () => {
                         {t('reservations.roomsSelected', { count: roomSelections.size })}
                       </span>
                     </div>
-                    <span className="text-sm font-display italic text-primary">{totalAmount.toLocaleString()} Ar</span>
+                    <span className="text-sm font-display italic text-primary">{formatCurrency(totalAmount)}</span>
                   </div>
                 )}
 
