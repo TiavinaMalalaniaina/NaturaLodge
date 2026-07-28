@@ -26,7 +26,16 @@ import { RichBooking, EffectiveStatus } from '../api/bookings';
 function addDays(d: Date, n: number): Date {
   const r = new Date(d); r.setDate(r.getDate() + n); return r;
 }
-function toStr(d: Date): string { return d.toISOString().split('T')[0]; }
+// Formatte en date locale (pas toISOString — qui convertit en UTC et décale
+// d'un jour dans un fuseau en avance sur UTC, ex: UTC+3 à Madagascar, puisque
+// tous les objets Date manipulés ici (windowStart, gridDates, visibleDate…)
+// sont construits en minuit local, pas en minuit UTC).
+function toStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function dayDiff(from: Date, to: Date): number {
   return Math.round((to.getTime() - from.getTime()) / 86_400_000);
 }
