@@ -14,6 +14,7 @@ const NewReservation = lazy(() => import('./pages/NewReservation').then(m => ({ 
 const Guests         = lazy(() => import('./pages/Guests').then(m => ({ default: m.Guests })));
 const GuestProfile    = lazy(() => import('./pages/GuestProfile').then(m => ({ default: m.GuestProfile })));
 const Rooms          = lazy(() => import('./pages/Rooms').then(m => ({ default: m.Rooms })));
+const RoomTypes       = lazy(() => import('./pages/RoomTypes').then(m => ({ default: m.RoomTypes })));
 const RoomDetail      = lazy(() => import('./pages/RoomDetail').then(m => ({ default: m.RoomDetail })));
 const BookingDetail   = lazy(() => import('./pages/BookingDetail').then(m => ({ default: m.BookingDetail })));
 const Amenities       = lazy(() => import('./pages/Amenities').then(m => ({ default: m.Amenities })));
@@ -39,6 +40,7 @@ const App: React.FC = () => {
                   <Route path="reservations/new" element={<NewReservation />} />
                   <Route path="reservations/:id" element={<BookingDetail />} />
                   <Route path="rooms" element={<Rooms />} />
+                  <Route path="rooms/types" element={<RoomTypes />} />
                   <Route path="rooms/:id" element={<RoomDetail />} />
                   <Route path="guests" element={<Guests />} />
                   <Route path="guests/:id" element={<GuestProfile />} />

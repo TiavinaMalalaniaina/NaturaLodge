@@ -207,6 +207,19 @@
     "maintenanceConflictsNote": "These bookings must be reassigned or cancelled.",
     "roomInMaintenance":        "This room is under maintenance and cannot be booked."
   },
+  "roomTypes": {
+    "title":               "Room Types",
+    "subtitle":            "{{count}} type(s) defined",
+    "empty":               "No room type defined yet.",
+    "newType":             "New type",
+    "editType":            "Edit type",
+    "roomsCount":          "{{count}} room(s)",
+    "deleteConfirmTitle":   "Delete this type?",
+    "deleteConfirmMessage": "This action is irreversible. Not possible while rooms still use this type.",
+    "createError":         "Error creating this room type.",
+    "updateError":         "Error updating this room type.",
+    "deleteError":         "Error deleting this room type."
+  },
   "guests": {
     "title":               "Guests",
     "newProfile":          "New Profile",

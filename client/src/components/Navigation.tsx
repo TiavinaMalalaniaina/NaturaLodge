@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/reservations', label: t('nav.reservations'), icon: CalendarDays    },
     { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
     { path: '/guests',       label: t('nav.guests'),       icon: Users           },
-    { path: '/amenities',    label: t('nav.amenities'),    icon: Star            },
+    // { path: '/amenities',    label: t('nav.amenities'),    icon: Star            },
     { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
     { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
     { path: '/settings',     label: t('nav.settings'),     icon: Settings        },

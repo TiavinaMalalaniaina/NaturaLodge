@@ -207,6 +207,19 @@
     "maintenanceConflictsNote": "Ireto firesevana ireto dia tsy maintsy hovaliana na hofoanana.",
     "roomInMaintenance":        "Ity efitrano ity dia amin'ny fikarakara ary tsy azo atao firesevana."
   },
+  "roomTypes": {
+    "title":               "Karazana efitrano",
+    "subtitle":            "Karazana {{count}} voafaritra",
+    "empty":               "Mbola tsy misy karazana efitrano voafaritra.",
+    "newType":             "Karazana vaovao",
+    "editType":            "Hanova ny karazana",
+    "roomsCount":          "Efitrano {{count}}",
+    "deleteConfirmTitle":   "Hofoanana ity karazana ity?",
+    "deleteConfirmMessage": "Tsy azo averina ity hetsika ity. Tsy azo atao raha mbola misy efitrano mampiasa ity karazana ity.",
+    "createError":         "Nisy olana teo am-pamoronana ity karazana ity.",
+    "updateError":         "Nisy olana teo am-panovana ity karazana ity.",
+    "deleteError":         "Nisy olana teo am-panafoanana ity karazana ity."
+  },
   "guests": {
     "title":               "Vahiny",
     "newProfile":          "Mombamomba vaovao",

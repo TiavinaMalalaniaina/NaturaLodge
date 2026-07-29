@@ -207,6 +207,19 @@
     "maintenanceConflictsNote": "Ces réservations doivent être réassignées ou annulées.",
     "roomInMaintenance":        "Cette chambre est en maintenance et ne peut pas être réservée."
   },
+  "roomTypes": {
+    "title":               "Types de chambre",
+    "subtitle":            "{{count}} type(s) définis",
+    "empty":               "Aucun type de chambre défini.",
+    "newType":             "Nouveau type",
+    "editType":            "Modifier le type",
+    "roomsCount":          "{{count}} chambre(s)",
+    "deleteConfirmTitle":   "Supprimer ce type ?",
+    "deleteConfirmMessage": "Cette action est irréversible. Impossible si des chambres utilisent encore ce type.",
+    "createError":         "Erreur lors de la création du type.",
+    "updateError":         "Erreur lors de la modification du type.",
+    "deleteError":         "Erreur lors de la suppression du type."
+  },
   "guests": {
     "title":               "Clients",
     "newProfile":          "Nouveau profil",

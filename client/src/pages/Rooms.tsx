@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Filter, Layers, MoreVertical, Users, Maximize, Building2, Zap, Search, X, Construction, CheckCircle, Eye, AlertTriangle, ChevronRight, Sparkles } from 'lucide-react';
+import { Plus, Filter, Layers, MoreVertical, Users, Maximize, Building2, Zap, Search, X, Construction, CheckCircle, Eye, AlertTriangle, ChevronRight, Sparkles, Tags } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -96,6 +96,12 @@ export const Rooms: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => navigate('/rooms/types')}
+            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Tags className="w-4 h-4" /> {t('roomTypes.title')}
+          </button>
           <button
             onClick={() => setIsFeatureModalOpen(true)}
             className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"

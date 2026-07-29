@@ -6,22 +6,25 @@ import { cn } from '../lib/utils';
 import { NewBookingsFeed } from '../components/NewBookingsFeed';
 import { useNotifications } from '../context/NotificationContext';
 import { useRooms } from '../hooks/useRooms';
-import { useBookings } from '../hooks/useBookings';
+import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { formatCurrency } from '../lib/format';
+import { getApiErrorMessage } from '../lib/apiError';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const [isAlertDispatched, setIsAlertDispatched] = useState(false);
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
 
   const { data: rooms = [] } = useRooms();
   const { data: bookingsPage } = useBookings({ limit: 100 });
   const bookings = bookingsPage?.data ?? [];
+  const updateStatus = useUpdateBookingStatus();
 
   const { data: checkedOutPage } = useBookings({ status: 'CHECKED_OUT', limit: 50, sort: 'departure', order: 'desc' });
   const pendingPayments = (checkedOutPage?.data ?? []).filter(b => b.paymentStatus !== 'paid').slice(0, 5);
@@ -46,6 +49,17 @@ export const Dashboard: React.FC = () => {
     });
   };
 
+  const handleQuickCheckin = (id: string) => {
+    setCheckingInId(id);
+    updateStatus.mutate({ id, status: 'CHECKED_IN' }, {
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
+      onSettled: () => setCheckingInId(null),
+    });
+  };
+
   const metrics = [
     { label: t('dashboard.occupancy'),    value: `${occupancyRate}%`,                            trend: `${occupied}/${rooms.length}`,          icon: Users,         color: 'text-teal-500' },
     { label: t('dashboard.revenueToday'), value: `${(todayRevenue / 1_000_000).toFixed(1)}M Ar`, trend: `${todayArrivals.length} ${t('dashboard.arrivals')}`, icon: TrendingUp, color: 'text-gold-500' },
@@ -54,6 +68,7 @@ export const Dashboard: React.FC = () => {
   ];
 
   const arrivals = todayArrivals.slice(0, 5).map(b => ({
+    id: b.id,
     name: b.guestName,
     room: b.rooms[0]?.room.number ?? '—',
     type: b.rooms[0]?.room.type   ?? '—',
@@ -110,7 +125,8 @@ export const Dashboard: React.FC = () => {
           <div className="space-y-6">
             <div className="flex justify-between items-center px-1">
               <h3 className="text-xs font-sans font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('dashboard.arrivalLogistics')}</h3>
-              <button className="text-[10px] font-bold text-primary hover:underline transition-all tracking-widest uppercase">{t('dashboard.fullSchedule')}</button>
+              <button onClick={() => navigate('/reservations')}
+                className="text-[10px] font-bold text-primary hover:underline transition-all tracking-widest uppercase">{t('dashboard.fullSchedule')}</button>
             </div>
             <div className="bg-white rounded-3xl border border-stone-200/60 overflow-hidden overflow-x-auto organic-shadow">
               <table className="w-full text-left min-w-[600px]">
@@ -123,7 +139,8 @@ export const Dashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   {arrivals.map((arrival) => (
-                    <tr key={arrival.name} className="hover:bg-teal-50 transition-colors cursor-pointer group">
+                    <tr key={arrival.id} onClick={() => navigate(`/reservations/${arrival.id}`)}
+                      className="hover:bg-teal-50 transition-colors cursor-pointer group">
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-stone-100 flex items-center justify-center border border-stone-200 overflow-hidden">
@@ -148,8 +165,11 @@ export const Dashboard: React.FC = () => {
                       <td className="px-6 py-5 text-right">
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] font-bold tracking-[0.1em] text-on-surface-variant/40 uppercase mb-1">ETA {arrival.eta}</span>
-                          <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-[9px] font-bold uppercase tracking-widest">
-                            {t('dashboard.quickCheckin')}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleQuickCheckin(arrival.id); }}
+                            disabled={checkingInId === arrival.id}
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-[9px] font-bold uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed">
+                            {checkingInId === arrival.id ? t('common.saving') : t('dashboard.quickCheckin')}
                           </button>
                         </div>
                       </td>
