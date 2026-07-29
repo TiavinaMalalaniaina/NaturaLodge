@@ -2,7 +2,11 @@ import { BookingStatus, InvoiceStatus, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { NotFoundError, ConflictError } from '../errors/AppError';
-import { AddBookingRoomInput, BookingInput, BookingListParams, ReassignInput } from '../validation/booking.schema';
+import {
+  AddBookingRoomExtraInput, AddBookingRoomInput, BookingInput, BookingListParams,
+  ReassignInput, UpdateBookingRoomExtraInput,
+} from '../validation/booking.schema';
+import * as invoiceService from './invoice.service';
 
 const include = {
   guest:     { select: { id: true, name: true, email: true, avatar: true, status: true } },
@@ -16,6 +20,7 @@ const include = {
           roomType:     { select: { id: true, name: true, rate: true } },
         },
       },
+      extras: { include: { extra: true } },
     },
   },
   createdBy: { select: { id: true, name: true, role: true } },
@@ -162,7 +167,7 @@ export async function create(data: BookingInput, createdById: string) {
       if (conflict) throw new ConflictError('La chambre est déjà réservée sur cette période');
     }
 
-    const booking = await tx.booking.create({
+    let booking = await tx.booking.create({
       data: {
         guestId:     data.guestId,
         createdById,
@@ -182,6 +187,36 @@ export async function create(data: BookingInput, createdById: string) {
       },
       include,
     });
+
+    // Suppléments par chambre, choisis dès la création de la réservation.
+    const hasExtras = data.rooms.some(entry => entry.extras && entry.extras.length > 0);
+    if (hasExtras) {
+      for (const entry of data.rooms) {
+        if (!entry.extras || entry.extras.length === 0) continue;
+        const bookingRoom = booking.rooms.find(br => br.roomId === entry.roomId);
+        if (!bookingRoom) continue;
+
+        for (const extraEntry of entry.extras) {
+          const extra = await tx.extra.findUnique({ where: { id: extraEntry.extraId } });
+          if (!extra) throw new NotFoundError('Supplément');
+          await tx.bookingRoomExtra.create({
+            data: {
+              bookingRoomId: bookingRoom.id,
+              extraId:       extraEntry.extraId,
+              quantity:      extraEntry.quantity,
+              unitPrice:     extra.price,
+              pricing:       extra.pricing,
+            },
+          });
+        }
+      }
+
+      // Le total fourni par le client ne compte pas les suppléments — recalcul autoritaire côté
+      // serveur à partir des chambres + suppléments réellement créés (même logique que
+      // reassign/addRoom/removeRoom).
+      await recomputeBookingAggregate(tx, booking.id);
+      booking = (await tx.booking.findUnique({ where: { id: booking.id }, include }))!;
+    }
 
     // Recalcule immédiatement le statut des chambres concernées (ex: réservation
     // avec arrivée aujourd'hui → OCCUPIED tout de suite, sans attendre le scheduler de minuit).
@@ -225,13 +260,16 @@ export async function updateStatus(id: string, status: BookingStatus) {
 }
 
 // Recalcule le montant total et l'enveloppe (arrival/departure) globale de la réservation à
-// partir de toutes ses chambres actuelles. Appelé après toute mutation des lignes BookingRoom
-// (reassign, addRoom, removeRoom) pour garder Booking cohérent avec ses lignes.
+// partir de toutes ses chambres actuelles (tarif + suppléments). Appelé après toute mutation des
+// lignes BookingRoom/BookingRoomExtra (reassign, addRoom, removeRoom, extras) pour garder Booking
+// cohérent avec ses lignes, puis resynchronise toute facture déjà générée (voir invoice.service.ts).
 async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId: string): Promise<void> {
-  const freshRooms = await tx.bookingRoom.findMany({ where: { bookingId } });
+  const freshRooms = await tx.bookingRoom.findMany({ where: { bookingId }, include: { extras: true } });
   const totalAmount = freshRooms.reduce((sum, br) => {
     const nights = Math.max(1, Math.round((br.departure.getTime() - br.arrival.getTime()) / 86_400_000));
-    return sum + br.roomRate * nights;
+    const roomTotal = br.roomRate * nights;
+    const extrasTotal = br.extras.reduce((s, e) => s + e.unitPrice * e.quantity * (e.pricing === 'PER_NIGHT' ? nights : 1), 0);
+    return sum + roomTotal + extrasTotal;
   }, 0);
   const overallArrival   = freshRooms.reduce((min, br) => br.arrival < min ? br.arrival : min, freshRooms[0].arrival);
   const overallDeparture = freshRooms.reduce((max, br) => br.departure > max ? br.departure : max, freshRooms[0].departure);
@@ -240,6 +278,8 @@ async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId
     where: { id: bookingId },
     data:  { totalAmount, arrival: overallArrival, departure: overallDeparture },
   });
+
+  await invoiceService.syncInvoiceWithBooking(tx, bookingId);
 }
 
 export async function reassign(bookingId: string, data: ReassignInput) {
@@ -372,6 +412,93 @@ export async function removeRoom(bookingId: string, roomId: string) {
 
     await recomputeBookingAggregate(tx, bookingId);
     await applyRoomStatuses([roomId], tx);
+
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
+  });
+}
+
+export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    if (!booking) throw new NotFoundError('Réservation');
+    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
+      throw new ConflictError('Impossible de modifier une réservation clôturée');
+    }
+
+    const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
+    if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
+
+    const extra = await tx.extra.findUnique({ where: { id: data.extraId } });
+    if (!extra) throw new NotFoundError('Supplément');
+
+    const existing = bookingRoom.extras.find(e => e.extraId === data.extraId);
+    if (existing) {
+      // Cliquer à nouveau sur le même supplément augmente juste la quantité, plus naturel côté UI
+      // qu'une erreur de conflit sur la contrainte unique (bookingRoomId, extraId).
+      await tx.bookingRoomExtra.update({
+        where: { id: existing.id },
+        data:  { quantity: existing.quantity + data.quantity },
+      });
+    } else {
+      await tx.bookingRoomExtra.create({
+        data: {
+          bookingRoomId: bookingRoom.id,
+          extraId:       data.extraId,
+          quantity:      data.quantity,
+          unitPrice:     extra.price,
+          pricing:       extra.pricing,
+        },
+      });
+    }
+
+    await recomputeBookingAggregate(tx, bookingId);
+
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
+  });
+}
+
+export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    if (!booking) throw new NotFoundError('Réservation');
+    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
+      throw new ConflictError('Impossible de modifier une réservation clôturée');
+    }
+
+    const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
+    if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
+
+    const line = bookingRoom.extras.find(e => e.extraId === extraId);
+    if (!line) throw new NotFoundError('Supplément sur cette chambre');
+
+    await tx.bookingRoomExtra.update({ where: { id: line.id }, data: { quantity: data.quantity } });
+
+    await recomputeBookingAggregate(tx, bookingId);
+
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
+  });
+}
+
+export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    if (!booking) throw new NotFoundError('Réservation');
+    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
+      throw new ConflictError('Impossible de modifier une réservation clôturée');
+    }
+
+    const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
+    if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
+
+    const line = bookingRoom.extras.find(e => e.extraId === extraId);
+    if (!line) throw new NotFoundError('Supplément sur cette chambre');
+
+    await tx.bookingRoomExtra.delete({ where: { id: line.id } });
+
+    await recomputeBookingAggregate(tx, bookingId);
 
     const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };

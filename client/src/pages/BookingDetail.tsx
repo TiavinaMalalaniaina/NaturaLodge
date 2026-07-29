@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import {
   ArrowLeft, Calendar, Users, CreditCard, FileText,
   LogIn, LogOut, AlertTriangle, Bed, Hash, Clock,
-  ChevronRight, ExternalLink, RefreshCw, RotateCcw,
+  ChevronRight, ExternalLink, RefreshCw, RotateCcw, Plus, X, Sparkles,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { useBooking, useUpdateBookingStatus } from '../hooks/useBookings';
+import {
+  useBooking, useUpdateBookingStatus,
+  useAddBookingRoomExtra, useUpdateBookingRoomExtra, useRemoveBookingRoomExtra,
+} from '../hooks/useBookings';
+import { useExtras } from '../hooks/useExtras';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -26,9 +30,22 @@ export const BookingDetail: React.FC = () => {
 
   const { data: booking, isLoading, isError } = useBooking(id!);
   const updateStatus = useUpdateBookingStatus();
+  const { data: extrasCatalog = [] } = useExtras();
+  const addExtra    = useAddBookingRoomExtra();
+  const updateExtra = useUpdateBookingRoomExtra();
+  const removeExtra = useRemoveBookingRoomExtra();
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [cancelOpen,   setCancelOpen]   = useState(false);
+  const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
+  const [newExtraId,        setNewExtraId]        = useState('');
+  const [newExtraQty,       setNewExtraQty]       = useState(1);
+
+  const activeExtrasCatalog = extrasCatalog.filter(ex => ex.isActive);
+
+  const notifyError = (err: unknown) => addNotification({
+    source: 'system', title: 'Action failed', subtitle: getApiErrorMessage(err), amount: '--',
+  });
 
   if (isLoading) return <PageLoader />;
   if (isError || !booking) return <PageError />;
@@ -158,24 +175,95 @@ export const BookingDetail: React.FC = () => {
                 const nights = Math.max(1, Math.round(
                   (new Date(br.departure).getTime() - new Date(br.arrival).getTime()) / 86_400_000
                 ));
+                const extrasTotal = br.extras.reduce((s, e) => s + e.unitPrice * e.quantity * (e.pricing === 'per_night' ? nights : 1), 0);
+                const isAdding = addingExtraRoomId === br.roomId;
+
                 return (
-                  <div key={br.id} className="flex items-center justify-between p-4 rounded-2xl border border-stone-100 bg-stone-50/50 hover:border-stone-200 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-white border border-stone-200 flex items-center justify-center font-display italic text-2xl text-primary">
-                        {br.room.number}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-on-surface">{br.room.type}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[9px] font-mono text-on-surface-variant/40">{fmtDate(br.arrival)} → {fmtDate(br.departure)}</span>
-                          <span className="text-stone-200">·</span>
-                          <span className="text-[9px] font-bold text-on-surface-variant/40">{nights}n</span>
+                  <div key={br.id} className="p-4 rounded-2xl border border-stone-100 bg-stone-50/50 hover:border-stone-200 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-white border border-stone-200 flex items-center justify-center font-display italic text-2xl text-primary">
+                          {br.room.number}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-on-surface">{br.room.type}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] font-mono text-on-surface-variant/40">{fmtDate(br.arrival)} → {fmtDate(br.departure)}</span>
+                            <span className="text-stone-200">·</span>
+                            <span className="text-[9px] font-bold text-on-surface-variant/40">{nights}n</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-display italic text-on-surface">{fmtAmount(br.roomRate * nights + extrasTotal)}</p>
+                        <p className="text-[9px] text-on-surface-variant/40 font-mono mt-0.5">{fmtAmount(br.roomRate)} {t('bookingDetail.perNight')}</p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-display italic text-on-surface">{fmtAmount(br.roomRate * nights)}</p>
-                      <p className="text-[9px] text-on-surface-variant/40 font-mono mt-0.5">{fmtAmount(br.roomRate)} {t('bookingDetail.perNight')}</p>
+
+                    {/* Suppléments */}
+                    <div className="mt-3 pt-3 border-t border-stone-100 space-y-2">
+                      {br.extras.map(extra => (
+                        <div key={extra.id} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Sparkles className="w-3 h-3 text-primary/60 shrink-0" />
+                            <span className="text-on-surface-variant truncate">{extra.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-1.5 py-0.5">
+                              <button
+                                onClick={() => extra.quantity > 1
+                                  ? updateExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId, quantity: extra.quantity - 1 }, { onError: notifyError })
+                                  : removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
+                                className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">−</button>
+                              <span className="font-mono w-4 text-center">{extra.quantity}</span>
+                              <button
+                                onClick={() => updateExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId, quantity: extra.quantity + 1 }, { onError: notifyError })}
+                                className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">+</button>
+                            </div>
+                            <span className="font-mono text-on-surface-variant/60">
+                              {fmtAmount(extra.unitPrice * extra.quantity * (extra.pricing === 'per_night' ? nights : 1))}
+                            </span>
+                            <button
+                              onClick={() => removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
+                              className="p-1 text-on-surface-variant/30 hover:text-red-500 transition-colors">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {isAdding ? (
+                        <div className="flex items-center gap-2 pt-1">
+                          <select value={newExtraId} onChange={e => setNewExtraId(e.target.value)}
+                            className="flex-1 h-8 px-2 bg-white border border-stone-200 rounded-lg text-[11px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                            <option value="">{t('bookingDetail.chooseExtra')}</option>
+                            {activeExtrasCatalog.map(ex => (
+                              <option key={ex.id} value={ex.id}>{ex.name} ({fmtAmount(ex.price)})</option>
+                            ))}
+                          </select>
+                          <input type="number" min={1} value={newExtraQty}
+                            onChange={e => setNewExtraQty(Math.max(1, Number(e.target.value) || 1))}
+                            title={t('bookingDetail.extraQuantity')}
+                            className="w-14 h-8 px-2 bg-white border border-stone-200 rounded-lg text-[11px] text-center outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                          <button disabled={!newExtraId || addExtra.isPending}
+                            onClick={() => addExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: newExtraId, quantity: newExtraQty }, {
+                              onSuccess: () => { setAddingExtraRoomId(null); setNewExtraId(''); setNewExtraQty(1); },
+                              onError: notifyError,
+                            })}
+                            className="px-3 h-8 bg-primary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 transition-all">
+                            {t('common.add')}
+                          </button>
+                          <button onClick={() => { setAddingExtraRoomId(null); setNewExtraId(''); setNewExtraQty(1); }}
+                            className="p-1.5 text-on-surface-variant/40 hover:text-on-surface transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setAddingExtraRoomId(br.roomId)}
+                          className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
+                          <Plus className="w-3 h-3" /> {t('bookingDetail.addExtra')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

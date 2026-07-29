@@ -1,4 +1,19 @@
 import { api } from './client';
+import { ExtraPricing } from './extras';
+
+const EXTRA_PRICING_MAP: Record<string, ExtraPricing> = {
+  PER_NIGHT: 'per_night',
+  ONE_TIME:  'one_time',
+};
+
+export interface BookingRoomExtraEntry {
+  id:        string;
+  extraId:   string;
+  name:      string;
+  quantity:  number;
+  unitPrice: number;
+  pricing:   ExtraPricing;
+}
 
 export interface BookingRoomEntry {
   id: string;
@@ -7,6 +22,12 @@ export interface BookingRoomEntry {
   departure: string;
   roomRate: number;
   room: { id: string; number: string; type: string; rate: number };
+  extras: BookingRoomExtraEntry[];
+}
+
+interface ApiBookingRoomExtra {
+  id: string; extraId: string; quantity: number; unitPrice: number; pricing: string;
+  extra: { name: string };
 }
 
 interface ApiBookingRoom {
@@ -15,6 +36,18 @@ interface ApiBookingRoom {
   room: {
     id: string; number: string; rateOverride: number | null;
     roomType: { id: string; name: string; rate: number };
+  };
+  extras?: ApiBookingRoomExtra[];
+}
+
+function normalizeBookingRoomExtra(e: ApiBookingRoomExtra): BookingRoomExtraEntry {
+  return {
+    id:        e.id,
+    extraId:   e.extraId,
+    name:      e.extra.name,
+    quantity:  e.quantity,
+    unitPrice: e.unitPrice,
+    pricing:   EXTRA_PRICING_MAP[e.pricing] ?? 'one_time',
   };
 }
 
@@ -31,6 +64,7 @@ function normalizeBookingRoom(br: ApiBookingRoom): BookingRoomEntry {
       type:   br.room.roomType.name,
       rate:   br.room.rateOverride ?? br.room.roomType.rate,
     },
+    extras: (br.extras ?? []).map(normalizeBookingRoomExtra),
   };
 }
 
@@ -186,11 +220,33 @@ export const removeBookingRoom = async (bookingId: string, roomId: string): Prom
   return normalizeBooking(data);
 };
 
+export const addBookingRoomExtra = async (
+  bookingId: string, roomId: string, payload: { extraId: string; quantity?: number },
+): Promise<RichBooking> => {
+  const { data } = await api.post<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}/extras`, payload);
+  return normalizeBooking(data);
+};
+
+export const updateBookingRoomExtra = async (
+  bookingId: string, roomId: string, extraId: string, quantity: number,
+): Promise<RichBooking> => {
+  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}/extras/${extraId}`, { quantity });
+  return normalizeBooking(data);
+};
+
+export const removeBookingRoomExtra = async (bookingId: string, roomId: string, extraId: string): Promise<RichBooking> => {
+  const { data } = await api.delete<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}/extras/${extraId}`);
+  return normalizeBooking(data);
+};
+
 export const createBooking = async (payload: {
   guestId: string;
   arrival: string;
   departure: string;
-  rooms: { roomId: string; roomRate: number; arrival?: string; departure?: string }[];
+  rooms: {
+    roomId: string; roomRate: number; arrival?: string; departure?: string;
+    extras?: { extraId: string; quantity?: number }[];
+  }[];
   totalAmount: number;
   notes?: string;
 }): Promise<RichBooking> => {

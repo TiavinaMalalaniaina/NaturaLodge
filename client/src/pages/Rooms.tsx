@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Filter, Layers, MoreVertical, Users, Maximize, Building2, Zap, Search, X, Construction, CheckCircle, Eye, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Plus, Filter, Layers, MoreVertical, Users, Maximize, Building2, Zap, Search, X, Construction, CheckCircle, Eye, AlertTriangle, ChevronRight, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useRooms, useUpdateRoomStatus } from '../hooks/useRooms';
 import { useRoomTypes } from '../hooks/useRoomTypes';
 import { AddRoomModal } from '../components/AddRoomModal';
 import { FeatureManagerModal } from '../components/FeatureManagerModal';
+import { ExtraManagerModal } from '../components/ExtraManagerModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { Room } from '../types';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +31,7 @@ export const Rooms: React.FC = () => {
 
   const [isAddModalOpen, setIsAddModalOpen]                 = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen]         = useState(false);
+  const [isExtraModalOpen, setIsExtraModalOpen]             = useState(false);
   const [activeDropdown, setActiveDropdown]                 = useState<string | null>(null);
   const [conflictsInfo, setConflictsInfo]                   = useState<{ roomNumber: string; list: ConflictBooking[] } | null>(null);
 
@@ -99,6 +101,12 @@ export const Rooms: React.FC = () => {
             className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Layers className="w-4 h-4" /> Attributes
+          </button>
+          <button
+            onClick={() => setIsExtraModalOpen(true)}
+            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" /> Suppléments
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -389,6 +397,7 @@ export const Rooms: React.FC = () => {
         onRoomAdded={() => setIsAddModalOpen(false)}
       />
       <FeatureManagerModal isOpen={isFeatureModalOpen} onClose={() => setIsFeatureModalOpen(false)} />
+      <ExtraManagerModal isOpen={isExtraModalOpen} onClose={() => setIsExtraModalOpen(false)} />
     </div>
   );
 };

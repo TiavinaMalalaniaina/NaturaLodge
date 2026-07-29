@@ -9,21 +9,21 @@ datasource db {
 // ─── Auth / Staff ────────────────────────────────────────────────
 
 model User {
-  id               String      @id @default(cuid())
-  email            String      @unique
-  password         String
-  name             String
-  role             Role        @default(RECEPTIONIST)
-  status           UserStatus  @default(ACTIVE)
-  avatar           String?
-  joinedDate       DateTime    @default(now())
-  lastLogin        DateTime?
-  guestNotes       GuestNote[]
-  createdBookings  Booking[]
-  issuedInvoices   Invoice[]
+  id                String      @id @default(cuid())
+  email             String      @unique
+  password          String
+  name              String
+  role              Role        @default(RECEPTIONIST)
+  status            UserStatus  @default(ACTIVE)
+  avatar            String?
+  joinedDate        DateTime    @default(now())
+  lastLogin         DateTime?
+  guestNotes        GuestNote[]
+  createdBookings   Booking[]
+  issuedInvoices    Invoice[]
   processedPayments Payment[]
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 enum Role {
@@ -126,31 +126,32 @@ model RoomFeature {
 // ─── Bookings ────────────────────────────────────────────────────
 
 model Booking {
-  id            String        @id @default(cuid())
-  guest         Guest         @relation(fields: [guestId], references: [id])
-  guestId       String
-  createdBy     User?         @relation(fields: [createdById], references: [id])
-  createdById   String?
-  rooms         BookingRoom[]
-  invoices      Invoice[]
-  arrival       DateTime
-  departure     DateTime
-  status        BookingStatus @default(CONFIRMED)
-  totalAmount   Int
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  guest       Guest         @relation(fields: [guestId], references: [id])
+  guestId     String
+  createdBy   User?         @relation(fields: [createdById], references: [id])
+  createdById String?
+  rooms       BookingRoom[]
+  invoices    Invoice[]
+  arrival     DateTime
+  departure   DateTime
+  status      BookingStatus @default(CONFIRMED)
+  totalAmount Int
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 
 model BookingRoom {
-  id        String   @id @default(cuid())
-  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  id        String             @id @default(cuid())
+  booking   Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   bookingId String
-  room      Room     @relation(fields: [roomId], references: [id])
+  room      Room               @relation(fields: [roomId], references: [id])
   roomId    String
   arrival   DateTime
   departure DateTime
   roomRate  Int
+  extras    BookingRoomExtra[]
 
   @@unique([bookingId, roomId])
   @@index([roomId, arrival, departure])
@@ -164,28 +165,65 @@ enum BookingStatus {
   CHECKED_OUT
 }
 
+// ─── Suppléments facturables (lit d'appoint, chauffage, etc.) ────
+
+enum ExtraPricing {
+  PER_NIGHT // multiplié par le nombre de nuits de la ligne BookingRoom
+  ONE_TIME // facturé une seule fois, indépendant de la durée
+}
+
+model Extra {
+  id        String             @id @default(cuid())
+  name      String
+  price     Int
+  pricing   ExtraPricing       @default(ONE_TIME)
+  // Suppression douce : un supplément déjà utilisé sur une réservation (même passée/clôturée) ne
+  // doit jamais être réellement effacé, sinon l'historique des factures perdrait sa description.
+  // Désactivé simplement retiré du choix pour de nouvelles lignes.
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  lines     BookingRoomExtra[]
+}
+
+model BookingRoomExtra {
+  id            String       @id @default(cuid())
+  bookingRoom   BookingRoom  @relation(fields: [bookingRoomId], references: [id], onDelete: Cascade)
+  bookingRoomId String
+  extra         Extra        @relation(fields: [extraId], references: [id])
+  extraId       String
+  quantity      Int          @default(1)
+  // Snapshot du tarif/type au moment de l'ajout — même logique que BookingRoom.roomRate, qui
+  // snapshot déjà roomType.rate : un changement de tarif catalogue ne doit pas modifier
+  // rétroactivement une réservation déjà facturée.
+  unitPrice     Int
+  pricing       ExtraPricing
+
+  @@unique([bookingRoomId, extraId])
+}
+
 // ─── Invoices ────────────────────────────────────────────────────
 
 model Invoice {
-  id           String        @id @default(cuid())
-  number       String        @unique
-  booking      Booking       @relation(fields: [bookingId], references: [id])
-  bookingId    String
-  guest        Guest         @relation(fields: [guestId], references: [id])
-  guestId      String
-  issuedBy     User?         @relation(fields: [issuedById], references: [id])
-  issuedById   String?
-  status       InvoiceStatus @default(PENDING)
-  issuedAt     DateTime      @default(now())
-  dueAt        DateTime?
-  paidAt       DateTime?
-  totalAmount  Int
-  taxAmount    Int           @default(0)
-  notes        String?
-  items        InvoiceItem[]
-  payments     Payment[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  number      String        @unique
+  booking     Booking       @relation(fields: [bookingId], references: [id])
+  bookingId   String
+  guest       Guest         @relation(fields: [guestId], references: [id])
+  guestId     String
+  issuedBy    User?         @relation(fields: [issuedById], references: [id])
+  issuedById  String?
+  status      InvoiceStatus @default(PENDING)
+  issuedAt    DateTime      @default(now())
+  dueAt       DateTime?
+  paidAt      DateTime?
+  totalAmount Int
+  taxAmount   Int           @default(0)
+  notes       String?
+  items       InvoiceItem[]
+  payments    Payment[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }
 
 model InvoiceItem {
@@ -209,17 +247,17 @@ enum InvoiceStatus {
 // ─── Payments ────────────────────────────────────────────────────
 
 model Payment {
-  id              String        @id @default(cuid())
-  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
-  invoiceId       String
-  processedBy     User          @relation(fields: [processedById], references: [id])
-  processedById   String
-  amount          Int
-  method          PaymentMethod
-  status          PaymentStatus @default(COMPLETED)
-  reference       String?
-  paidAt          DateTime      @default(now())
-  notes           String?
+  id            String        @id @default(cuid())
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
+  invoiceId     String
+  processedBy   User          @relation(fields: [processedById], references: [id])
+  processedById String
+  amount        Int
+  method        PaymentMethod
+  status        PaymentStatus @default(COMPLETED)
+  reference     String?
+  paidAt        DateTime      @default(now())
+  notes         String?
 }
 
 enum PaymentMethod {

@@ -1,11 +1,17 @@
 import { z } from 'zod';
 import { BookingStatus } from '@prisma/client';
 
+export const roomEntryExtraSchema = z.object({
+  extraId:  z.string().min(1),
+  quantity: z.number().int().positive().default(1),
+});
+
 export const roomEntrySchema = z.object({
   roomId:   z.string().min(1),
   roomRate: z.number().int().positive(),
   arrival:  z.string().datetime().optional(),
   departure: z.string().datetime().optional(),
+  extras:   z.array(roomEntryExtraSchema).optional(),
 });
 
 export const bookingSchema = z.object({
@@ -47,7 +53,18 @@ export const addBookingRoomSchema = z.object({
   roomRate:  z.number().int().positive().optional(),
 });
 
+export const addBookingRoomExtraSchema = z.object({
+  extraId:  z.string().min(1),
+  quantity: z.number().int().positive().default(1),
+});
+
+export const updateBookingRoomExtraSchema = z.object({
+  quantity: z.number().int().positive(),
+});
+
 export type BookingInput = z.infer<typeof bookingSchema>;
 export type BookingListParams = z.infer<typeof bookingListSchema>;
 export type ReassignInput = z.infer<typeof reassignSchema>;
 export type AddBookingRoomInput = z.infer<typeof addBookingRoomSchema>;
+export type AddBookingRoomExtraInput = z.infer<typeof addBookingRoomExtraSchema>;
+export type UpdateBookingRoomExtraInput = z.infer<typeof updateBookingRoomExtraSchema>;

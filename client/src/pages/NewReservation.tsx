@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   ArrowLeft, Calendar, User, Home, ChevronDown, Check, UserPlus,
-  Search, AlertCircle, Plus, Minus, Trash2, SlidersHorizontal,
+  Search, AlertCircle, Plus, Minus, Trash2, SlidersHorizontal, Sparkles, X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { useGuests } from '../hooks/useGuests';
 import { useAvailableRooms } from '../hooks/useRooms';
 import { useRoomTypes } from '../hooks/useRoomTypes';
 import { useCreateBooking } from '../hooks/useBookings';
+import { useExtras } from '../hooks/useExtras';
 import { useNotifications } from '../context/NotificationContext';
 import { AddGuestModal } from '../components/AddGuestModal';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ import { formatCurrency, resetDepartureIfInvalid, todayLocalStr, addDaysToLocalS
 import { FilterChip } from '../components/FilterChip';
 
 interface RoomDates { arrival: string; departure: string }
+interface RoomExtraSelection { extraId: string; quantity: number }
 
 function roomNights(sel: RoomDates) {
   return Math.max(0, Math.round(
@@ -48,6 +50,10 @@ export const NewReservation: React.FC = () => {
       ? new Map([[initialRoomId, { arrival: initialArrival ?? '', departure: initialArrival ? addDaysToLocalStr(initialArrival, 1) : '' }]])
       : new Map(),
   );
+  const [roomExtras, setRoomExtras] = useState<Map<string, RoomExtraSelection[]>>(new Map());
+  const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
+  const [newExtraId,        setNewExtraId]        = useState('');
+  const [newExtraQty,       setNewExtraQty]       = useState(1);
 
   const [isGuestDropdownOpen, setIsGuestDropdownOpen] = useState(false);
   const [guestSearch, setGuestSearch]                 = useState('');
@@ -60,6 +66,8 @@ export const NewReservation: React.FC = () => {
   const guests = guestsPage?.data ?? [];
   const { data: availableRooms = [], isLoading: roomsLoading }  = useAvailableRooms(arrival, departure);
   const { data: roomTypes = [] } = useRoomTypes();
+  const { data: extrasCatalog = [] } = useExtras();
+  const activeExtrasCatalog = extrasCatalog.filter(ex => ex.isActive);
 
   // ─── Room filters (step 2) ────────────────────────────────────
   const [roomSearch,   setRoomSearch]   = useState('');
@@ -85,10 +93,18 @@ export const NewReservation: React.FC = () => {
     ? Math.max(0, Math.round((new Date(departure).getTime() - new Date(arrival).getTime()) / 86_400_000))
     : 0;
 
+  const roomExtrasTotal = (roomId: string, nights: number) =>
+    (roomExtras.get(roomId) ?? []).reduce((sum, re) => {
+      const extra = activeExtrasCatalog.find(e => e.id === re.extraId);
+      if (!extra) return sum;
+      return sum + extra.price * re.quantity * (extra.pricing === 'per_night' ? nights : 1);
+    }, 0);
+
   const totalAmount = useMemo(() => selectedRooms.reduce((sum, r) => {
     const sel = roomSelections.get(r.id)!;
-    return sum + r.rate * Math.max(roomNights(sel), 1);
-  }, 0), [selectedRooms, roomSelections]);
+    const nights = Math.max(roomNights(sel), 1);
+    return sum + r.rate * nights + roomExtrasTotal(r.id, nights);
+  }, 0), [selectedRooms, roomSelections, roomExtras, activeExtrasCatalog]);
 
   const overallArrival   = [...roomSelections.values()].map(s => s.arrival).sort()[0]       ?? arrival;
   const overallDeparture = [...roomSelections.values()].map(s => s.departure).sort().at(-1) ?? departure;
@@ -132,6 +148,41 @@ export const NewReservation: React.FC = () => {
       next.delete(id);
       return next;
     });
+    setRoomExtras(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Map(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const addRoomExtra = (roomId: string, extraId: string, quantity: number) => {
+    setRoomExtras(prev => {
+      const next = new Map(prev);
+      const list = next.get(roomId) ?? [];
+      const existing = list.find(re => re.extraId === extraId);
+      next.set(roomId, existing
+        ? list.map(re => re.extraId === extraId ? { ...re, quantity: re.quantity + quantity } : re)
+        : [...list, { extraId, quantity }]);
+      return next;
+    });
+  };
+
+  const removeRoomExtra = (roomId: string, extraId: string) => {
+    setRoomExtras(prev => {
+      const next = new Map(prev);
+      next.set(roomId, (next.get(roomId) ?? []).filter(re => re.extraId !== extraId));
+      return next;
+    });
+  };
+
+  const updateRoomExtraQty = (roomId: string, extraId: string, quantity: number) => {
+    if (quantity <= 0) return removeRoomExtra(roomId, extraId);
+    setRoomExtras(prev => {
+      const next = new Map(prev);
+      next.set(roomId, (next.get(roomId) ?? []).map(re => re.extraId === extraId ? { ...re, quantity } : re));
+      return next;
+    });
   };
 
   const toggleDateEdit = (id: string) => {
@@ -163,11 +214,13 @@ export const NewReservation: React.FC = () => {
         departure: `${overallDeparture}T00:00:00.000Z`,
         rooms: [...roomSelections.entries()].map(([roomId, sel]) => {
           const room = availableRooms.find(r => r.id === roomId)!;
+          const extras = roomExtras.get(roomId) ?? [];
           return {
             roomId,
             roomRate: room.rate,
             arrival:  `${sel.arrival}T00:00:00.000Z`,
             departure: `${sel.departure}T00:00:00.000Z`,
+            ...(extras.length > 0 ? { extras } : {}),
           };
         }),
         totalAmount,
@@ -248,7 +301,13 @@ export const NewReservation: React.FC = () => {
                           </div>
                           {sel.arrival && sel.departure && n > 0 && (
                             <p className="text-[9px] opacity-50 mt-0.5">
-                              {sel.arrival} → {sel.departure} · {n}n · {formatCurrency(r.rate * n)}
+                              {sel.arrival} → {sel.departure} · {n}n · {formatCurrency(r.rate * n + roomExtrasTotal(r.id, n))}
+                            </p>
+                          )}
+                          {(roomExtras.get(r.id) ?? []).length > 0 && (
+                            <p className="text-[9px] opacity-50 mt-0.5 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5" />
+                              {t('bookingDetail.extrasTotal')}: {formatCurrency(roomExtrasTotal(r.id, Math.max(n, 1)))}
                             </p>
                           )}
                         </div>
@@ -545,7 +604,7 @@ export const NewReservation: React.FC = () => {
                           </div>
                           <div className="text-right shrink-0">
                             <p className={cn('text-sm font-display italic', selected ? 'text-primary' : 'text-on-surface-variant/50')}>
-                              {formatCurrency(room.rate * Math.max(n, 1))}
+                              {formatCurrency(room.rate * Math.max(n, 1) + roomExtrasTotal(room.id, Math.max(n, 1)))}
                             </p>
                             <p className="text-[9px] text-on-surface-variant/30 font-mono">
                               {formatCurrency(room.rate)}/n · {n}n
@@ -596,6 +655,75 @@ export const NewReservation: React.FC = () => {
                                   </p>
                                 )}
                               </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Per-room extras */}
+                        {selected && sel && (
+                          <div className="px-4 pb-4 pt-0 space-y-2" onClick={e => e.stopPropagation()}>
+                            {(roomExtras.get(room.id) ?? []).map(re => {
+                              const extra = activeExtrasCatalog.find(e => e.id === re.extraId);
+                              if (!extra) return null;
+                              return (
+                                <div key={re.extraId} className="flex items-center justify-between text-xs bg-white/70 rounded-lg px-3 py-1.5">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Sparkles className="w-3 h-3 text-primary/60 shrink-0" />
+                                    <span className="text-on-surface-variant truncate">{extra.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <div className="flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-1.5 py-0.5">
+                                      <button type="button"
+                                        onClick={() => updateRoomExtraQty(room.id, re.extraId, re.quantity - 1)}
+                                        className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">−</button>
+                                      <span className="font-mono w-4 text-center">{re.quantity}</span>
+                                      <button type="button"
+                                        onClick={() => updateRoomExtraQty(room.id, re.extraId, re.quantity + 1)}
+                                        className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">+</button>
+                                    </div>
+                                    <span className="font-mono text-on-surface-variant/60">
+                                      {formatCurrency(extra.price * re.quantity * (extra.pricing === 'per_night' ? n : 1))}
+                                    </span>
+                                    <button type="button" onClick={() => removeRoomExtra(room.id, re.extraId)}
+                                      className="p-1 text-on-surface-variant/30 hover:text-red-500 transition-colors">
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+
+                            {addingExtraRoomId === room.id ? (
+                              <div className="flex items-center gap-2 pt-1">
+                                <select value={newExtraId} onChange={e => setNewExtraId(e.target.value)}
+                                  className="flex-1 h-8 px-2 bg-white border border-stone-200 rounded-lg text-[11px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                  <option value="">{t('bookingDetail.chooseExtra')}</option>
+                                  {activeExtrasCatalog.map(ex => (
+                                    <option key={ex.id} value={ex.id}>{ex.name} ({formatCurrency(ex.price)})</option>
+                                  ))}
+                                </select>
+                                <input type="number" min={1} value={newExtraQty}
+                                  onChange={e => setNewExtraQty(Math.max(1, Number(e.target.value) || 1))}
+                                  title={t('bookingDetail.extraQuantity')}
+                                  className="w-14 h-8 px-2 bg-white border border-stone-200 rounded-lg text-[11px] text-center outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                <button type="button" disabled={!newExtraId}
+                                  onClick={() => {
+                                    addRoomExtra(room.id, newExtraId, newExtraQty);
+                                    setAddingExtraRoomId(null); setNewExtraId(''); setNewExtraQty(1);
+                                  }}
+                                  className="px-3 h-8 bg-primary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 transition-all">
+                                  {t('common.add')}
+                                </button>
+                                <button type="button" onClick={() => { setAddingExtraRoomId(null); setNewExtraId(''); setNewExtraQty(1); }}
+                                  className="p-1.5 text-on-surface-variant/40 hover:text-on-surface transition-colors">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => setAddingExtraRoomId(room.id)}
+                                className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
+                                <Plus className="w-3 h-3" /> {t('bookingDetail.addExtra')}
+                              </button>
                             )}
                           </div>
                         )}

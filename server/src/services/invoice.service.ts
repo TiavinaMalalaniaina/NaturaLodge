@@ -1,9 +1,44 @@
-import { InvoiceStatus, Prisma } from '@prisma/client';
+import { ExtraPricing, InvoiceStatus, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError } from '../errors/AppError';
 import { GenerateInvoiceInput, InvoiceListParams, PaymentInput, UpdateInvoiceInput } from '../validation/invoice.schema';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
+
+type BookingForInvoiceItems = {
+  rooms: {
+    arrival:   Date;
+    departure: Date;
+    roomRate:  number;
+    room:      { number: string; roomType: { name: string } };
+    extras:    { quantity: number; unitPrice: number; pricing: ExtraPricing; extra: { name: string } }[];
+  }[];
+};
+
+// Une ligne par chambre, suivie d'une ligne par supplément attaché à cette chambre. Utilisé par
+// `generate()` (création) et `syncInvoiceWithBooking` (resynchronisation) — même calcul de nuits,
+// pas de logique dupliquée.
+function buildInvoiceItemsFromBooking(booking: BookingForInvoiceItems) {
+  return booking.rooms.flatMap(br => {
+    const nights = Math.max(1, Math.round((br.departure.getTime() - br.arrival.getTime()) / 86_400_000));
+    const roomItem = {
+      description: `${br.room.roomType.name} — Chambre ${br.room.number}`,
+      quantity:    nights,
+      unitPrice:   br.roomRate,
+      total:       br.roomRate * nights,
+    };
+    const extraItems = br.extras.map(e => {
+      const quantity = e.quantity * (e.pricing === 'PER_NIGHT' ? nights : 1);
+      return {
+        description: `${e.extra.name} — Chambre ${br.room.number}`,
+        quantity,
+        unitPrice: e.unitPrice,
+        total:     quantity * e.unitPrice,
+      };
+    });
+    return [roomItem, ...extraItems];
+  });
+}
 
 const invoiceInclude = {
   items:    { orderBy: { id: 'asc' as const } },
@@ -105,29 +140,30 @@ export async function generate(data: GenerateInvoiceInput, issuedById: string) {
   // Vérification d'existence + génération du numéro + création dans une seule transaction :
   // ferme la race de génération concurrente sur le même numéro de facture (idempotent).
   return prisma.$transaction(async (tx) => {
-    const existing = await tx.invoice.findFirst({ where: { bookingId }, include: invoiceInclude });
-    if (existing) return { invoice: existing, created: false as const };
+    const existing = await tx.invoice.findFirst({ where: { bookingId } });
+    if (existing) {
+      // Une facture existe déjà : on la resynchronise sur l'état actuel de la réservation
+      // (chambres/suppléments ont pu changer depuis) plutôt que de renvoyer une copie périmée.
+      await syncInvoiceWithBooking(tx, bookingId);
+      const refreshed = await tx.invoice.findUnique({ where: { id: existing.id }, include: invoiceInclude });
+      return { invoice: refreshed!, created: false as const };
+    }
 
     const booking = await tx.booking.findUnique({
       where: { id: bookingId },
       include: {
         guest: true,
-        rooms: { include: { room: { include: { roomType: true } } } },
+        rooms: {
+          include: {
+            room:   { include: { roomType: true } },
+            extras: { include: { extra: true } },
+          },
+        },
       },
     });
     if (!booking) throw new NotFoundError('Réservation');
 
-    const items = booking.rooms.map(br => {
-      const nights    = Math.max(1, Math.round((br.departure.getTime() - br.arrival.getTime()) / 86_400_000));
-      const unitPrice = br.roomRate;
-      const total     = unitPrice * nights;
-      return {
-        description: `${br.room.roomType.name} — Chambre ${br.room.number}`,
-        quantity:    nights,
-        unitPrice,
-        total,
-      };
-    });
+    const items = buildInvoiceItemsFromBooking(booking);
 
     const subtotal    = items.reduce((s, i) => s + i.total, 0);
     const taxAmount   = Math.round(subtotal * taxRate / 100);
@@ -151,6 +187,41 @@ export async function generate(data: GenerateInvoiceInput, issuedById: string) {
 
     return { invoice, created: true as const };
   });
+}
+
+// Resynchronise les lignes et le total d'une facture déjà générée sur l'état actuel de la
+// réservation (chambres/suppléments), appelée par booking.service.ts après toute mutation qui
+// touche le montant (reassign, add/removeRoom, add/update/removeExtra). Ne touche pas aux
+// factures CANCELLED/REFUNDED — chapitre clos, pas de resynchronisation silencieuse. La taxe
+// (`taxAmount`) n'est jamais recalculée automatiquement : elle reste au montant déjà fixé (généré
+// ou modifié manuellement via `update`), faute de taux stocké permettant de la rescaler proprement.
+export async function syncInvoiceWithBooking(tx: PrismaOrTx, bookingId: string): Promise<void> {
+  const invoice = await tx.invoice.findFirst({ where: { bookingId }, orderBy: { issuedAt: 'desc' } });
+  if (!invoice || invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') return;
+
+  const booking = await tx.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      rooms: {
+        include: {
+          room:   { include: { roomType: true } },
+          extras: { include: { extra: true } },
+        },
+      },
+    },
+  });
+  if (!booking) return;
+
+  const items    = buildInvoiceItemsFromBooking(booking);
+  const subtotal = items.reduce((s, i) => s + i.total, 0);
+
+  await tx.invoiceItem.deleteMany({ where: { invoiceId: invoice.id } });
+  await tx.invoice.update({
+    where: { id: invoice.id },
+    data:  { totalAmount: subtotal + invoice.taxAmount, items: { create: items } },
+  });
+
+  await syncInvoiceStatus(invoice.id, tx);
 }
 
 export function update(id: string, data: UpdateInvoiceInput) {
