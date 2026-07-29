@@ -3,7 +3,6 @@ import { TrendingUp, Users, LogIn, Construction, Plus, Check } from 'lucide-reac
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
-import { CheckInQueue } from '../components/CheckInQueue';
 import { NewBookingsFeed } from '../components/NewBookingsFeed';
 import { useNotifications } from '../context/NotificationContext';
 import { useRooms } from '../hooks/useRooms';
@@ -185,7 +184,6 @@ export const Dashboard: React.FC = () => {
         </section>
 
         <aside className="space-y-10">
-          <CheckInQueue />
           <NewBookingsFeed />
 
           <div className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow">
