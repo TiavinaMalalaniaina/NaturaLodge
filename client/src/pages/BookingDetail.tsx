@@ -12,6 +12,7 @@ import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
+import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
@@ -67,6 +68,11 @@ export const BookingDetail: React.FC = () => {
               <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[es])}>
                 {t(EFFECTIVE_STATUS_I18N_KEY[es])}
               </span>
+              {es === 'checked_out' && (
+                <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[booking.paymentStatus])}>
+                  {t(`invoice.status_${booking.paymentStatus}`)}
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-on-surface-variant/50 font-mono tracking-widest">#{booking.id.slice(-12).toUpperCase()}</p>
           </div>

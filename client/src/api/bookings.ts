@@ -38,7 +38,7 @@ interface ApiBooking {
   id: string; guestId: string;
   arrival: string; departure: string; status: string;
   totalAmount: number; notes?: string;
-  nights?: number; effectiveStatus?: string;
+  nights?: number; effectiveStatus?: string; paymentStatus?: string;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
   rooms: ApiBookingRoom[];
 }
@@ -49,6 +49,14 @@ export type EffectiveStatus =
   | 'in_progress'
   | 'overdue'
   | 'checked_out'
+  | 'cancelled';
+
+export type PaymentStatus =
+  | 'no_invoice'
+  | 'pending'
+  | 'partially_paid'
+  | 'paid'
+  | 'refunded'
   | 'cancelled';
 
 export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'awaiting' | 'cancelled';
@@ -80,6 +88,7 @@ export interface RichBooking {
   totalAmount: number;
   nights: number;
   effectiveStatus: EffectiveStatus;
+  paymentStatus: PaymentStatus;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
   rooms: BookingRoomEntry[];
 }
@@ -96,12 +105,14 @@ export function normalizeBooking(b: ApiBooking): RichBooking {
   const effectiveStatus: EffectiveStatus = (b.effectiveStatus as EffectiveStatus)
     ?? deriveEffectiveStatus(arrival, departure, status);
 
+  const paymentStatus: PaymentStatus = (b.paymentStatus as PaymentStatus) ?? 'no_invoice';
+
   const rooms: BookingRoomEntry[] = b.rooms.map(normalizeBookingRoom);
 
   return {
     id: b.id, guestId: b.guestId, guestName: b.guest.name,
     arrival, departure, status, totalAmount: b.totalAmount,
-    nights, effectiveStatus, guest: b.guest, rooms,
+    nights, effectiveStatus, paymentStatus, guest: b.guest, rooms,
   };
 }
 

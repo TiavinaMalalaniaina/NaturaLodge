@@ -97,7 +97,9 @@
     "livePerformance":   "Fahombiazan'ny asa",
     "operationalAlert":  "Filazana asan'ny asa",
     "notifyTeam":        "Mampandre ny ekipa",
-    "teamNotified":      "Ekipa nampandrenesana"
+    "teamNotified":      "Ekipa nampandrenesana",
+    "pendingPayments":   "Fandoavana miandry",
+    "noPendingPayments": "Tsy misy fandoavana miandry"
   },
   "reservations": {
     "title":                   "Firesevana",
@@ -288,6 +290,7 @@
     "status_partially_paid": "Naloa ampahany",
     "status_refunded":       "Averina",
     "status_cancelled":      "Foana",
+    "status_no_invoice":     "Tsy mbola voafaktiora",
     "method_cash":           "Vola cash",
     "method_card":           "Karatra",
     "method_bank_transfer":  "Famindrana banky",

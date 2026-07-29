@@ -97,7 +97,9 @@
     "livePerformance":   "Performance en direct",
     "operationalAlert":  "Alerte opérationnelle",
     "notifyTeam":        "Notifier l'équipe",
-    "teamNotified":      "Équipe notifiée"
+    "teamNotified":      "Équipe notifiée",
+    "pendingPayments":   "Paiements en attente",
+    "noPendingPayments": "Aucun paiement en attente"
   },
   "reservations": {
     "title":                   "Réservations",
@@ -288,6 +290,7 @@
     "status_partially_paid": "Part. payée",
     "status_refunded":       "Remboursée",
     "status_cancelled":      "Annulée",
+    "status_no_invoice":     "Non facturée",
     "method_cash":           "Espèces",
     "method_card":           "Carte",
     "method_bank_transfer":  "Virement",

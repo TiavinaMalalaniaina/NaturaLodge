@@ -18,6 +18,7 @@ import { useRooms } from '../hooks/useRooms';
 import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
+import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
 import { useNotifications } from '../context/NotificationContext';
@@ -643,9 +644,16 @@ export const Reservations: React.FC = () => {
                         </p>
                       </td>
                       <td className="px-8 py-6">
-                        <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[b.effectiveStatus])}>
-                          {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])}
-                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[b.effectiveStatus])}>
+                            {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])}
+                          </span>
+                          {b.effectiveStatus === 'checked_out' && (
+                            <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[b.paymentStatus])}>
+                              {t(`invoice.status_${b.paymentStatus}`)}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-8 py-6 text-right">
                         <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()} Ar</p>

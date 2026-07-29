@@ -10,6 +10,8 @@ import { useRooms } from '../hooks/useRooms';
 import { useBookings } from '../hooks/useBookings';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
+import { formatCurrency } from '../lib/format';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -21,6 +23,9 @@ export const Dashboard: React.FC = () => {
   const { data: rooms = [] } = useRooms();
   const { data: bookingsPage } = useBookings({ limit: 100 });
   const bookings = bookingsPage?.data ?? [];
+
+  const { data: checkedOutPage } = useBookings({ status: 'CHECKED_OUT', limit: 50, sort: 'departure', order: 'desc' });
+  const pendingPayments = (checkedOutPage?.data ?? []).filter(b => b.paymentStatus !== 'paid').slice(0, 5);
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -182,6 +187,36 @@ export const Dashboard: React.FC = () => {
         <aside className="space-y-10">
           <CheckInQueue />
           <NewBookingsFeed />
+
+          <div className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest">{t('dashboard.pendingPayments')}</h4>
+              {pendingPayments.length > 0 && (
+                <span className="text-[9px] font-bold text-red-500">{pendingPayments.length}</span>
+              )}
+            </div>
+            {pendingPayments.length === 0 ? (
+              <p className="text-xs text-on-surface-variant/40 font-light">{t('dashboard.noPendingPayments')}</p>
+            ) : (
+              <div className="space-y-2">
+                {pendingPayments.map(b => (
+                  <button key={b.id} onClick={() => navigate(`/invoices/${b.id}`)}
+                    className="w-full flex items-center justify-between gap-3 p-3 rounded-xl hover:bg-stone-50 transition-colors text-left">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-on-surface truncate">{b.guestName}</p>
+                      <p className="text-[10px] text-on-surface-variant/40 font-mono">{b.departure}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-xs font-bold text-on-surface">{formatCurrency(b.totalAmount)}</span>
+                      <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[b.paymentStatus])}>
+                        {t(`invoice.status_${b.paymentStatus}`)}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow">
             <div className="flex items-center gap-3 mb-4">

@@ -1,4 +1,4 @@
-import { BookingStatus, Prisma } from '@prisma/client';
+import { BookingStatus, InvoiceStatus, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { NotFoundError, ConflictError } from '../errors/AppError';
@@ -19,6 +19,11 @@ const include = {
     },
   },
   createdBy: { select: { id: true, name: true, role: true } },
+  invoices:  {
+    select:  { status: true, totalAmount: true },
+    orderBy: { issuedAt: 'desc' as const },
+    take:    1,
+  },
 };
 
 export type EffectiveStatus =
@@ -27,6 +32,14 @@ export type EffectiveStatus =
   | 'in_progress'
   | 'overdue'
   | 'checked_out'
+  | 'cancelled';
+
+export type PaymentStatus =
+  | 'no_invoice'
+  | 'pending'
+  | 'partially_paid'
+  | 'paid'
+  | 'refunded'
   | 'cancelled';
 
 export function computeEffectiveStatus(b: { arrival: Date; departure: Date; status: BookingStatus }): EffectiveStatus {
@@ -43,15 +56,31 @@ export function computeEffectiveStatus(b: { arrival: Date; departure: Date; stat
   return 'overdue';
 }
 
+// Statut de paiement dérivé de la facture la plus récente de la réservation (voir `include.invoices`
+// ci-dessus, limité à 1, triée par date d'émission décroissante). 'no_invoice' si aucune facture
+// n'a encore été générée — le cas le plus important à repérer après un check-out.
+export function computePaymentStatus(b: { invoices: { status: string }[] }): PaymentStatus {
+  const invoice = b.invoices[0];
+  if (!invoice) return 'no_invoice';
+  return invoice.status.toLowerCase() as PaymentStatus;
+}
+
 export async function list(params: BookingListParams) {
   const { page, limit, status, date, startDate, endDate, search, sort, order } = params;
   const skip = (page - 1) * limit;
 
   const where = {
-    // Par défaut (pas de statut/date/recherche) : cacher les réservations clôturées
-    // pour que la liste priorise les séjours en cours/en retard puis à venir. Dès qu'un
-    // filtre explicite est posé (statut, date ou recherche), on montre tout ce qui matche.
-    ...(status ? { status } : (search || startDate || endDate || date) ? {} : { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } }),
+    // Par défaut (pas de statut/date/recherche) : cacher les réservations clôturées pour que la
+    // liste priorise les séjours en cours/en retard puis à venir — sauf celles check-outées dont
+    // la facture n'est pas encore soldée (pas de facture, ou facture pending/partiellement payée),
+    // qui restent visibles tant qu'il reste un paiement à suivre. Dès qu'un filtre explicite est
+    // posé (statut, date ou recherche), on montre tout ce qui matche.
+    ...(status ? { status } : (search || startDate || endDate || date) ? {} : {
+      OR: [
+        { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } },
+        { status: 'CHECKED_OUT' as BookingStatus, invoices: { none: { status: { in: ['PAID', 'REFUNDED', 'CANCELLED'] as InvoiceStatus[] } } } },
+      ],
+    }),
     ...(startDate || endDate ? {
       // Chevauchement : une réservation matche si son séjour croise la fenêtre donnée.
       // Une seule borne fournie = fenêtre ouverte de ce côté ("à partir de" / "jusqu'à").
@@ -78,6 +107,7 @@ export async function list(params: BookingListParams) {
     ...b,
     nights: Math.max(1, Math.round((b.departure.getTime() - b.arrival.getTime()) / 86_400_000)),
     effectiveStatus: computeEffectiveStatus(b),
+    paymentStatus:   computePaymentStatus(b),
   }));
 
   return {
@@ -96,7 +126,7 @@ export async function list(params: BookingListParams) {
 export async function getById(id: string) {
   const booking = await prisma.booking.findUnique({ where: { id }, include });
   if (!booking) throw new NotFoundError('Réservation');
-  return { ...booking, effectiveStatus: computeEffectiveStatus(booking) };
+  return { ...booking, effectiveStatus: computeEffectiveStatus(booking), paymentStatus: computePaymentStatus(booking) };
 }
 
 export async function create(data: BookingInput, createdById: string) {
@@ -157,7 +187,7 @@ export async function create(data: BookingInput, createdById: string) {
     // avec arrivée aujourd'hui → OCCUPIED tout de suite, sans attendre le scheduler de minuit).
     await applyRoomStatuses(booking.rooms.map(br => br.roomId), tx);
 
-    return booking;
+    return { ...booking, paymentStatus: computePaymentStatus(booking) };
   });
 }
 
@@ -182,13 +212,16 @@ export async function updateStatus(id: string, status: BookingStatus) {
   }
 
   if (status === 'CHECKED_OUT') {
+    // Ne crédite plus lifetimeValue ici : ce montant coté n'a aucune garantie de correspondre à ce
+    // qui est réellement facturé/payé. lifetimeValue est désormais crédité au moment du paiement
+    // réel (voir invoice.service.ts: addPayment/voidPayment), pas au check-out.
     await prisma.guest.update({
       where: { id: booking.guestId },
-      data:  { totalStays: { increment: 1 }, lifetimeValue: { increment: booking.totalAmount } },
+      data:  { totalStays: { increment: 1 } },
     });
   }
 
-  return booking;
+  return { ...booking, paymentStatus: computePaymentStatus(booking) };
 }
 
 // Recalcule le montant total et l'enveloppe (arrival/departure) globale de la réservation à
@@ -268,7 +301,7 @@ export async function reassign(bookingId: string, data: ReassignInput) {
     }
 
     const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
-    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!) };
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
@@ -316,7 +349,7 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
     }
 
     const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
-    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!) };
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
@@ -341,7 +374,7 @@ export async function removeRoom(bookingId: string, roomId: string) {
     await applyRoomStatuses([roomId], tx);
 
     const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
-    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!) };
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 

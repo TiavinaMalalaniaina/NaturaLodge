@@ -1,4 +1,4 @@
-import { BookingStatus } from '../api/bookings';
+import { BookingStatus, PaymentStatus } from '../api/bookings';
 import { InvoiceStatus } from '../api/invoices';
 import { RoomStatus, StaffRole, StaffMember } from '../types';
 
@@ -16,6 +16,14 @@ export const INVOICE_STATUS_CLASS: Record<InvoiceStatus, string> = {
   paid:           'bg-teal-50 text-teal-700 border-teal-200',
   refunded:       'bg-purple-50 text-purple-700 border-purple-200',
   cancelled:      'bg-stone-100 text-stone-500 border-stone-200',
+};
+
+// Même style que INVOICE_STATUS_CLASS (badge affiché directement sur la réservation), plus
+// 'no_invoice' — le cas le plus important à repérer après un check-out : aucune facture n'a
+// même été générée.
+export const PAYMENT_STATUS_CLASS: Record<PaymentStatus, string> = {
+  ...INVOICE_STATUS_CLASS,
+  no_invoice: 'bg-stone-50 text-stone-400 border-stone-200 border-dashed',
 };
 
 // Room.status n'a que 3 valeurs actives en pratique (RESERVED n'est jamais posé par le

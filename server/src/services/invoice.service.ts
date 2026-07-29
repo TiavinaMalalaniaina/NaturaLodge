@@ -188,6 +188,13 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
       },
     });
 
+    // Crédite le client de ce qui est réellement encaissé, au moment où ça l'est — pas d'un
+    // montant coté figé au check-out (voir booking.service.ts: updateStatus).
+    await tx.guest.update({
+      where: { id: invoice.guestId },
+      data:  { lifetimeValue: { increment: data.amount } },
+    });
+
     await syncInvoiceStatus(invoiceId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
@@ -198,8 +205,19 @@ export async function voidPayment(invoiceId: string, paymentId: string) {
   return prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({ where: { id: paymentId } });
     if (!payment || payment.invoiceId !== invoiceId) throw new NotFoundError('Paiement');
+    if (payment.status !== 'COMPLETED') throw new ConflictError('Ce paiement a déjà été annulé ou n\'est pas encaissé.');
+
+    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, select: { guestId: true } });
+    if (!invoice) throw new NotFoundError('Facture');
 
     await tx.payment.update({ where: { id: paymentId }, data: { status: 'REFUNDED' } });
+
+    // Symétrique de addPayment : l'argent est rendu, on le retire de la valeur cumulée du client.
+    await tx.guest.update({
+      where: { id: invoice.guestId },
+      data:  { lifetimeValue: { decrement: payment.amount } },
+    });
+
     await syncInvoiceStatus(invoiceId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
