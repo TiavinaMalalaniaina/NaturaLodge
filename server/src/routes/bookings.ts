@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { bookingSchema, bookingListSchema, bookingStatusSchema, reassignSchema } from '../validation/booking.schema';
+import { bookingSchema, bookingListSchema, bookingStatusSchema, reassignSchema, addBookingRoomSchema } from '../validation/booking.schema';
 import * as bookingService from '../services/booking.service';
 
 export const bookingsRouter = Router();
@@ -34,6 +34,18 @@ bookingsRouter.patch('/:id/reassign', authorize('ADMIN', 'MANAGER', 'RECEPTIONIS
   const parsed = reassignSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
   res.json(await bookingService.reassign(req.params.id, parsed.data));
+}));
+
+// POST /bookings/:id/rooms  ── ajouter une chambre à une réservation existante
+bookingsRouter.post('/:id/rooms', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = addBookingRoomSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await bookingService.addRoom(req.params.id, parsed.data));
+}));
+
+// DELETE /bookings/:id/rooms/:roomId  ── retirer une chambre d'une réservation
+bookingsRouter.delete('/:id/rooms/:roomId', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await bookingService.removeRoom(req.params.id, req.params.roomId));
 }));
 
 bookingsRouter.delete('/:id', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {

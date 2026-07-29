@@ -37,8 +37,17 @@ export const reassignSchema = z.object({
   newRoomId: z.string().min(1),
   arrival:   z.string().datetime().optional(),
   departure: z.string().datetime().optional(),
+  roomRate:  z.number().int().positive().optional(),
+});
+
+export const addBookingRoomSchema = z.object({
+  roomId:    z.string().min(1),
+  arrival:   z.string().datetime().optional(),
+  departure: z.string().datetime().optional(),
+  roomRate:  z.number().int().positive().optional(),
 });
 
 export type BookingInput = z.infer<typeof bookingSchema>;
 export type BookingListParams = z.infer<typeof bookingListSchema>;
 export type ReassignInput = z.infer<typeof reassignSchema>;
+export type AddBookingRoomInput = z.infer<typeof addBookingRoomSchema>;

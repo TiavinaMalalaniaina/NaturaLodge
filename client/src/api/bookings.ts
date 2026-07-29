@@ -146,12 +146,32 @@ export const reassignRoom = async (
   newRoomId: string,
   arrival?: string,
   departure?: string,
+  roomRate?: number,
 ): Promise<RichBooking> => {
   const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/reassign`, {
     oldRoomId, newRoomId,
     ...(arrival   ? { arrival:   `${arrival}T00:00:00.000Z` }   : {}),
     ...(departure ? { departure: `${departure}T00:00:00.000Z` } : {}),
+    ...(roomRate  ? { roomRate } : {}),
   });
+  return normalizeBooking(data);
+};
+
+export const addBookingRoom = async (
+  bookingId: string,
+  payload: { roomId: string; arrival?: string; departure?: string; roomRate?: number },
+): Promise<RichBooking> => {
+  const { data } = await api.post<ApiBooking>(`/bookings/${bookingId}/rooms`, {
+    roomId: payload.roomId,
+    ...(payload.arrival   ? { arrival:   `${payload.arrival}T00:00:00.000Z` }   : {}),
+    ...(payload.departure ? { departure: `${payload.departure}T00:00:00.000Z` } : {}),
+    ...(payload.roomRate  ? { roomRate: payload.roomRate } : {}),
+  });
+  return normalizeBooking(data);
+};
+
+export const removeBookingRoom = async (bookingId: string, roomId: string): Promise<RichBooking> => {
+  const { data } = await api.delete<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}`);
   return normalizeBooking(data);
 };
 

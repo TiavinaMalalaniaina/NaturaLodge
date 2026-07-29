@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '../hooks/useDebounce';
-import { ReassignRoomModal } from '../components/ReassignRoomModal';
+import { ReassignRoomModal, BookingRoomRef } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ReservationCalendar } from '../components/ReservationCalendar';
 import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
@@ -74,7 +74,7 @@ export const Reservations: React.FC = () => {
 
   // Modals
   const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
-  const [reassignBooking, setReassignBooking]   = useState<{ id: string; roomId: string; room: string; arrival: string; departure: string } | null>(null);
+  const [reassignBooking, setReassignBooking]   = useState<{ id: string; rooms: BookingRoomRef[] } | null>(null);
   const [cancelBookingId, setCancelBookingId]   = useState<string | null>(null);
 
   const navigate     = useNavigate();
@@ -544,7 +544,7 @@ export const Reservations: React.FC = () => {
                                 <p className="text-[10px] font-bold truncate leading-tight">{b.guestName}</p>
                                 <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                   <button
-                                    onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, roomId: b.rooms[0]?.roomId ?? '', room: b.rooms[0]?.room.number ?? '', arrival: b.arrival, departure: b.departure }); }}
+                                    onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
                                     className="p-0.5 hover:bg-white/20 rounded" title={t('reservations.reassign')}>
                                     <RefreshCw className="w-3 h-3" />
                                   </button>
@@ -797,7 +797,7 @@ export const Reservations: React.FC = () => {
                 <div className="w-px h-5 bg-stone-200 mx-1" />
 
                 <button
-                  onClick={() => { setReassignBooking({ id: selectedBooking.id, roomId: selectedBooking.rooms[0]?.roomId ?? '', room: selectedBooking.rooms[0]?.room.number ?? '', arrival: selectedBooking.arrival, departure: selectedBooking.departure }); setSelectedBooking(null); }}
+                  onClick={() => { setReassignBooking({ id: selectedBooking.id, rooms: selectedBooking.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); setSelectedBooking(null); }}
                   className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
                   <RefreshCw className="w-3.5 h-3.5" /> {t('reservations.reassign')}
                 </button>
@@ -822,10 +822,7 @@ export const Reservations: React.FC = () => {
         isOpen={!!reassignBooking}
         onClose={() => setReassignBooking(null)}
         bookingId={reassignBooking?.id ?? ''}
-        currentRoomId={reassignBooking?.roomId ?? ''}
-        currentRoomNumber={reassignBooking?.room ?? ''}
-        arrival={reassignBooking?.arrival ?? ''}
-        departure={reassignBooking?.departure ?? ''}
+        rooms={reassignBooking?.rooms ?? []}
       />
       <ConfirmModal
         isOpen={!!cancelBookingId}

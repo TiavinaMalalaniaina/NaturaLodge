@@ -1,8 +1,8 @@
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { NotFoundError, ConflictError } from '../errors/AppError';
-import { BookingInput, BookingListParams, ReassignInput } from '../validation/booking.schema';
+import { AddBookingRoomInput, BookingInput, BookingListParams, ReassignInput } from '../validation/booking.schema';
 
 const include = {
   guest:     { select: { id: true, name: true, email: true, avatar: true, status: true } },
@@ -191,6 +191,24 @@ export async function updateStatus(id: string, status: BookingStatus) {
   return booking;
 }
 
+// Recalcule le montant total et l'enveloppe (arrival/departure) globale de la réservation à
+// partir de toutes ses chambres actuelles. Appelé après toute mutation des lignes BookingRoom
+// (reassign, addRoom, removeRoom) pour garder Booking cohérent avec ses lignes.
+async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId: string): Promise<void> {
+  const freshRooms = await tx.bookingRoom.findMany({ where: { bookingId } });
+  const totalAmount = freshRooms.reduce((sum, br) => {
+    const nights = Math.max(1, Math.round((br.departure.getTime() - br.arrival.getTime()) / 86_400_000));
+    return sum + br.roomRate * nights;
+  }, 0);
+  const overallArrival   = freshRooms.reduce((min, br) => br.arrival < min ? br.arrival : min, freshRooms[0].arrival);
+  const overallDeparture = freshRooms.reduce((max, br) => br.departure > max ? br.departure : max, freshRooms[0].departure);
+
+  await tx.booking.update({
+    where: { id: bookingId },
+    data:  { totalAmount, arrival: overallArrival, departure: overallDeparture },
+  });
+}
+
 export async function reassign(bookingId: string, data: ReassignInput) {
   const { oldRoomId, newRoomId } = data;
 
@@ -230,7 +248,7 @@ export async function reassign(bookingId: string, data: ReassignInput) {
     });
     if (conflict) throw new ConflictError('La chambre cible est déjà réservée sur cette période');
 
-    const newRoomRate = newRoom.rateOverride ?? newRoom.roomType.rate;
+    const newRoomRate = data.roomRate ?? (newRoom.rateOverride ?? newRoom.roomType.rate);
 
     // Mise à jour : chambre, dates et tarif de la ligne
     await tx.bookingRoom.update({
@@ -238,19 +256,7 @@ export async function reassign(bookingId: string, data: ReassignInput) {
       data:  { roomId: newRoomId, arrival: newArrival, departure: newDeparture, roomRate: newRoomRate },
     });
 
-    // Recalculer le montant total et la fenêtre globale de la réservation à partir de toutes ses chambres
-    const freshRooms = await tx.bookingRoom.findMany({ where: { bookingId } });
-    const totalAmount = freshRooms.reduce((sum, br) => {
-      const nights = Math.max(1, Math.round((br.departure.getTime() - br.arrival.getTime()) / 86_400_000));
-      return sum + br.roomRate * nights;
-    }, 0);
-    const overallArrival   = freshRooms.reduce((min, br) => br.arrival < min ? br.arrival : min, freshRooms[0].arrival);
-    const overallDeparture = freshRooms.reduce((max, br) => br.departure > max ? br.departure : max, freshRooms[0].departure);
-
-    await tx.booking.update({
-      where: { id: bookingId },
-      data:  { totalAmount, arrival: overallArrival, departure: overallDeparture },
-    });
+    await recomputeBookingAggregate(tx, bookingId);
 
     // Recalculer les statuts des deux chambres
     await applyRoomStatuses([oldRoomId], tx);
@@ -260,6 +266,79 @@ export async function reassign(bookingId: string, data: ReassignInput) {
     } else {
       await applyRoomStatuses([newRoomId], tx);
     }
+
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!) };
+  });
+}
+
+export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    if (!booking) throw new NotFoundError('Réservation');
+    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
+      throw new ConflictError('Impossible de modifier une réservation clôturée');
+    }
+
+    const arrival   = data.arrival   ? new Date(data.arrival)   : booking.arrival;
+    const departure = data.departure ? new Date(data.departure) : booking.departure;
+    if (departure <= arrival) throw new ConflictError("La date de départ doit être après l'arrivée");
+
+    const room = await tx.room.findUnique({
+      where:  { id: data.roomId },
+      select: { status: true, number: true, rateOverride: true, roomType: { select: { rate: true } } },
+    });
+    if (!room) throw new NotFoundError('Chambre');
+    if (room.status === 'MAINTENANCE') throw new ConflictError(`La chambre ${room.number} est en maintenance`);
+
+    const conflict = await tx.bookingRoom.findFirst({
+      where: {
+        roomId:   data.roomId,
+        arrival:  { lt: departure },
+        departure: { gt: arrival },
+        booking:  { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+      },
+    });
+    if (conflict) throw new ConflictError('La chambre est déjà réservée sur cette période');
+
+    const roomRate = data.roomRate ?? (room.rateOverride ?? room.roomType.rate);
+
+    await tx.bookingRoom.create({
+      data: { bookingId, roomId: data.roomId, roomRate, arrival, departure },
+    });
+
+    await recomputeBookingAggregate(tx, bookingId);
+
+    if (booking.status === 'CHECKED_IN') {
+      await tx.room.update({ where: { id: data.roomId }, data: { status: 'OCCUPIED' } });
+    } else {
+      await applyRoomStatuses([data.roomId], tx);
+    }
+
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!) };
+  });
+}
+
+export async function removeRoom(bookingId: string, roomId: string) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    if (!booking) throw new NotFoundError('Réservation');
+    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
+      throw new ConflictError('Impossible de modifier une réservation clôturée');
+    }
+
+    const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
+    if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
+
+    if (booking.rooms.length <= 1) {
+      throw new ConflictError('Impossible de retirer la dernière chambre — annulez la réservation à la place');
+    }
+
+    await tx.bookingRoom.delete({ where: { id: bookingRoom.id } });
+
+    await recomputeBookingAggregate(tx, bookingId);
+    await applyRoomStatuses([roomId], tx);
 
     const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!) };
