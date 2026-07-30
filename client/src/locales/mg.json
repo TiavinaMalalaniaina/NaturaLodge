@@ -340,6 +340,16 @@
     "noInvoices": "Tsy misy faktiora hita",
     "count":      "Faktiora {{count}}"
   },
+  "payments": {
+    "title":             "Tantaran'ny fandoavam-bola",
+    "count":              "Fandoavam-bola {{count}}",
+    "search":             "Hikaroka amin'ny vahiny na laharam-piraktiora…",
+    "empty":              "Tsy misy fandoavam-bola hita",
+    "status_completed":   "Voaray",
+    "status_pending":     "Miandry",
+    "status_failed":      "Tsy nety",
+    "status_refunded":    "Naverina"
+  },
   "settings": {
     "title":             "Fikirana",
     "language":          "Fiteny",

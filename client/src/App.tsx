@@ -20,6 +20,7 @@ const BookingDetail   = lazy(() => import('./pages/BookingDetail').then(m => ({ 
 const Amenities       = lazy(() => import('./pages/Amenities').then(m => ({ default: m.Amenities })));
 const Staff          = lazy(() => import('./pages/Staff').then(m => ({ default: m.Staff })));
 const Invoices        = lazy(() => import('./pages/Invoices').then(m => ({ default: m.Invoices })));
+const Payments        = lazy(() => import('./pages/Payments').then(m => ({ default: m.Payments })));
 const InvoiceView     = lazy(() => import('./pages/InvoiceView').then(m => ({ default: m.InvoiceView })));
 const Settings        = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 
@@ -46,6 +47,7 @@ const App: React.FC = () => {
                   <Route path="guests/:id" element={<GuestProfile />} />
                   <Route path="amenities" element={<Amenities />} />
                   <Route path="invoices" element={<Invoices />} />
+                  <Route path="payments" element={<Payments />} />
                   <Route path="invoices/:bookingId" element={<InvoiceView />} />
                   <Route path="settings" element={<Settings />} />
 

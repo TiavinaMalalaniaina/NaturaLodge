@@ -340,6 +340,16 @@
     "noInvoices": "Aucune facture trouvée",
     "count":      "{{count}} facture(s)"
   },
+  "payments": {
+    "title":             "Historique des paiements",
+    "count":              "{{count}} paiement(s)",
+    "search":             "Rechercher par client ou numéro de facture…",
+    "empty":              "Aucun paiement trouvé",
+    "status_completed":   "Encaissé",
+    "status_pending":     "En attente",
+    "status_failed":      "Échoué",
+    "status_refunded":    "Remboursé"
+  },
   "settings": {
     "title":             "Paramètres",
     "language":          "Langue",

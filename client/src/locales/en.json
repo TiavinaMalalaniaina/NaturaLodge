@@ -340,6 +340,16 @@
     "noInvoices": "No invoices found",
     "count":      "{{count}} invoice(s)"
   },
+  "payments": {
+    "title":             "Payment History",
+    "count":              "{{count}} payment(s)",
+    "search":             "Search by guest or invoice number…",
+    "empty":              "No payments found",
+    "status_completed":   "Completed",
+    "status_pending":     "Pending",
+    "status_failed":      "Failed",
+    "status_refunded":    "Refunded"
+  },
   "settings": {
     "title":             "Settings",
     "language":          "Language",

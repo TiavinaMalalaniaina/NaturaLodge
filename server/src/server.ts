@@ -9,6 +9,7 @@ import { guestsRouter } from './routes/guests';
 import { bookingsRouter } from './routes/bookings';
 import { staffRouter } from './routes/staff';
 import { extrasRouter } from './routes/extras';
+import { paymentsRouter } from './routes/payments';
 import { startScheduler } from './lib/scheduler';
 import { errorHandler } from './middleware/errorHandler';
 
@@ -28,6 +29,7 @@ app.use('/api/guests', guestsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/staff', staffRouter);
 app.use('/api/extras', extrasRouter);
+app.use('/api/payments', paymentsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 

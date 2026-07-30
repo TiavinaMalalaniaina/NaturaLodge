@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Search, X, ChevronRight } from 'lucide-react';
+import { FileText, Search, X, ChevronRight, CreditCard } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -76,6 +76,12 @@ export const Invoices: React.FC = () => {
             {t('invoices.count', { count: meta?.total ?? filtered.length })}
           </p>
         </div>
+        <button
+          onClick={() => navigate('/payments')}
+          className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <CreditCard className="w-4 h-4" /> {t('payments.title')}
+        </button>
       </div>
 
       {/* ── Filters ── */}
