@@ -26,7 +26,7 @@ export const AppLayout: React.FC = () => {
             <Outlet />
           </motion.div>
         </main>
-        <footer className="px-10 py-8 text-center border-t border-stone-200 mt-auto font-sans text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.4em]">
+        <footer className="no-print px-10 py-8 text-center border-t border-stone-200 mt-auto font-sans text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.4em]">
           Natura Lodge Systems • Version 0.0.1 • Built with Organic Precision
         </footer>
       </div>

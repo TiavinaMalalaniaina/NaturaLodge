@@ -42,13 +42,11 @@ export interface RoomFeature {
   iconName: string;
 }
 
-export type RoomCategory = 'Superior' | 'Deluxe' | 'Suite' | 'Penthouse' | 'Villa' | 'Luxury';
 export type RoomStatus   = 'available' | 'occupied' | 'maintenance' | 'reserved';
 
 export interface RoomType {
   id:          string;
   name:        string;
-  category:    RoomCategory;
   rate:        number;
   description: string;
   area:        number;
@@ -65,7 +63,6 @@ export interface Room {
   roomTypeId:   string;
   // Flattened from RoomType for convenience
   type:         string;
-  category:     RoomCategory;
   area:         number;
   bedType:      string;
   capacity:     number;

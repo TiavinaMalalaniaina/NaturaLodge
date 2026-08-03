@@ -8,7 +8,10 @@ import { invoicesRouter } from './routes/invoices';
 import { guestsRouter } from './routes/guests';
 import { bookingsRouter } from './routes/bookings';
 import { staffRouter } from './routes/staff';
+import { extrasRouter } from './routes/extras';
+import { paymentsRouter } from './routes/payments';
 import { startScheduler } from './lib/scheduler';
+import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -25,12 +28,15 @@ app.use('/api/invoices', invoicesRouter);
 app.use('/api/guests', guestsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/staff', staffRouter);
+app.use('/api/extras', extrasRouter);
+app.use('/api/payments', paymentsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Erreur serveur interne' });
+app.use(errorHandler);
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason);
 });
 
 app.listen(PORT, () => {

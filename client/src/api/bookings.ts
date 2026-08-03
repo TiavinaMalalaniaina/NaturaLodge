@@ -1,4 +1,19 @@
 import { api } from './client';
+import { ExtraPricing } from './extras';
+
+const EXTRA_PRICING_MAP: Record<string, ExtraPricing> = {
+  PER_NIGHT: 'per_night',
+  ONE_TIME:  'one_time',
+};
+
+export interface BookingRoomExtraEntry {
+  id:        string;
+  extraId:   string;
+  name:      string;
+  quantity:  number;
+  unitPrice: number;
+  pricing:   ExtraPricing;
+}
 
 export interface BookingRoomEntry {
   id: string;
@@ -6,7 +21,13 @@ export interface BookingRoomEntry {
   arrival: string;
   departure: string;
   roomRate: number;
-  room: { id: string; number: string; type: string; category: string; rate: number };
+  room: { id: string; number: string; type: string; rate: number };
+  extras: BookingRoomExtraEntry[];
+}
+
+interface ApiBookingRoomExtra {
+  id: string; extraId: string; quantity: number; unitPrice: number; pricing: string;
+  extra: { name: string };
 }
 
 interface ApiBookingRoom {
@@ -14,7 +35,19 @@ interface ApiBookingRoom {
   arrival: string; departure: string; roomRate: number;
   room: {
     id: string; number: string; rateOverride: number | null;
-    roomType: { id: string; name: string; category: string; rate: number };
+    roomType: { id: string; name: string; rate: number };
+  };
+  extras?: ApiBookingRoomExtra[];
+}
+
+function normalizeBookingRoomExtra(e: ApiBookingRoomExtra): BookingRoomExtraEntry {
+  return {
+    id:        e.id,
+    extraId:   e.extraId,
+    name:      e.extra.name,
+    quantity:  e.quantity,
+    unitPrice: e.unitPrice,
+    pricing:   EXTRA_PRICING_MAP[e.pricing] ?? 'one_time',
   };
 }
 
@@ -26,12 +59,12 @@ function normalizeBookingRoom(br: ApiBookingRoom): BookingRoomEntry {
     departure: br.departure.split('T')[0],
     roomRate:  br.roomRate,
     room: {
-      id:       br.room.id,
-      number:   br.room.number,
-      type:     br.room.roomType.name,
-      category: br.room.roomType.category,
-      rate:     br.room.rateOverride ?? br.room.roomType.rate,
+      id:     br.room.id,
+      number: br.room.number,
+      type:   br.room.roomType.name,
+      rate:   br.room.rateOverride ?? br.room.roomType.rate,
     },
+    extras: (br.extras ?? []).map(normalizeBookingRoomExtra),
   };
 }
 
@@ -39,7 +72,7 @@ interface ApiBooking {
   id: string; guestId: string;
   arrival: string; departure: string; status: string;
   totalAmount: number; notes?: string;
-  nights?: number; effectiveStatus?: string;
+  nights?: number; effectiveStatus?: string; paymentStatus?: string;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
   rooms: ApiBookingRoom[];
 }
@@ -50,6 +83,14 @@ export type EffectiveStatus =
   | 'in_progress'
   | 'overdue'
   | 'checked_out'
+  | 'cancelled';
+
+export type PaymentStatus =
+  | 'no_invoice'
+  | 'pending'
+  | 'partially_paid'
+  | 'paid'
+  | 'refunded'
   | 'cancelled';
 
 export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'awaiting' | 'cancelled';
@@ -81,6 +122,7 @@ export interface RichBooking {
   totalAmount: number;
   nights: number;
   effectiveStatus: EffectiveStatus;
+  paymentStatus: PaymentStatus;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
   rooms: BookingRoomEntry[];
 }
@@ -97,12 +139,14 @@ export function normalizeBooking(b: ApiBooking): RichBooking {
   const effectiveStatus: EffectiveStatus = (b.effectiveStatus as EffectiveStatus)
     ?? deriveEffectiveStatus(arrival, departure, status);
 
+  const paymentStatus: PaymentStatus = (b.paymentStatus as PaymentStatus) ?? 'no_invoice';
+
   const rooms: BookingRoomEntry[] = b.rooms.map(normalizeBookingRoom);
 
   return {
     id: b.id, guestId: b.guestId, guestName: b.guest.name,
     arrival, departure, status, totalAmount: b.totalAmount,
-    nights, effectiveStatus, guest: b.guest, rooms,
+    nights, effectiveStatus, paymentStatus, guest: b.guest, rooms,
   };
 }
 
@@ -145,8 +189,53 @@ export const reassignRoom = async (
   bookingId: string,
   oldRoomId: string,
   newRoomId: string,
+  arrival?: string,
+  departure?: string,
+  roomRate?: number,
 ): Promise<RichBooking> => {
-  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/reassign`, { oldRoomId, newRoomId });
+  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/reassign`, {
+    oldRoomId, newRoomId,
+    ...(arrival   ? { arrival:   `${arrival}T00:00:00.000Z` }   : {}),
+    ...(departure ? { departure: `${departure}T00:00:00.000Z` } : {}),
+    ...(roomRate  ? { roomRate } : {}),
+  });
+  return normalizeBooking(data);
+};
+
+export const addBookingRoom = async (
+  bookingId: string,
+  payload: { roomId: string; arrival?: string; departure?: string; roomRate?: number },
+): Promise<RichBooking> => {
+  const { data } = await api.post<ApiBooking>(`/bookings/${bookingId}/rooms`, {
+    roomId: payload.roomId,
+    ...(payload.arrival   ? { arrival:   `${payload.arrival}T00:00:00.000Z` }   : {}),
+    ...(payload.departure ? { departure: `${payload.departure}T00:00:00.000Z` } : {}),
+    ...(payload.roomRate  ? { roomRate: payload.roomRate } : {}),
+  });
+  return normalizeBooking(data);
+};
+
+export const removeBookingRoom = async (bookingId: string, roomId: string): Promise<RichBooking> => {
+  const { data } = await api.delete<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}`);
+  return normalizeBooking(data);
+};
+
+export const addBookingRoomExtra = async (
+  bookingId: string, roomId: string, payload: { extraId: string; quantity?: number },
+): Promise<RichBooking> => {
+  const { data } = await api.post<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}/extras`, payload);
+  return normalizeBooking(data);
+};
+
+export const updateBookingRoomExtra = async (
+  bookingId: string, roomId: string, extraId: string, quantity: number,
+): Promise<RichBooking> => {
+  const { data } = await api.patch<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}/extras/${extraId}`, { quantity });
+  return normalizeBooking(data);
+};
+
+export const removeBookingRoomExtra = async (bookingId: string, roomId: string, extraId: string): Promise<RichBooking> => {
+  const { data } = await api.delete<ApiBooking>(`/bookings/${bookingId}/rooms/${roomId}/extras/${extraId}`);
   return normalizeBooking(data);
 };
 
@@ -154,7 +243,10 @@ export const createBooking = async (payload: {
   guestId: string;
   arrival: string;
   departure: string;
-  rooms: { roomId: string; roomRate: number; arrival?: string; departure?: string }[];
+  rooms: {
+    roomId: string; roomRate: number; arrival?: string; departure?: string;
+    extras?: { extraId: string; quantity?: number }[];
+  }[];
   totalAmount: number;
   notes?: string;
 }): Promise<RichBooking> => {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchGuests, fetchGuest, createGuest, GuestParams } from '../api/guests';
+import { fetchGuests, fetchGuest, createGuest, updateGuest, GuestParams } from '../api/guests';
 import { api } from '../api/client';
 
 export const GUESTS_KEY = ['guests'] as const;
@@ -25,6 +25,18 @@ export function useCreateGuest() {
   return useMutation({
     mutationFn: createGuest,
     onSuccess:  () => qc.invalidateQueries({ queryKey: GUESTS_KEY }),
+  });
+}
+
+export function useUpdateGuest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: string } & Parameters<typeof updateGuest>[1]) =>
+      updateGuest(id, payload),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: GUESTS_KEY });
+      qc.invalidateQueries({ queryKey: [...GUESTS_KEY, id] });
+    },
   });
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight, Plus, Users, Calendar, Filter,
   Download, Info, Construction, RefreshCw, LayoutGrid, List,
@@ -10,30 +10,21 @@ import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '../hooks/useDebounce';
-import { AddReservationModal } from '../components/AddReservationModal';
-import { ReassignRoomModal } from '../components/ReassignRoomModal';
-import { InvoiceModal } from '../components/InvoiceModal';
+import { ReassignRoomModal, BookingRoomRef } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ReservationCalendar } from '../components/ReservationCalendar';
 import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
 import { useRooms } from '../hooks/useRooms';
+import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
+import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
-
-// ── Date helpers ──────────────────────────────────────────────────
-
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d); r.setDate(r.getDate() + n); return r;
-}
-function toStr(d: Date): string { return d.toISOString().split('T')[0]; }
-function dayDiff(from: Date, to: Date): number {
-  return Math.round((to.getTime() - from.getTime()) / 86_400_000);
-}
-function fmtDate(d: Date): string {
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+import { FilterChip } from '../components/FilterChip';
+import { useNotifications } from '../context/NotificationContext';
+import { getApiErrorMessage } from '../lib/apiError';
+import { useVirtualDayGrid } from '../hooks/useVirtualDayGrid';
+import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
 
 // ── Block styles by effectiveStatus ──────────────────────────────
 
@@ -51,10 +42,7 @@ const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
 const LIMIT          = 20;
 const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT'];
 const ROOM_STATUS    = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
-const CATEGORIES     = ['ALL', 'Suite', 'Deluxe', 'Superior', 'Penthouse', 'Villa', 'Luxury'];
 
-// Grid constants
-const COL_W        = 52;   // px per day column
 const LABEL_W      = 176;  // px for room label column
 
 // ── Main component ────────────────────────────────────────────────
@@ -63,90 +51,45 @@ export const Reservations: React.FC = () => {
   const { t } = useTranslation();
 
   // View
-  const [viewMode, setViewMode]         = useState<'grid' | 'list' | 'calendar'>('grid');
+  const [viewMode, setViewMode]         = useState<'grid' | 'list' | 'calendar'>('list');
 
   // Filters (shared)
   const [searchQuery, setSearchQuery]   = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo,   setDateTo]   = useState('');
 
   // List pagination
   const [page, setPage] = useState(1);
 
-  // Grid — window: 1 year before today → 4 years after today
-  const bodyRef   = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const monthBarRef = useRef<HTMLDivElement>(null); // month nav bar (synced)
-
-  const windowStart = useMemo(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() - 1); d.setHours(0, 0, 0, 0); return d;
-  }, []);
-  const windowEnd = useMemo(() => {
-    const d = new Date(); d.setFullYear(d.getFullYear() + 4); d.setHours(23, 59, 59, 999); return d;
-  }, []);
-  const totalDays = useMemo(
-    () => Math.ceil((windowEnd.getTime() - windowStart.getTime()) / 86_400_000),
-    [windowStart, windowEnd],
-  );
-  const gridDates = useMemo(
-    () => Array.from({ length: totalDays }, (_, i) => addDays(windowStart, i)),
-    [windowStart, totalDays],
-  );
+  // Grid — window: 1 year before today → 4 years after today (virtualisation + scroll-sync)
+  const {
+    COL_W, windowStart, windowEnd, totalDays,
+    visibleDate, allMonths, virtualStartIdx, virtualEndIdx, virtualDates,
+    headerRef, monthBarRef, setBodyRef,
+    handleBodyScroll, scrollToToday, scrollByDays, scrollToMonth,
+    toStr, addDays, dayDiff,
+  } = useVirtualDayGrid(viewMode === 'grid');
   const todayStr = toStr(new Date());
 
-  // Visible date (leftmost visible day, updated on scroll)
-  const [visibleDate, setVisibleDate] = useState<Date>(() => new Date());
-
-  // All months in the window, for the month navigator
-  const allMonths = useMemo(() => {
-    const months: Array<{ year: number; month: number; label: string; startDay: number; isNewYear: boolean }> = [];
-    let d = new Date(windowStart.getFullYear(), windowStart.getMonth(), 1);
-    while (d <= windowEnd) {
-      const startDay = Math.max(0, dayDiff(windowStart, d));
-      months.push({
-        year:      d.getFullYear(),
-        month:     d.getMonth(),
-        label:     d.toLocaleString('en', { month: 'short' }).toUpperCase(),
-        startDay,
-        isNewYear: d.getMonth() === 0,
-      });
-      d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-    }
-    return months;
-  }, [windowStart, windowEnd]);
-
-  const visibleDayCount = useMemo(
-    () => Math.round((bodyRef.current?.clientWidth ?? 800) / COL_W),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [visibleDate],
-  );
-  const visibleEnd = addDays(visibleDate, visibleDayCount);
-
-  // Horizontal virtualization — only render visible columns + 50-day buffer on each side
-  const virtualStartIdx = useMemo(() => {
-    const offset = Math.max(0, dayDiff(windowStart, visibleDate));
-    return Math.max(0, offset - 50);
-  }, [windowStart, visibleDate]);
-  const virtualEndIdx = useMemo(() => {
-    const offset = Math.max(0, dayDiff(windowStart, visibleDate));
-    return Math.min(totalDays, offset + visibleDayCount + 50);
-  }, [windowStart, visibleDate, visibleDayCount, totalDays]);
-  const virtualDates = useMemo(
-    () => gridDates.slice(virtualStartIdx, virtualEndIdx),
-    [gridDates, virtualStartIdx, virtualEndIdx],
-  );
-
   // Modals
-  const [isAddModalOpen, setIsAddModalOpen]     = useState(false);
-  const [addModalRoom, setAddModalRoom]         = useState<string | null>(null);
-  const [addModalDate, setAddModalDate]         = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
-  const [invoiceBooking, setInvoiceBooking]     = useState<RichBooking | null>(null);
-  const [reassignBooking, setReassignBooking]   = useState<{ id: string; roomId: string; room: string; arrival: string; departure: string } | null>(null);
+  const [reassignBooking, setReassignBooking]   = useState<{ id: string; rooms: BookingRoomRef[] } | null>(null);
   const [cancelBookingId, setCancelBookingId]   = useState<string | null>(null);
 
   const navigate     = useNavigate();
   const updateStatus = useUpdateBookingStatus();
+  const { addNotification } = useNotifications();
+
+  const changeBookingStatus = (id: string, status: string) => {
+    updateStatus.mutate({ id, status }, {
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
+    });
+  };
 
   const debouncedSearch = useDebounce(searchQuery);
 
@@ -156,7 +99,10 @@ export const Reservations: React.FC = () => {
 
   const { data: listPage, isLoading: listLoading, isError: listError } = useBookings(
     viewMode === 'list'
-      ? { page, limit: LIMIT, search: debouncedSearch || undefined, status: apiStatus }
+      ? {
+          page, limit: LIMIT, search: debouncedSearch || undefined, status: apiStatus,
+          startDate: dateFrom || undefined, endDate: dateTo || undefined,
+        }
       : { limit: 1 }
   );
 
@@ -168,63 +114,13 @@ export const Reservations: React.FC = () => {
   const gridBookings = gridPage?.data ?? [];
 
   // Pre-index bookings by room to avoid O(rooms × bookings) scan on every render
-  const bookingsByRoomId = useMemo(() => {
-    const map = new Map<string, RichBooking[]>();
-    for (const b of gridBookings) {
-      if (b.status === 'cancelled') continue;
-      for (const br of b.rooms) {
-        const existing = map.get(br.room.id);
-        if (existing) existing.push(b);
-        else map.set(br.room.id, [b]);
-      }
-    }
-    return map;
-  }, [gridBookings]);
-
-  // Sync frozen headers on every scroll frame — update visible date only on month change
-  const handleBodyScroll = useCallback(() => {
-    const sl = bodyRef.current?.scrollLeft ?? 0;
-    if (headerRef.current)   headerRef.current.scrollLeft   = sl;
-    if (monthBarRef.current) monthBarRef.current.scrollLeft = sl;
-    setVisibleDate(prev => {
-      const next = addDays(windowStart, Math.round(sl / COL_W));
-      return prev.getFullYear() === next.getFullYear() && prev.getMonth() === next.getMonth()
-        ? prev   // same month → skip re-render
-        : next;  // new month → update
-    });
-  }, [windowStart]);
-
-  const syncScrollTo = useCallback((target: number) => {
-    const clamped = Math.max(0, Math.min(target, (totalDays - 1) * COL_W));
-    if (bodyRef.current)     bodyRef.current.scrollLeft     = clamped;
-    if (headerRef.current)   headerRef.current.scrollLeft   = clamped;
-    if (monthBarRef.current) monthBarRef.current.scrollLeft = clamped;
-    setVisibleDate(addDays(windowStart, Math.round(clamped / COL_W)));
-  }, [windowStart, totalDays]);
-
-  const scrollToToday = useCallback(() => {
-    const offset = Math.max(0, dayDiff(windowStart, new Date()) - 1) * COL_W;
-    syncScrollTo(offset);
-  }, [windowStart, syncScrollTo]);
-
-  const scrollByDays = useCallback((days: number) => {
-    const current = bodyRef.current?.scrollLeft ?? 0;
-    syncScrollTo(Math.max(0, current + days * COL_W));
-  }, [syncScrollTo]);
-
-  const scrollToMonth = useCallback((startDay: number) => {
-    syncScrollTo(startDay * COL_W);
-  }, [syncScrollTo]);
-
-  // Scroll to today when switching to grid view
-  useEffect(() => {
-    if (viewMode === 'grid') setTimeout(scrollToToday, 50);
-  }, [viewMode, scrollToToday]);
+  const bookingsByRoomId = useBookingsByRoom(gridBookings);
 
   // Grid : toutes les chambres chargées une fois, filtrées côté client
   const { data: allGridRooms = [], isLoading: roomsLoading } = useRooms(
     viewMode === 'grid' ? {} : undefined
   );
+  const { data: roomTypes = [] } = useRoomTypes();
 
   const gridRooms = useMemo(() => {
     if (viewMode !== 'grid') return [];
@@ -232,10 +128,10 @@ export const Reservations: React.FC = () => {
     return allGridRooms.filter(room => {
       if (q && !room.number.toLowerCase().includes(q) && !room.type.toLowerCase().includes(q)) return false;
       if (statusFilter !== 'ALL' && room.status.toUpperCase() !== statusFilter) return false;
-      if (categoryFilter !== 'ALL' && room.category !== categoryFilter) return false;
+      if (roomTypeFilter !== 'ALL' && room.type !== roomTypeFilter) return false;
       return true;
     });
-  }, [allGridRooms, searchQuery, statusFilter, categoryFilter, viewMode]);
+  }, [allGridRooms, searchQuery, statusFilter, roomTypeFilter, viewMode]);
 
   // ── Grid helpers ──────────────────────────────────────────────────
 
@@ -337,7 +233,7 @@ export const Reservations: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-end gap-4 w-full sm:w-auto">
-          <button onClick={() => { setAddModalRoom(null); setIsAddModalOpen(true); }}
+          <button onClick={() => navigate('/reservations/new')}
             className="w-full sm:w-auto bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-sans text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 shrink-0">
             <Plus className="w-4 h-4" /> {t('reservations.addReservation')}
           </button>
@@ -364,12 +260,10 @@ export const Reservations: React.FC = () => {
               {t('reservations.filterCategory')}
             </span>
             <div className="flex gap-1.5">
-              {CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => handleFilterChange(setCategoryFilter)(cat)}
-                  className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
-                    categoryFilter === cat ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
-                  {cat === 'ALL' ? t('common.all') : cat}
-                </button>
+              {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
+                <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}>
+                  {rt === 'ALL' ? t('common.all') : rt}
+                </FilterChip>
               ))}
             </div>
           </div>
@@ -382,14 +276,41 @@ export const Reservations: React.FC = () => {
             </span>
             <div className="flex gap-1.5">
               {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
-                <button key={s} onClick={() => handleFilterChange(setStatusFilter)(s)}
-                  className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
-                    statusFilter === s ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400')}>
+                <FilterChip key={s} active={statusFilter === s} onClick={() => handleFilterChange(setStatusFilter)(s)}
+                  activeClassName="bg-zinc-900 text-white border-zinc-900">
                   {s === 'ALL' ? t('common.all') : s}
-                </button>
+                </FilterChip>
               ))}
             </div>
           </div>
+
+          {/* Date filter — list view only */}
+          {viewMode === 'list' && (
+            <>
+              <div className="h-4 w-px bg-stone-200 shrink-0" />
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+                  {t('reservations.filterDate')}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <input type="date" value={dateFrom} max={dateTo || undefined}
+                    onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                    className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
+                  <span className="text-on-surface-variant/30 text-[9px]">→</span>
+                  <input type="date" value={dateTo} min={dateFrom || undefined}
+                    onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                    className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
+                  {(dateFrom || dateTo) && (
+                    <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                      title={t('common.clear')}
+                      className="p-1 rounded-full hover:bg-stone-100 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Month quick-nav — grid mode only */}
           {viewMode === 'grid' && (
@@ -534,7 +455,7 @@ export const Reservations: React.FC = () => {
 
             {/* ── Body — scrolls both x and y, syncs header on scroll ── */}
             <div
-              ref={bodyRef}
+              ref={setBodyRef}
               onScroll={handleBodyScroll}
               className="flex-1 overflow-auto min-h-0"
               style={{ scrollbarWidth: 'thin', scrollbarColor: '#d6d3d1 transparent' }}
@@ -546,7 +467,7 @@ export const Reservations: React.FC = () => {
                     style={{ minHeight: 300 }}>
                     <Filter className="w-12 h-12 mb-4 opacity-10" />
                     <p className="font-display italic text-2xl">{t('reservations.noUnitsMatch')}</p>
-                    <button onClick={() => { setStatusFilter('ALL'); setCategoryFilter('ALL'); setSearchQuery(''); }}
+                    <button onClick={() => { setStatusFilter('ALL'); setRoomTypeFilter('ALL'); setSearchQuery(''); }}
                       className="mt-4 text-[10px] font-bold text-primary uppercase tracking-widest hover:underline">
                       {t('reservations.clearAllFilters')}
                     </button>
@@ -584,7 +505,7 @@ export const Reservations: React.FC = () => {
                           const isToday = toStr(date) === todayStr;
                           return (
                             <div key={i} style={{ width: COL_W, minWidth: COL_W }}
-                              onClick={() => { if (!isMaint) { setAddModalRoom(room.id); setAddModalDate(toStr(date)); setIsAddModalOpen(true); } }}
+                              onClick={() => { if (!isMaint) navigate(`/reservations/new?roomId=${room.id}&arrival=${toStr(date)}`); }}
                               className={cn(
                                 'border-r border-stone-50 h-full',
                                 isToday && 'bg-teal-50/25',
@@ -624,7 +545,7 @@ export const Reservations: React.FC = () => {
                                 <p className="text-[10px] font-bold truncate leading-tight">{b.guestName}</p>
                                 <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                   <button
-                                    onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, roomId: b.rooms[0]?.roomId ?? '', room: b.rooms[0]?.room.number ?? '', arrival: b.arrival, departure: b.departure }); }}
+                                    onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
                                     className="p-0.5 hover:bg-white/20 rounded" title={t('reservations.reassign')}>
                                     <RefreshCw className="w-3 h-3" />
                                   </button>
@@ -723,9 +644,16 @@ export const Reservations: React.FC = () => {
                         </p>
                       </td>
                       <td className="px-8 py-6">
-                        <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[b.effectiveStatus])}>
-                          {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])}
-                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[b.effectiveStatus])}>
+                            {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])}
+                          </span>
+                          {b.effectiveStatus === 'checked_out' && (
+                            <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[b.paymentStatus])}>
+                              {t(`invoice.status_${b.paymentStatus}`)}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-8 py-6 text-right">
                         <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()} Ar</p>
@@ -735,7 +663,7 @@ export const Reservations: React.FC = () => {
                       </td>
                       <td className="px-8 py-6 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => setInvoiceBooking(b)}
+                          <button onClick={e => { e.stopPropagation(); navigate(`/invoices/${b.id}`); }}
                             className="p-2 hover:bg-white rounded-xl transition-all border border-transparent hover:border-stone-200 text-stone-400 hover:text-primary group/btn" title={t('invoice.title')}>
                             <FileText className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
                           </button>
@@ -840,28 +768,28 @@ export const Reservations: React.FC = () => {
               <div className="px-5 py-3 border-t border-stone-100 flex items-center gap-2 flex-wrap">
                 {selectedBooking.effectiveStatus === 'due_checkin' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_IN' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CHECKED_IN'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-teal-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-teal-900 transition-colors">
                     <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
                   </button>
                 )}
                 {selectedBooking.effectiveStatus === 'in_progress' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_OUT' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CHECKED_OUT'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors">
                     <LogOut className="w-3.5 h-3.5" /> {t('reservations.checkout')}
                   </button>
                 )}
                 {selectedBooking.effectiveStatus === 'in_progress' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CONFIRMED' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CONFIRMED'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors">
                     <RotateCcw className="w-3.5 h-3.5" /> {t('reservations.revert')}
                   </button>
                 )}
                 {selectedBooking.effectiveStatus === 'overdue' && (
                   <button
-                    onClick={() => { updateStatus.mutate({ id: selectedBooking.id, status: 'CHECKED_OUT' }); setSelectedBooking(null); }}
+                    onClick={() => { changeBookingStatus(selectedBooking.id, 'CHECKED_OUT'); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-700 transition-colors">
                     <AlertTriangle className="w-3.5 h-3.5" /> {t('reservations.forceOut')}
                   </button>
@@ -877,12 +805,12 @@ export const Reservations: React.FC = () => {
                 <div className="w-px h-5 bg-stone-200 mx-1" />
 
                 <button
-                  onClick={() => { setReassignBooking({ id: selectedBooking.id, roomId: selectedBooking.rooms[0]?.roomId ?? '', room: selectedBooking.rooms[0]?.room.number ?? '', arrival: selectedBooking.arrival, departure: selectedBooking.departure }); setSelectedBooking(null); }}
+                  onClick={() => { setReassignBooking({ id: selectedBooking.id, rooms: selectedBooking.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); setSelectedBooking(null); }}
                   className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
                   <RefreshCw className="w-3.5 h-3.5" /> {t('reservations.reassign')}
                 </button>
                 <button
-                  onClick={() => { setInvoiceBooking(selectedBooking); setSelectedBooking(null); }}
+                  onClick={() => navigate(`/invoices/${selectedBooking.id}`)}
                   className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
                   <FileText className="w-3.5 h-3.5" /> {t('invoice.title')}
                 </button>
@@ -898,31 +826,17 @@ export const Reservations: React.FC = () => {
       </AnimatePresence>
 
       {/* ── Modals ── */}
-      <AddReservationModal
-        isOpen={isAddModalOpen}
-        onClose={() => { setIsAddModalOpen(false); setAddModalRoom(null); setAddModalDate(null); }}
-        initialRoomId={addModalRoom}
-        initialArrival={addModalDate}
-      />
       <ReassignRoomModal
         isOpen={!!reassignBooking}
         onClose={() => setReassignBooking(null)}
         bookingId={reassignBooking?.id ?? ''}
-        currentRoomId={reassignBooking?.roomId ?? ''}
-        currentRoomNumber={reassignBooking?.room ?? ''}
-        arrival={reassignBooking?.arrival ?? ''}
-        departure={reassignBooking?.departure ?? ''}
-      />
-      <InvoiceModal
-        isOpen={!!invoiceBooking}
-        onClose={() => setInvoiceBooking(null)}
-        booking={invoiceBooking}
+        rooms={reassignBooking?.rooms ?? []}
       />
       <ConfirmModal
         isOpen={!!cancelBookingId}
         onClose={() => setCancelBookingId(null)}
         onConfirm={() => {
-          updateStatus.mutate({ id: cancelBookingId!, status: 'CANCELLED' });
+          changeBookingStatus(cancelBookingId!, 'CANCELLED');
           setCancelBookingId(null);
           setSelectedBooking(null);
         }}

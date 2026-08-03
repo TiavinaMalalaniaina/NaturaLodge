@@ -6,9 +6,10 @@ import { config } from 'dotenv'
 
 config()
 
+const sslDisabled = process.env.DATABASE_SSL === 'false' || process.env.DATABASE_URL?.includes('localhost')
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
+  ssl: sslDisabled ? false : { rejectUnauthorized: false },
 })
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
 
@@ -97,7 +98,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'SUP',
     name: 'Natura Superior',
-    category: 'SUPERIOR' as const,
     rate: 580_000,
     area: 32,
     bedType: 'Double',
@@ -109,7 +109,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'DEL',
     name: 'Canopy Deluxe',
-    category: 'DELUXE' as const,
     rate: 980_000,
     area: 48,
     bedType: 'King Size',
@@ -121,7 +120,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'SUI',
     name: 'Lagoon Suite',
-    category: 'SUITE' as const,
     rate: 1_750_000,
     area: 62,
     bedType: 'Super King',
@@ -133,7 +131,6 @@ const ROOM_TYPE_DEFS = [
   {
     key: 'PEN',
     name: 'Jungle Penthouse',
-    category: 'PENTHOUSE' as const,
     rate: 3_800_000,
     area: 105,
     bedType: 'Super King',
@@ -256,7 +253,6 @@ async function main() {
       existing = await prisma.roomType.create({
         data: {
           name:        rt.name,
-          category:    rt.category,
           rate:        rt.rate,
           area:        rt.area,
           bedType:     rt.bedType,
