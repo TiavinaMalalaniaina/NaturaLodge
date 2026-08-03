@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { useNow } from '../hooks/useNow';
+import { formatRelativeTime } from '../lib/relativeTime';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -24,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/reservations', label: t('nav.reservations'), icon: CalendarDays    },
     { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
     { path: '/guests',       label: t('nav.guests'),       icon: Users           },
-    { path: '/amenities',    label: t('nav.amenities'),    icon: Star            },
+    // { path: '/amenities',    label: t('nav.amenities'),    icon: Star            },
     { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
     { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
     { path: '/settings',     label: t('nav.settings'),     icon: Settings        },
@@ -56,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed left-0 top-0 h-screen w-60 bg-surface-container-low border-r border-outline-variant flex flex-col z-[70] transition-transform duration-300 lg:translate-x-0 overflow-y-auto",
+        "no-print fixed left-0 top-0 h-screen w-60 bg-surface-container-low border-r border-outline-variant flex flex-col z-[70] transition-transform duration-300 lg:translate-x-0 overflow-y-auto",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-8 flex items-center justify-between">
@@ -118,6 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
 export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification, clearAll } = useNotifications();
+  const now = useNow();
   const { logout } = useAuth();
   const navigate   = useNavigate();
   const { t }      = useTranslation();
@@ -143,7 +146,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
   }, []);
 
   return (
-    <header className="h-16 px-4 md:px-8 bg-white border-b border-outline-variant flex items-center justify-between sticky top-0 z-40">
+    <header className="no-print h-16 px-4 md:px-8 bg-white border-b border-outline-variant flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center gap-4 flex-1">
         <button 
           onClick={onMenuClick}
@@ -234,7 +237,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                         <div className="flex-1 space-y-1 pr-6">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">{notif.title}</span>
-                            <span className="text-[9px] font-mono text-on-surface-variant/30">{notif.time}</span>
+                            <span className="text-[9px] font-mono text-on-surface-variant/30">{formatRelativeTime(notif.createdAt, now)}</span>
                           </div>
                           <p className="text-xs font-medium text-on-surface leading-tight">{notif.subtitle}</p>
                           {notif.amount && notif.amount !== '--' && (

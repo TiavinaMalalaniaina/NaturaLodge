@@ -1,5 +1,6 @@
 import { api } from './client';
 import { StaffMember, StaffRole } from '../types';
+import { formatRelativeTime } from '../lib/relativeTime';
 
 interface ApiStaff {
   id: string; email: string; name: string;
@@ -18,7 +19,7 @@ const STATUS_MAP: Record<string, StaffMember['status']> = {
 
 export function normalizeStaff(s: ApiStaff): StaffMember {
   const lastLogin = s.lastLogin
-    ? formatRelative(new Date(s.lastLogin))
+    ? formatRelativeTime(new Date(s.lastLogin))
     : 'Jamais';
   return {
     id: s.id,
@@ -32,17 +33,50 @@ export function normalizeStaff(s: ApiStaff): StaffMember {
   };
 }
 
-function formatRelative(date: Date): string {
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
 export const fetchStaff = async (): Promise<StaffMember[]> => {
   const { data } = await api.get<ApiStaff[]>('/staff');
   return data.map(normalizeStaff);
+};
+
+const ROLE_TO_API: Record<StaffRole, string> = {
+  admin: 'ADMIN', manager: 'MANAGER',
+  receptionist: 'RECEPTIONIST', housekeeping: 'HOUSEKEEPING',
+};
+
+export interface CreateStaffPayload {
+  name:     string;
+  email:    string;
+  password: string;
+  role:     StaffRole;
+}
+
+export const createStaff = async (payload: CreateStaffPayload): Promise<StaffMember> => {
+  const { data } = await api.post<ApiStaff>('/staff', {
+    name:     payload.name,
+    email:    payload.email,
+    password: payload.password,
+    role:     ROLE_TO_API[payload.role],
+  });
+  return normalizeStaff(data);
+};
+
+const STATUS_TO_API: Record<StaffMember['status'], string> = {
+  active: 'ACTIVE', 'on-leave': 'ON_LEAVE', inactive: 'INACTIVE',
+};
+
+export interface UpdateStaffPayload {
+  name?:   string;
+  email?:  string;
+  role?:   StaffRole;
+  status?: StaffMember['status'];
+}
+
+export const updateStaff = async (id: string, payload: UpdateStaffPayload): Promise<StaffMember> => {
+  const { data } = await api.patch<ApiStaff>(`/staff/${id}`, {
+    ...(payload.name   !== undefined && { name: payload.name }),
+    ...(payload.email  !== undefined && { email: payload.email }),
+    ...(payload.role   !== undefined && { role: ROLE_TO_API[payload.role] }),
+    ...(payload.status !== undefined && { status: STATUS_TO_API[payload.status] }),
+  });
+  return normalizeStaff(data);
 };

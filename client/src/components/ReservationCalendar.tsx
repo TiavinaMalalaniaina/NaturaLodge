@@ -9,7 +9,15 @@ import { RichBooking, EffectiveStatus } from '../api/bookings';
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-function toStr(d: Date) { return d.toISOString().split('T')[0]; }
+// Date locale, pas UTC (toISOString décale d'un jour dans un fuseau en
+// avance sur UTC — ex. UTC+3 à Madagascar — pour des dates construites en
+// minuit local comme ici).
+function toStr(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
 const MONTHS = [

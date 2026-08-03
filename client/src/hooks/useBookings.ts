@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchBooking, fetchBookings, createBooking, updateBookingStatus, reassignRoom, BookingParams } from '../api/bookings';
+import {
+  fetchBooking, fetchBookings, createBooking, updateBookingStatus, reassignRoom,
+  addBookingRoom, removeBookingRoom, addBookingRoomExtra, updateBookingRoomExtra, removeBookingRoomExtra,
+  BookingParams,
+} from '../api/bookings';
 import { ROOMS_KEY } from './useRooms';
+import { INVOICES_KEY } from './useInvoices';
 
 export const BOOKINGS_KEY = ['bookings'] as const;
 
@@ -46,19 +51,78 @@ export function useUpdateBookingStatus() {
 export function useReassignRoom() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ bookingId, oldRoomId, newRoomId }: { bookingId: string; oldRoomId: string; newRoomId: string }) =>
-      reassignRoom(bookingId, oldRoomId, newRoomId),
+    mutationFn: ({ bookingId, oldRoomId, newRoomId, arrival, departure, roomRate }: {
+      bookingId: string; oldRoomId: string; newRoomId: string; arrival?: string; departure?: string; roomRate?: number;
+    }) => reassignRoom(bookingId, oldRoomId, newRoomId, arrival, departure, roomRate),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ROOMS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
     },
   });
 }
 
-export function useTodayArrivals() {
-  const today = new Date().toISOString().split('T')[0];
-  return useQuery({
-    queryKey: [...BOOKINGS_KEY, 'arrivals', today],
-    queryFn: () => fetchBookings({ date: today, status: 'CONFIRMED', limit: 100 }),
+export function useAddBookingRoom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, ...payload }: {
+      bookingId: string; roomId: string; arrival?: string; departure?: string; roomRate?: number;
+    }) => addBookingRoom(bookingId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
+  });
+}
+
+export function useRemoveBookingRoom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, roomId }: { bookingId: string; roomId: string }) =>
+      removeBookingRoom(bookingId, roomId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: ROOMS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
+  });
+}
+
+export function useAddBookingRoomExtra() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, roomId, extraId, quantity }: {
+      bookingId: string; roomId: string; extraId: string; quantity?: number;
+    }) => addBookingRoomExtra(bookingId, roomId, { extraId, quantity }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
+  });
+}
+
+export function useUpdateBookingRoomExtra() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, roomId, extraId, quantity }: {
+      bookingId: string; roomId: string; extraId: string; quantity: number;
+    }) => updateBookingRoomExtra(bookingId, roomId, extraId, quantity),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
+  });
+}
+
+export function useRemoveBookingRoomExtra() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, roomId, extraId }: { bookingId: string; roomId: string; extraId: string }) =>
+      removeBookingRoomExtra(bookingId, roomId, extraId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
   });
 }

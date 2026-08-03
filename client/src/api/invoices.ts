@@ -45,7 +45,7 @@ export interface Invoice {
     departure: string;
     guest:     { id: string; name: string; email: string };
     rooms: {
-      room:     { id: string; number: string; rateOverride: number | null; roomType: { name: string; category: string } };
+      room:     { id: string; number: string; rateOverride: number | null; roomType: { name: string } };
       roomRate: number;
       arrival:  string;
       departure: string;

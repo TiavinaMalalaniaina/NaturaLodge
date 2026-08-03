@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { FileText, Search, X, ChevronRight } from 'lucide-react';
+import { FileText, Search, X, ChevronRight, CreditCard } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useInvoices } from '../hooks/useInvoices';
-import { InvoiceModal } from '../components/InvoiceModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { InvoiceStatus } from '../api/invoices';
 
@@ -27,12 +27,11 @@ const STATUS_CLASS: Record<InvoiceStatus, string> = {
 
 export const Invoices: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
-  const [statusFilter,       setStatusFilter]       = useState<StatusFilter>('all');
-  const [search,             setSearch]             = useState('');
-  const [page,               setPage]               = useState(1);
-  const [selectedBookingId,  setSelectedBookingId]  = useState<string | null>(null);
-  const [modalOpen,          setModalOpen]          = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [search,       setSearch]       = useState('');
+  const [page,         setPage]         = useState(1);
 
   const { data, isLoading, isError } = useInvoices({
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -60,8 +59,7 @@ export const Invoices: React.FC = () => {
   ];
 
   const handleOpen = (bookingId: string) => {
-    setSelectedBookingId(bookingId);
-    setModalOpen(true);
+    navigate(`/invoices/${bookingId}`);
   };
 
   if (isLoading) return <PageLoader />;
@@ -78,6 +76,12 @@ export const Invoices: React.FC = () => {
             {t('invoices.count', { count: meta?.total ?? filtered.length })}
           </p>
         </div>
+        <button
+          onClick={() => navigate('/payments')}
+          className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <CreditCard className="w-4 h-4" /> {t('payments.title')}
+        </button>
       </div>
 
       {/* ── Filters ── */}
@@ -195,12 +199,6 @@ export const Invoices: React.FC = () => {
           </button>
         </div>
       )}
-
-      <InvoiceModal
-        isOpen={modalOpen}
-        onClose={() => { setModalOpen(false); setSelectedBookingId(null); }}
-        bookingId={selectedBookingId}
-      />
     </div>
   );
 };

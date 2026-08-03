@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../api/client';
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'RECEPTIONIST' | 'HOUSEKEEPING';
@@ -37,19 +37,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { data } = await api.post<{ token: string; user: AuthUser }>('/auth/login', { email, password });
     localStorage.setItem('naturalodge_token', data.token);
     setUser(data.user);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('naturalodge_token');
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, isAuthenticated: !!user, isLoading, login, logout }),
+    [user, isLoading, login, logout]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

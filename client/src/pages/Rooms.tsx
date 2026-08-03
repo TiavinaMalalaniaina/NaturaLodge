@@ -1,37 +1,44 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Filter, Layers, MoreVertical, Users, Maximize, Building2, Zap, Search, X, Construction, CheckCircle, Eye, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Plus, Filter, Layers, MoreVertical, Users, Maximize, Building2, Zap, Search, X, Construction, CheckCircle, Eye, AlertTriangle, ChevronRight, Sparkles, Tags } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { useRooms, useUpdateRoomStatus } from '../hooks/useRooms';
+import { useRoomTypes } from '../hooks/useRoomTypes';
 import { AddRoomModal } from '../components/AddRoomModal';
 import { FeatureManagerModal } from '../components/FeatureManagerModal';
-import { AddReservationModal } from '../components/AddReservationModal';
+import { ExtraManagerModal } from '../components/ExtraManagerModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { Room } from '../types';
 import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
+import { formatCurrency, todayLocalStr } from '../lib/format';
+import { ROOM_STATUS_BORDER_CLASS, ROOM_STATUS_BADGE_CLASS } from '../lib/statusColors';
+import { FilterChip } from '../components/FilterChip';
+import { useNotifications } from '../context/NotificationContext';
+import { getApiErrorMessage } from '../lib/apiError';
 
 type StatusTab = 'all' | 'available' | 'occupied' | 'maintenance';
-const CATEGORIES = ['ALL', 'Superior', 'Deluxe', 'Suite', 'Penthouse', 'Villa', 'Luxury'] as const;
 
 export const Rooms: React.FC = () => {
   const navigate  = useNavigate();
   const { t }     = useTranslation();
   const { data: apiRooms, isLoading, isError } = useRooms(undefined, { refetchInterval: 60_000 });
+  const { data: roomTypes = [] } = useRoomTypes();
 
   const updateStatus = useUpdateRoomStatus();
+  const { addNotification } = useNotifications();
 
   const [isAddModalOpen, setIsAddModalOpen]                 = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen]         = useState(false);
-  const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<string | null>(null);
+  const [isExtraModalOpen, setIsExtraModalOpen]             = useState(false);
   const [activeDropdown, setActiveDropdown]                 = useState<string | null>(null);
   const [conflictsInfo, setConflictsInfo]                   = useState<{ roomNumber: string; list: ConflictBooking[] } | null>(null);
 
-  const [statusTab,      setStatusTab]      = useState<StatusTab>('all');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [search,         setSearch]         = useState('');
-  const [showFilters,    setShowFilters]    = useState(false);
+  const [statusTab,       setStatusTab]       = useState<StatusTab>('all');
+  const [roomTypeFilter,  setRoomTypeFilter]  = useState('ALL');
+  const [search,          setSearch]          = useState('');
+  const [showFilters,     setShowFilters]     = useState(false);
 
   // Fermer le dropdown sur clic extérieur
   React.useEffect(() => {
@@ -46,6 +53,10 @@ export const Rooms: React.FC = () => {
       onSuccess: ({ conflicts }) => {
         if (conflicts.length > 0) setConflictsInfo({ roomNumber: room.number, list: conflicts });
       },
+      onError: (err) => addNotification({
+        source: 'system', title: 'Action failed',
+        subtitle: getApiErrorMessage(err), amount: '--',
+      }),
     });
   };
 
@@ -55,11 +66,11 @@ export const Rooms: React.FC = () => {
     const q = search.toLowerCase();
     return allRooms.filter(room => {
       if (statusTab !== 'all' && room.status !== statusTab) return false;
-      if (categoryFilter !== 'ALL' && room.category !== categoryFilter) return false;
+      if (roomTypeFilter !== 'ALL' && room.type !== roomTypeFilter) return false;
       if (q && !room.number.toLowerCase().includes(q) && !room.type.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [allRooms, statusTab, categoryFilter, search]);
+  }, [allRooms, statusTab, roomTypeFilter, search]);
 
   const STATUS_TABS: { key: StatusTab; label: string }[] = [
     { key: 'all',         label: t('common.all') },
@@ -68,7 +79,7 @@ export const Rooms: React.FC = () => {
     { key: 'maintenance', label: t('status.maintenance') },
   ];
 
-  const activeFiltersCount = (statusTab !== 'all' ? 1 : 0) + (categoryFilter !== 'ALL' ? 1 : 0) + (search ? 1 : 0);
+  const activeFiltersCount = (statusTab !== 'all' ? 1 : 0) + (roomTypeFilter !== 'ALL' ? 1 : 0) + (search ? 1 : 0);
 
   if (isLoading) return <PageLoader />;
   if (isError)   return <PageError />;
@@ -86,10 +97,22 @@ export const Rooms: React.FC = () => {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <button
+            onClick={() => navigate('/rooms/types')}
+            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Tags className="w-4 h-4" /> {t('roomTypes.title')}
+          </button>
+          <button
             onClick={() => setIsFeatureModalOpen(true)}
             className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Layers className="w-4 h-4" /> Attributes
+          </button>
+          <button
+            onClick={() => setIsExtraModalOpen(true)}
+            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" /> Suppléments
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -145,21 +168,21 @@ export const Rooms: React.FC = () => {
               onClick={() => setShowFilters(v => !v)}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-xl border text-[9px] font-bold uppercase tracking-[0.2em] transition-all cursor-pointer',
-                showFilters || categoryFilter !== 'ALL'
+                showFilters || roomTypeFilter !== 'ALL'
                   ? 'bg-primary text-white border-primary'
                   : 'bg-white border-stone-200 text-on-surface-variant hover:bg-stone-50',
               )}
             >
               <Filter className="w-3.5 h-3.5" />
-              {t('rooms.category')}
-              {categoryFilter !== 'ALL' && (
+              {t('rooms.typeName')}
+              {roomTypeFilter !== 'ALL' && (
                 <span className="w-4 h-4 rounded-full bg-white/30 text-[8px] font-bold flex items-center justify-center">1</span>
               )}
             </button>
 
             {activeFiltersCount > 0 && (
               <button
-                onClick={() => { setStatusTab('all'); setCategoryFilter('ALL'); setSearch(''); }}
+                onClick={() => { setStatusTab('all'); setRoomTypeFilter('ALL'); setSearch(''); }}
                 className="text-[9px] font-bold text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors whitespace-nowrap"
               >
                 {t('reservations.clearAllFilters')}
@@ -168,7 +191,7 @@ export const Rooms: React.FC = () => {
           </div>
         </div>
 
-        {/* Category chips */}
+        {/* Room type chips */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -178,19 +201,10 @@ export const Rooms: React.FC = () => {
               className="overflow-hidden"
             >
               <div className="flex gap-2 flex-wrap py-1">
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setCategoryFilter(cat)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border transition-all',
-                      categoryFilter === cat
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-stone-400',
-                    )}
-                  >
-                    {cat === 'ALL' ? t('common.all') : cat}
-                  </button>
+                {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
+                  <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => setRoomTypeFilter(rt)}>
+                    {rt === 'ALL' ? t('common.all') : rt}
+                  </FilterChip>
                 ))}
               </div>
             </motion.div>
@@ -209,18 +223,14 @@ export const Rooms: React.FC = () => {
             onClick={() => navigate(`/rooms/${room.id}`)}
             className={cn(
               'bg-white rounded-3xl border border-stone-200/60 p-6 organic-shadow group cursor-pointer hover:border-primary/20 transition-all flex flex-col relative overflow-hidden border-l-[6px]',
-              room.status === 'available'   ? 'border-l-status-available'   :
-              room.status === 'occupied'    ? 'border-l-status-occupied'    :
-                                             'border-l-status-maintenance',
+              ROOM_STATUS_BORDER_CLASS[room.status] ?? 'border-l-status-maintenance',
             )}
           >
             <div className="flex justify-between items-start mb-6">
               <div>
                 <span className={cn(
                   'px-2.5 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest shadow-sm border font-sans',
-                  room.status === 'available'   ? 'bg-teal-50 text-status-available border-teal-200' :
-                  room.status === 'occupied'    ? 'bg-orange-50 text-status-occupied border-orange-200' :
-                  'bg-stone-50 text-status-maintenance border-stone-200',
+                  ROOM_STATUS_BADGE_CLASS[room.status] ?? 'bg-stone-50 text-status-maintenance border-stone-200',
                 )}>
                   {t(`status.${room.status}`, room.status)}
                 </span>
@@ -280,12 +290,12 @@ export const Rooms: React.FC = () => {
             <div className="flex justify-between items-center mt-auto font-sans">
               <div className="flex items-center gap-3">
                 <p className="font-display text-2xl text-gold-500">
-                  {room.rate.toLocaleString()} Ar
+                  {formatCurrency(room.rate)}
                   {room.rateOverride && <span className="text-[10px] text-on-surface-variant/40 font-sans ml-1">(spécifique)</span>}
                 </p>
                 {room.status === 'available' && (
                   <button
-                    onClick={e => { e.stopPropagation(); setSelectedRoomForBooking(room.id); }}
+                    onClick={e => { e.stopPropagation(); navigate(`/reservations/new?roomId=${room.id}&arrival=${todayLocalStr()}`); }}
                     className="p-2 bg-teal-50 text-status-available rounded-lg hover:bg-teal-600 hover:text-white transition-all border border-teal-100 cursor-pointer"
                     title={t('rooms.instantBook')}
                   >
@@ -312,7 +322,7 @@ export const Rooms: React.FC = () => {
             <Filter className="w-12 h-12 mb-4 opacity-20" />
             <p className="font-display italic text-2xl mb-4">{t('rooms.noRoomsFound')}</p>
             <button
-              onClick={() => { setStatusTab('all'); setCategoryFilter('ALL'); setSearch(''); }}
+              onClick={() => { setStatusTab('all'); setRoomTypeFilter('ALL'); setSearch(''); }}
               className="text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
             >
               {t('reservations.clearAllFilters')}
@@ -393,12 +403,7 @@ export const Rooms: React.FC = () => {
         onRoomAdded={() => setIsAddModalOpen(false)}
       />
       <FeatureManagerModal isOpen={isFeatureModalOpen} onClose={() => setIsFeatureModalOpen(false)} />
-      <AddReservationModal
-        isOpen={!!selectedRoomForBooking}
-        onClose={() => setSelectedRoomForBooking(null)}
-        initialRoomId={selectedRoomForBooking}
-        initialArrival={new Date().toISOString().split('T')[0]}
-      />
+      <ExtraManagerModal isOpen={isExtraModalOpen} onClose={() => setIsExtraModalOpen(false)} />
     </div>
   );
 };

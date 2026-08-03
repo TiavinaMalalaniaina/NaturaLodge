@@ -48,3 +48,17 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body, #root {
+    background: white !important;
+  }
+  #invoice-print-area {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+}
