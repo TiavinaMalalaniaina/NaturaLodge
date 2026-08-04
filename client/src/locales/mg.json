@@ -48,7 +48,8 @@
     "creating":     "Hamorona…",
     "unassigned":   "Tsy voatendry",
     "notSet":       "Tsy voafaritra",
-    "apply":        "Ampiharo"
+    "apply":        "Ampiharo",
+    "optional":     "tsy tsy maintsy"
   },
   "status": {
     "available":    "Afaka",
@@ -70,6 +71,7 @@
     "subtitle":          "Valan-toerana fitantanana Natura Lodge",
     "email":             "Adiresy elektronika",
     "workEmail":         "Email asa",
+    "username":          "Anarana mpampiasa",
     "password":          "Teny miafina",
     "signin":            "Hiditra",
     "signingIn":         "Miditra…",

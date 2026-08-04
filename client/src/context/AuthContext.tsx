@@ -5,7 +5,8 @@ export type UserRole = 'ADMIN' | 'MANAGER' | 'RECEPTIONIST' | 'HOUSEKEEPING';
 
 export interface AuthUser {
   id: string;
-  email: string;
+  username: string;
+  email?: string | null;
   name: string;
   role: UserRole;
   avatar?: string;
@@ -15,7 +16,7 @@ interface AuthContextProps {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -37,8 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post<{ token: string; user: AuthUser }>('/auth/login', { email, password });
+  const login = useCallback(async (username: string, password: string) => {
+    const { data } = await api.post<{ token: string; user: AuthUser }>('/auth/login', { username, password });
     localStorage.setItem('naturalodge_token', data.token);
     setUser(data.user);
   }, []);

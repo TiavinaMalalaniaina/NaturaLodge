@@ -3,7 +3,7 @@ import { StaffMember, StaffRole } from '../types';
 import { formatRelativeTime } from '../lib/relativeTime';
 
 interface ApiStaff {
-  id: string; email: string; name: string;
+  id: string; username: string; email: string | null; name: string;
   role: string; status: string; avatar?: string;
   joinedDate: string; lastLogin?: string;
 }
@@ -24,7 +24,8 @@ export function normalizeStaff(s: ApiStaff): StaffMember {
   return {
     id: s.id,
     name: s.name,
-    email: s.email,
+    username: s.username,
+    email: s.email ?? '',
     role: ROLE_MAP[s.role] ?? 'receptionist',
     status: STATUS_MAP[s.status] ?? 'active',
     avatar: s.avatar,
@@ -45,7 +46,8 @@ const ROLE_TO_API: Record<StaffRole, string> = {
 
 export interface CreateStaffPayload {
   name:     string;
-  email:    string;
+  username: string;
+  email?:   string;
   password: string;
   role:     StaffRole;
 }
@@ -53,7 +55,8 @@ export interface CreateStaffPayload {
 export const createStaff = async (payload: CreateStaffPayload): Promise<StaffMember> => {
   const { data } = await api.post<ApiStaff>('/staff', {
     name:     payload.name,
-    email:    payload.email,
+    username: payload.username,
+    ...(payload.email ? { email: payload.email } : {}),
     password: payload.password,
     role:     ROLE_TO_API[payload.role],
   });
