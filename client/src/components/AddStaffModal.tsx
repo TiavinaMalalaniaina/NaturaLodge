@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Shield, Mail, User, Lock, AlertCircle, Check } from 'lucide-react';
+import { X, Shield, Mail, User, AtSign, Lock, AlertCircle, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { StaffRole } from '../types';
 import { useCreateStaff } from '../hooks/useStaff';
@@ -21,7 +21,7 @@ const ROLES: { value: StaffRole; label: string; desc: string }[] = [
   { value: 'housekeeping', label: 'Housekeeping', desc: 'Unit status & maintenance tasks' },
 ];
 
-const DEFAULT_VALUES: StaffFormValues = { name: '', email: '', password: '', confirmPassword: '', role: 'receptionist' };
+const DEFAULT_VALUES: StaffFormValues = { name: '', username: '', email: '', password: '', confirmPassword: '', role: 'receptionist' };
 
 export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose }) => {
   const createStaff = useCreateStaff();
@@ -40,7 +40,11 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
 
   const onSubmit = (data: StaffFormValues) => {
     createStaff.mutate(
-      { name: data.name, email: data.email, password: data.password, role: data.role },
+      {
+        name: data.name, username: data.username,
+        ...(data.email ? { email: data.email } : {}),
+        password: data.password, role: data.role,
+      },
       { onSuccess: handleClose },
     );
   };
@@ -106,7 +110,25 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     {errors.name && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.name.message}</p>}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Work Email Address</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Username</label>
+                    <div className="relative">
+                      <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
+                      <input
+                        type="text"
+                        placeholder="j.doe"
+                        {...register('username')}
+                        className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
+                      />
+                    </div>
+                    {errors.username && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.username.message}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">
+                      Work Email Address <span className="normal-case font-normal opacity-40">optional</span>
+                    </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
                       <input
@@ -118,9 +140,6 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     </div>
                     {errors.email && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.email.message}</p>}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Temporary Password</label>
                     <div className="relative">

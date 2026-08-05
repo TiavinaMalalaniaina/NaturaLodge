@@ -15,12 +15,12 @@ export const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const username = (form.elements.namedItem('username') as HTMLInputElement).value;
     const password = (form.elements.namedItem('password') as HTMLInputElement).value;
     setError('');
     setIsLoading(true);
     try {
-      await login(email, password);
+      await login(username, password);
       navigate('/dashboard', { replace: true });
     } catch {
       setError(t('auth.wrongCredentials'));
@@ -98,14 +98,15 @@ export const LoginPage: React.FC = () => {
             )}
             <div className="space-y-2">
               <label className="text-[10px] font-sans font-bold uppercase tracking-widest text-on-surface-variant/60 ml-1">
-                {t('auth.workEmail')}
+                {t('auth.username')}
               </label>
               <div className="relative group">
                 <input
-                  name="email"
-                  type="email"
+                  name="username"
+                  type="text"
+                  autoComplete="username"
                   className="w-full h-14 px-5 bg-stone-50 border border-stone-200 rounded-xl text-on-surface focus:border-primary-container focus:ring-4 focus:ring-primary/5 outline-none transition-all duration-300 placeholder:text-outline-variant font-sans"
-                  placeholder="admin@naturalodge.mg"
+                  placeholder="admin"
                   required
                 />
                 <User className="absolute right-5 top-1/2 -translate-y-1/2 text-outline-variant w-5 h-5 group-focus-within:text-primary transition-colors" />

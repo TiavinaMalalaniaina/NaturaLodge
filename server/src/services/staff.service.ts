@@ -5,7 +5,7 @@ import { NotFoundError, ConflictError, ForbiddenError } from '../errors/AppError
 import { StaffInput, StaffUpdateInput } from '../validation/staff.schema';
 
 const select = {
-  id: true, email: true, name: true, role: true,
+  id: true, username: true, email: true, name: true, role: true,
   status: true, avatar: true, joinedDate: true, lastLogin: true,
 };
 
@@ -20,12 +20,23 @@ export async function getById(id: string) {
 }
 
 export async function create(data: StaffInput) {
+  // Pré-vérification explicite plutôt que de compter sur `err.meta.target` du P2002 : avec le
+  // driver adapter pg utilisé ici, Prisma ne remonte pas le nom de la colonne en conflit
+  // ("Unique constraint failed on the (not available)"), impossible de distinguer username/email
+  // après coup.
+  const [usernameTaken, emailTaken] = await Promise.all([
+    prisma.user.findUnique({ where: { username: data.username }, select: { id: true } }),
+    data.email ? prisma.user.findUnique({ where: { email: data.email }, select: { id: true } }) : null,
+  ]);
+  if (usernameTaken) throw new ConflictError("Ce nom d'utilisateur est déjà pris.");
+  if (emailTaken) throw new ConflictError('Un compte existe déjà avec cet email.');
+
   const hashed = await bcrypt.hash(data.password, 12);
   try {
     return await prisma.user.create({ data: { ...data, password: hashed }, select });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      throw new ConflictError('Un compte existe déjà avec cet email.');
+      throw new ConflictError('Ce nom d\'utilisateur ou cet email est déjà utilisé.');
     }
     throw err;
   }

@@ -150,11 +150,13 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                 {/* Email + Phone */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.email')}</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">
+                      {t('guests.email')} <span className="normal-case font-normal opacity-40">{t('common.optional')}</span>
+                    </label>
                     <div className="relative">
                       <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
                       <input type="email" placeholder="guest@example.com" value={email}
-                        onChange={e => setEmail(e.target.value)} required
+                        onChange={e => setEmail(e.target.value)}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                       />
                     </div>

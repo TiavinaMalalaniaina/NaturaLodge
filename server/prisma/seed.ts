@@ -287,16 +287,18 @@ async function main() {
   }
   console.log('✅ 20 rooms')
 
-  // ── Staff (upsert by email @unique) ──────────────────────────────────────
+  // ── Staff (upsert by username @unique — dérivé de la partie locale de l'email) ────────────
   const adminPwd = await bcrypt.hash('Admin@1234', 12)
   const staffPwd = await bcrypt.hash('Staff@1234', 12)
 
   const staff = await Promise.all(
-    STAFF_DATA.map((s, i) =>
-      prisma.user.upsert({
-        where:  { email: s.email },
+    STAFF_DATA.map((s, i) => {
+      const username = s.email.split('@')[0]
+      return prisma.user.upsert({
+        where:  { username },
         update: { name: s.name, role: s.role, status: s.status },
         create: {
+          username,
           email:     s.email,
           name:      s.name,
           role:      s.role,
@@ -304,8 +306,8 @@ async function main() {
           password:  i === 0 ? adminPwd : staffPwd,
           joinedDate: new Date(`${rand(2020, 2024)}-${String(rand(1, 12)).padStart(2, '0')}-01`),
         },
-      }),
-    ),
+      })
+    }),
   )
   console.log('✅ 15 staff')
 

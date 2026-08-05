@@ -26,7 +26,7 @@ interface ApiBooking {
 }
 
 interface ApiGuest {
-  id: string; name: string; email: string; phone?: string;
+  id: string; name: string; email: string | null; phone?: string;
   address?: string; city?: string; country?: string; status: string;
   memberSince: string; totalStays: number; lifetimeValue: number;
   avatar?: string; preferences: string[];
@@ -55,7 +55,7 @@ const GUEST_STATUS: Record<string, Guest['status']> = {
 
 export function normalizeGuest(g: ApiGuest): Guest & { bookings?: GuestBooking[] } {
   return {
-    id: g.id, name: g.name, email: g.email,
+    id: g.id, name: g.name, email: g.email ?? '',
     phone: g.phone ?? '', address: g.address ?? '',
     city: g.city ?? '', country: g.country ?? '',
     status: GUEST_STATUS[g.status] ?? 'Standard',
@@ -123,7 +123,8 @@ export const createGuest = async (payload: {
   city?: string; country?: string; status?: string;
   preferences?: string[];
 }): Promise<Guest> => {
-  const { data } = await api.post<ApiGuest>('/guests', payload);
+  const { email, ...rest } = payload;
+  const { data } = await api.post<ApiGuest>('/guests', { ...rest, ...(email ? { email } : {}) });
   return normalizeGuest(data);
 };
 
@@ -132,6 +133,7 @@ export const updateGuest = async (id: string, payload: {
   city?: string; country?: string; status?: string;
   preferences?: string[];
 }): Promise<Guest> => {
-  const { data } = await api.patch<ApiGuest>(`/guests/${id}`, payload);
+  const { email, ...rest } = payload;
+  const { data } = await api.patch<ApiGuest>(`/guests/${id}`, { ...rest, ...(email ? { email } : {}) });
   return normalizeGuest(data);
 };
