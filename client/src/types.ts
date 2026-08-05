@@ -28,6 +28,7 @@ export type StaffRole = 'admin' | 'manager' | 'receptionist' | 'housekeeping';
 export interface StaffMember {
   id: string;
   name: string;
+  username: string;
   email: string;
   role: StaffRole;
   status: 'active' | 'on-leave' | 'inactive';

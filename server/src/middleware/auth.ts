@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';
 
 export interface AuthRequest extends Request {
-  user?: { id: string; email: string; role: Role };
+  user?: { id: string; username: string; role: Role };
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -17,7 +17,7 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
       id: string;
-      email: string;
+      username: string;
       role: Role;
     };
     req.user = payload;

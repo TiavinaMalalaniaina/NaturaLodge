@@ -28,7 +28,7 @@ export const Staff: React.FC = () => {
     const q = search.trim().toLowerCase();
     return staffList.filter(m =>
       (roleFilter === 'ALL' || m.role === roleFilter) &&
-      (!q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)),
+      (!q || m.name.toLowerCase().includes(q) || m.username.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)),
     );
   }, [staffList, search, roleFilter]);
 
@@ -94,7 +94,7 @@ export const Staff: React.FC = () => {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search member by name or email..."
+              placeholder="Search member by name, username or email..."
               className="w-full h-12 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-sm transition-all"
              />
            </div>
@@ -132,9 +132,12 @@ export const Staff: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-on-surface">{member.name}</p>
-                        <p className="text-[10px] font-light text-on-surface-variant/60 flex items-center gap-1.5">
-                          <Mail className="w-3 h-3" /> {member.email}
-                        </p>
+                        <p className="text-[10px] font-mono text-on-surface-variant/50">@{member.username}</p>
+                        {member.email && (
+                          <p className="text-[10px] font-light text-on-surface-variant/60 flex items-center gap-1.5 mt-0.5">
+                            <Mail className="w-3 h-3" /> {member.email}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </td>

@@ -48,7 +48,8 @@
     "creating":     "Création…",
     "unassigned":   "Non assigné",
     "notSet":       "Non défini",
-    "apply":        "Appliquer"
+    "apply":        "Appliquer",
+    "optional":     "optionnel"
   },
   "status": {
     "available":    "Disponible",
@@ -70,6 +71,7 @@
     "subtitle":          "Portail de gestion Natura Lodge",
     "email":             "Adresse e-mail",
     "workEmail":         "E-mail professionnel",
+    "username":          "Nom d'utilisateur",
     "password":          "Mot de passe",
     "signin":            "Se connecter",
     "signingIn":         "Connexion…",

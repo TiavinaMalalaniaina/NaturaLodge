@@ -48,7 +48,8 @@
     "creating":     "Creating…",
     "unassigned":   "Unassigned",
     "notSet":       "Not set",
-    "apply":        "Apply"
+    "apply":        "Apply",
+    "optional":     "optional"
   },
   "status": {
     "available":    "Available",
@@ -70,6 +71,7 @@
     "subtitle":          "Natura Lodge Management Portal",
     "email":             "Email address",
     "workEmail":         "Work Email",
+    "username":          "Username",
     "password":          "Password",
     "signin":            "Sign in",
     "signingIn":         "Signing in…",
