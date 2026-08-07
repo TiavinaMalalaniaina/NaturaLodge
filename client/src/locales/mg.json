@@ -334,7 +334,10 @@
     "method_cash":           "Vola cash",
     "method_card":           "Karatra",
     "method_bank_transfer":  "Famindrana banky",
-    "method_online":         "An-tserasera"
+    "method_online":         "An-tserasera",
+    "method_MVOLA":          "MVOLA",
+    "method_mvola":          "MVOLA",
+    "method_orange_money":   "Orange Money"
   },
   "invoices": {
     "title":      "Faktiora",
