@@ -324,7 +324,7 @@ export const InvoiceView: React.FC = () => {
                         onChange={e => setPayMethod(e.target.value as PaymentMethod)}
                         className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        {(['cash', 'card', 'bank_transfer', 'online'] as PaymentMethod[]).map(m => (
+                        {(['cash', 'card', 'bank_transfer', 'online', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
                           <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
                         ))}
                       </select>

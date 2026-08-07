@@ -3,7 +3,7 @@ import { api } from './client';
 // ─── Types ────────────────────────────────────────────────────────
 
 export type InvoiceStatus = 'pending' | 'paid' | 'partially_paid' | 'refunded' | 'cancelled';
-export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'online';
+export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'online'  | 'mvola' | 'orange_money' ;
 export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 
 export interface InvoiceItem {
