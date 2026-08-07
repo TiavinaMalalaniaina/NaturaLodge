@@ -266,6 +266,8 @@ enum PaymentMethod {
   CARD
   BANK_TRANSFER
   ONLINE
+  MVOLA
+  ORANGE_MONEY
 }
 
 enum PaymentStatus {

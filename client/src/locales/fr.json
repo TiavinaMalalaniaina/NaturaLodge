@@ -334,7 +334,10 @@
     "method_cash":           "Espèces",
     "method_card":           "Carte",
     "method_bank_transfer":  "Virement",
-    "method_online":         "En ligne"
+    "method_online":         "En ligne",
+    "method_mvola":          "MVOLA",
+    "method_MVOLA":          "MVOLA",
+    "method_orange_money":   "Orange Money"
   },
   "invoices": {
     "title":      "Factures",

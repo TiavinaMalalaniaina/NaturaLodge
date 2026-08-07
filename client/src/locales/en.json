@@ -334,7 +334,10 @@
     "method_cash":           "Cash",
     "method_card":           "Card",
     "method_bank_transfer":  "Bank Transfer",
-    "method_online":         "Online"
+    "method_online":         "Online",
+    "method_mvola":          "MVOLA",
+    "method_MVOLA":          "MVOLA",
+    "method_orange_money":   "Orange Money"
   },
   "invoices": {
     "title":      "Invoices",

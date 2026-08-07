@@ -188,17 +188,13 @@ export const InvoiceView: React.FC = () => {
             {/* Branding */}
             <div className="flex justify-between items-start">
               <div className="space-y-3">
-                <div className="w-14 h-14 bg-black rounded-2xl flex items-center justify-center">
-                  <Building2 className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-display italic text-3xl leading-none">Natura Lodge</h4>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-40 mt-1">Lodge & Retreat</p>
+                <div className="w-24 h-24 flex items-center justify-center">
+                  <img src='/logo.png' alt='Natura Lodge Logo' />
                 </div>
               </div>
               <div className="text-right space-y-1">
                 <p className="text-xs font-bold uppercase tracking-widest">Natura Lodge</p>
-                <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">Madagascar</p>
+                <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">Madagascar - Manambato</p>
               </div>
             </div>
 
@@ -324,7 +320,7 @@ export const InvoiceView: React.FC = () => {
                         onChange={e => setPayMethod(e.target.value as PaymentMethod)}
                         className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        {(['cash', 'card', 'bank_transfer', 'online'] as PaymentMethod[]).map(m => (
+                        {(['cash', 'card', 'bank_transfer', 'online', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
                           <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
                         ))}
                       </select>
