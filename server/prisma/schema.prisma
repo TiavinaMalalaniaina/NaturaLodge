@@ -136,7 +136,7 @@ model Booking {
   invoices    Invoice[]
   arrival     DateTime
   departure   DateTime
-  status      BookingStatus @default(CONFIRMED)
+  status      BookingStatus @default(AWAITING)
   totalAmount Int
   notes       String?
   createdAt   DateTime      @default(now())

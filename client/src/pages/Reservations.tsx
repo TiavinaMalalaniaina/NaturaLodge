@@ -29,21 +29,21 @@ import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
 // ── Block styles by effectiveStatus ──────────────────────────────
 
 const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
-  upcoming:    'bg-primary-container/90 text-on-primary-container border-primary/20',
-  due_checkin: 'bg-amber-100 text-amber-900 border-amber-300',
-  in_progress: 'bg-teal-800 text-white border-teal-700',
-  overdue:     'bg-red-100 text-red-900 border-red-300',
-  checked_in:  'bg-teal-800 text-white border-teal-700',
-  checked_out: 'bg-stone-100 text-stone-400 border-stone-200',
+  upcoming: 'bg-slate-100 text-slate-700 border-slate-200',     // Neutre / En attente future
+  due_checkin: 'bg-blue-100 text-blue-900 border-blue-300',       // Action requise (Bleu d'appel à l'action)
+  in_progress: 'bg-emerald-600 text-white border-emerald-500',   // Actif / En cours (Vert dynamique)
+  awaiting: 'bg-amber-100 text-amber-900 border-amber-300',     // En pause / En attente (Jaune/Orange d'attention)
+  overdue: 'bg-rose-100 text-rose-900 border-rose-300',       // Critique / En retard (Rouge alerte)
+  checked_out: 'bg-stone-200 text-stone-500 border-stone-300',   // Terminé / Archivé (Gris discret)
 };
 
 // ── Constants ─────────────────────────────────────────────────────
 
-const LIMIT          = 20;
+const LIMIT = 20;
 const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT'];
-const ROOM_STATUS    = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
+const ROOM_STATUS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
-const LABEL_W      = 176;  // px for room label column
+const LABEL_W = 176;  // px for room label column
 
 // ── Main component ────────────────────────────────────────────────
 
@@ -51,14 +51,14 @@ export const Reservations: React.FC = () => {
   const { t } = useTranslation();
 
   // View
-  const [viewMode, setViewMode]         = useState<'grid' | 'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
 
   // Filters (shared)
-  const [searchQuery, setSearchQuery]   = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo,   setDateTo]   = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // List pagination
   const [page, setPage] = useState(1);
@@ -74,11 +74,11 @@ export const Reservations: React.FC = () => {
   const todayStr = toStr(new Date());
 
   // Modals
-  const [selectedBooking, setSelectedBooking]   = useState<RichBooking | null>(null);
-  const [reassignBooking, setReassignBooking]   = useState<{ id: string; rooms: BookingRoomRef[] } | null>(null);
-  const [cancelBookingId, setCancelBookingId]   = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<RichBooking | null>(null);
+  const [reassignBooking, setReassignBooking] = useState<{ id: string; rooms: BookingRoomRef[] } | null>(null);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
 
-  const navigate     = useNavigate();
+  const navigate = useNavigate();
   const updateStatus = useUpdateBookingStatus();
   const { addNotification } = useNotifications();
 
@@ -100,9 +100,9 @@ export const Reservations: React.FC = () => {
   const { data: listPage, isLoading: listLoading, isError: listError } = useBookings(
     viewMode === 'list'
       ? {
-          page, limit: LIMIT, search: debouncedSearch || undefined, status: apiStatus,
-          startDate: dateFrom || undefined, endDate: dateTo || undefined,
-        }
+        page, limit: LIMIT, search: debouncedSearch || undefined, status: apiStatus,
+        startDate: dateFrom || undefined, endDate: dateTo || undefined,
+      }
       : { limit: 1 }
   );
 
@@ -138,16 +138,16 @@ export const Reservations: React.FC = () => {
 
   function getBlockStyle(b: RichBooking): React.CSSProperties | null {
     const startDay = dayDiff(windowStart, new Date(b.arrival));
-    const endDay   = dayDiff(windowStart, new Date(b.departure));
+    const endDay = dayDiff(windowStart, new Date(b.departure));
     const s = Math.max(0, startDay);
     const e = Math.min(totalDays, endDay);
     if (e <= s) return null;
     return {
-      left:     s * COL_W + 3,
-      width:    (e - s) * COL_W - 6,
+      left: s * COL_W + 3,
+      width: (e - s) * COL_W - 6,
       position: 'absolute',
-      top:      5,
-      height:   50,
+      top: 5,
+      height: 50,
     };
   }
 
@@ -166,13 +166,13 @@ export const Reservations: React.FC = () => {
   if (viewMode === 'list' && listError) return <PageError />;
 
   const listBookings = listPage?.data ?? [];
-  const meta         = listPage?.meta;
+  const meta = listPage?.meta;
 
   const viewLabel = viewMode === 'grid'
     ? t('reservations.planningGrid')
     : viewMode === 'calendar'
-    ? t('reservations.calendar')
-    : t('reservations.bookingsRegistry');
+      ? t('reservations.calendar')
+      : t('reservations.bookingsRegistry');
 
   return (
     <div className="space-y-8 h-full overflow-x-hidden">
@@ -188,9 +188,9 @@ export const Reservations: React.FC = () => {
             {/* View toggle */}
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
               {([
-                { v: 'grid',     icon: <LayoutGrid className="w-4 h-4" />, label: t('reservations.viewGrid')    },
-                { v: 'list',     icon: <List className="w-4 h-4" />,       label: t('reservations.viewList')    },
-                { v: 'calendar', icon: <Calendar className="w-4 h-4" />,   label: t('reservations.calendar')   },
+                { v: 'grid', icon: <LayoutGrid className="w-4 h-4" />, label: t('reservations.viewGrid') },
+                { v: 'list', icon: <List className="w-4 h-4" />, label: t('reservations.viewList') },
+                { v: 'calendar', icon: <Calendar className="w-4 h-4" />, label: t('reservations.calendar') },
               ] as const).map(({ v, icon, label }) => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('p-2 rounded-lg transition-all flex items-center gap-2',
@@ -255,101 +255,101 @@ export const Reservations: React.FC = () => {
 
       {/* ── Filter bar ── */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 border-b border-stone-100">
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
-              {t('reservations.filterCategory')}
-            </span>
-            <div className="flex gap-1.5">
-              {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
-                <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}>
-                  {rt === 'ALL' ? t('common.all') : rt}
-                </FilterChip>
-              ))}
-            </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+            {t('reservations.filterCategory')}
+          </span>
+          <div className="flex gap-1.5">
+            {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
+              <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}>
+                {rt === 'ALL' ? t('common.all') : rt}
+              </FilterChip>
+            ))}
           </div>
+        </div>
 
-          <div className="h-4 w-px bg-stone-200 shrink-0" />
+        <div className="h-4 w-px bg-stone-200 shrink-0" />
 
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
-              {t('reservations.filterStatus')}
-            </span>
-            <div className="flex gap-1.5">
-              {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
-                <FilterChip key={s} active={statusFilter === s} onClick={() => handleFilterChange(setStatusFilter)(s)}
-                  activeClassName="bg-zinc-900 text-white border-zinc-900">
-                  {s === 'ALL' ? t('common.all') : s}
-                </FilterChip>
-              ))}
-            </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+            {t('reservations.filterStatus')}
+          </span>
+          <div className="flex gap-1.5">
+            {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
+              <FilterChip key={s} active={statusFilter === s} onClick={() => handleFilterChange(setStatusFilter)(s)}
+                activeClassName="bg-zinc-900 text-white border-zinc-900">
+                {s === 'ALL' ? t('common.all') : s}
+              </FilterChip>
+            ))}
           </div>
+        </div>
 
-          {/* Date filter — list view only */}
-          {viewMode === 'list' && (
-            <>
-              <div className="h-4 w-px bg-stone-200 shrink-0" />
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
-                  {t('reservations.filterDate')}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <input type="date" value={dateFrom} max={dateTo || undefined}
-                    onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-                    className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
-                  <span className="text-on-surface-variant/30 text-[9px]">→</span>
-                  <input type="date" value={dateTo} min={dateFrom || undefined}
-                    onChange={e => { setDateTo(e.target.value); setPage(1); }}
-                    className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
-                  {(dateFrom || dateTo) && (
-                    <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
-                      title={t('common.clear')}
-                      className="p-1 rounded-full hover:bg-stone-100 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors">
-                      <X className="w-3 h-3" />
+        {/* Date filter — list view only */}
+        {viewMode === 'list' && (
+          <>
+            <div className="h-4 w-px bg-stone-200 shrink-0" />
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
+                {t('reservations.filterDate')}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <input type="date" value={dateFrom} max={dateTo || undefined}
+                  onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                  className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
+                <span className="text-on-surface-variant/30 text-[9px]">→</span>
+                <input type="date" value={dateTo} min={dateFrom || undefined}
+                  onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                  className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
+                {(dateFrom || dateTo) && (
+                  <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+                    title={t('common.clear')}
+                    className="p-1 rounded-full hover:bg-stone-100 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Month quick-nav — grid mode only */}
+        {viewMode === 'grid' && (
+          <>
+            <div className="h-4 w-px bg-stone-200 shrink-0" />
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap font-mono">
+                {visibleDate.getFullYear()}
+              </span>
+              <div className="flex gap-1">
+                {Array.from({ length: 12 }, (_, i) => {
+                  const entry = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
+                  const isActive = visibleDate.getMonth() === i;
+                  const isNow = new Date().getFullYear() === visibleDate.getFullYear() && new Date().getMonth() === i;
+                  const label = new Date(visibleDate.getFullYear(), i, 1)
+                    .toLocaleString('en', { month: 'short' }).toUpperCase();
+                  return (
+                    <button
+                      key={i}
+                      disabled={!entry}
+                      onClick={() => entry && scrollToMonth(entry.startDay)}
+                      className={cn(
+                        'relative px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
+                        isActive
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-primary/40 hover:text-primary',
+                        !entry && 'opacity-30 cursor-not-allowed',
+                      )}>
+                      {label}
+                      {isNow && !isActive && (
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary border border-white" />
+                      )}
                     </button>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            </>
-          )}
-
-          {/* Month quick-nav — grid mode only */}
-          {viewMode === 'grid' && (
-            <>
-              <div className="h-4 w-px bg-stone-200 shrink-0" />
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap font-mono">
-                  {visibleDate.getFullYear()}
-                </span>
-                <div className="flex gap-1">
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const entry    = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
-                    const isActive = visibleDate.getMonth() === i;
-                    const isNow    = new Date().getFullYear() === visibleDate.getFullYear() && new Date().getMonth() === i;
-                    const label    = new Date(visibleDate.getFullYear(), i, 1)
-                      .toLocaleString('en', { month: 'short' }).toUpperCase();
-                    return (
-                      <button
-                        key={i}
-                        disabled={!entry}
-                        onClick={() => entry && scrollToMonth(entry.startDay)}
-                        className={cn(
-                          'relative px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest transition-all border whitespace-nowrap',
-                          isActive
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-white text-on-surface-variant/60 border-stone-200 hover:border-primary/40 hover:text-primary',
-                          !entry && 'opacity-30 cursor-not-allowed',
-                        )}>
-                        {label}
-                        {isNow && !isActive && (
-                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-primary border border-white" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Views ── */}
@@ -373,9 +373,9 @@ export const Reservations: React.FC = () => {
                 <div style={{ width: totalDays * COL_W, height: '100%', position: 'relative' }}>
                   {allMonths.map((m, idx) => {
                     const nextStart = allMonths[idx + 1]?.startDay ?? totalDays;
-                    const chipW     = (nextStart - m.startDay) * COL_W;
-                    const isActive  = m.year === visibleDate.getFullYear() && m.month === visibleDate.getMonth();
-                    const isNow     = m.year === new Date().getFullYear() && m.month === new Date().getMonth();
+                    const chipW = (nextStart - m.startDay) * COL_W;
+                    const isActive = m.year === visibleDate.getFullYear() && m.month === visibleDate.getMonth();
+                    const isNow = m.year === new Date().getFullYear() && m.month === new Date().getMonth();
                     return (
                       <button
                         key={`${m.year}-${m.month}`}
@@ -422,10 +422,10 @@ export const Reservations: React.FC = () => {
               <div ref={headerRef} className="flex overflow-hidden">
                 <div style={{ width: virtualStartIdx * COL_W, flexShrink: 0 }} />
                 {virtualDates.map((date, localI) => {
-                  const i            = virtualStartIdx + localI;
-                  const isToday      = toStr(date) === todayStr;
+                  const i = virtualStartIdx + localI;
+                  const isToday = toStr(date) === todayStr;
                   const isMonthStart = date.getDate() === 1;
-                  const dayName      = date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+                  const dayName = date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
                   return (
                     <div key={i} style={{ width: COL_W, minWidth: COL_W }}
                       className={cn(
@@ -476,7 +476,7 @@ export const Reservations: React.FC = () => {
 
                 {gridRooms.map(room => {
                   const bookings = bookingsByRoomId.get(room.id) ?? [];
-                  const isMaint  = room.status === 'maintenance';
+                  const isMaint = room.status === 'maintenance';
 
                   return (
                     <div key={room.id} className="flex border-b border-stone-50 last:border-0 group"
@@ -488,9 +488,9 @@ export const Reservations: React.FC = () => {
                         <p className="font-display italic text-lg text-primary leading-none truncate">{room.type}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={cn('w-1.5 h-1.5 rounded-full shrink-0',
-                            room.status === 'available'    ? 'bg-status-available' :
-                            room.status === 'occupied'     ? 'bg-status-occupied' :
-                            room.status === 'reserved'     ? 'bg-status-reserved' : 'bg-status-maintenance')} />
+                            room.status === 'available' ? 'bg-status-available' :
+                              room.status === 'occupied' ? 'bg-status-occupied' :
+                                room.status === 'reserved' ? 'bg-status-reserved' : 'bg-status-maintenance')} />
                           <span className="text-[9px] font-bold tracking-widest text-on-surface-variant/50 uppercase truncate">
                             #{room.number} · {t(`status.${room.status}`, room.status)}
                           </span>
@@ -501,7 +501,7 @@ export const Reservations: React.FC = () => {
                       <div className="relative flex" style={{ height: 60 }}>
                         <div style={{ width: virtualStartIdx * COL_W, flexShrink: 0 }} />
                         {virtualDates.map((date, localI) => {
-                          const i       = virtualStartIdx + localI;
+                          const i = virtualStartIdx + localI;
                           const isToday = toStr(date) === todayStr;
                           return (
                             <div key={i} style={{ width: COL_W, minWidth: COL_W }}
@@ -528,7 +528,7 @@ export const Reservations: React.FC = () => {
                         {bookings.map(b => {
                           const style = getBlockStyle(b);
                           if (!style) return null;
-                          const cls   = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
+                          const cls = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
                           const isVip = b.guest.status === 'VIP_ELITE' || b.guest.status === 'PLATINUM_TIER';
                           return (
                             <div
@@ -568,17 +568,16 @@ export const Reservations: React.FC = () => {
             <div className="shrink-0 p-4 border-t border-outline-variant/40 bg-stone-50/50 flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap gap-6">
                 {([
-                  { key: 'status.upcoming',    cls: 'bg-primary-container border-primary/20' },
-                  { key: 'status.dueCheckin',  cls: 'bg-amber-100 border-amber-300' },
-                  { key: 'status.inProgress',  cls: 'bg-teal-800 border-teal-700' },
-                  { key: 'status.overdue',     cls: 'bg-red-100 border-red-300' },
-                  { key: 'legend.vip',         cls: 'bg-gradient-to-r from-gold-400 to-gold-500 border-gold-400' },
-                  { key: 'status.maintenance', cls: 'bg-stone-100 border-stone-200' },
+                  { key: 'status.upcoming', cls: 'bg-slate-100 border-slate-200 text-slate-700' },
+                  { key: 'status.dueCheckin', cls: 'bg-blue-100 border-blue-300 text-blue-900' },
+                  { key: 'status.inProgress', cls: 'bg-emerald-600 border-emerald-500 text-white' },
+                  { key: 'status.overdue', cls: 'bg-rose-100 border-rose-300 text-rose-900' },
+                  { key: 'status.maintenance', cls: 'bg-stone-200 border-stone-300 text-stone-500' },
                 ] as const).map(item => (
                   <div key={item.key} className="flex items-center gap-2">
                     <span className={cn('w-3 h-3 rounded border', item.cls)} />
                     <span className="text-[9px] font-bold tracking-widest text-on-surface-variant/60 uppercase">
-                      {item.key === 'legend.vip' ? 'VIP Stay' : t(item.key)}
+                      {t(item.key)}
                     </span>
                   </div>
                 ))}
@@ -706,10 +705,10 @@ export const Reservations: React.FC = () => {
                   .map((p, i) => p === '…'
                     ? <span key={`e${i}`} className="px-1 text-on-surface-variant/30 text-xs">…</span>
                     : <button key={p} onClick={() => setPage(p as number)}
-                        className={cn('w-8 h-8 rounded-lg text-[10px] font-bold border transition-colors',
-                          meta.page === p ? 'bg-primary text-white border-primary' : 'border-stone-200 text-on-surface-variant/60 hover:bg-stone-50')}>
-                        {p}
-                      </button>
+                      className={cn('w-8 h-8 rounded-lg text-[10px] font-bold border transition-colors',
+                        meta.page === p ? 'bg-primary text-white border-primary' : 'border-stone-200 text-on-surface-variant/60 hover:bg-stone-50')}>
+                      {p}
+                    </button>
                   )}
                 <button onClick={() => setPage(p => p + 1)} disabled={!meta?.hasNextPage}
                   className="p-2 border border-stone-200 rounded-lg text-on-surface-variant/40 disabled:opacity-30 hover:bg-stone-50 transition-colors">
