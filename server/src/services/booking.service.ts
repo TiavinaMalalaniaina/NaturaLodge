@@ -36,6 +36,7 @@ export type EffectiveStatus =
   | 'due_checkin'
   | 'in_progress'
   | 'overdue'
+  | 'awaiting'
   | 'checked_out'
   | 'cancelled';
 
@@ -54,6 +55,7 @@ export function computeEffectiveStatus(b: { arrival: Date; departure: Date; stat
   if (b.status === 'CHECKED_IN') {
     return now > b.departure ? 'overdue' : 'in_progress';
   }
+  if (b.status === 'AWAITING') return 'awaiting';
   if (now < b.arrival) {
     return b.arrival.toDateString() === now.toDateString() ? 'due_checkin' : 'upcoming';
   }
@@ -173,7 +175,7 @@ export async function create(data: BookingInput, createdById: string) {
         createdById,
         arrival,
         departure,
-        status:      data.status ?? 'CONFIRMED',
+        status:      data.status ?? 'AWAITING',
         totalAmount: data.totalAmount,
         notes:       data.notes,
         rooms: {
