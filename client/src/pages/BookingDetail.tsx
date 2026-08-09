@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ArrowLeft, Calendar, Users, CreditCard, FileText,
-  LogIn, LogOut, AlertTriangle, Bed, Hash, Clock,
+  LogIn, LogOut, AlertTriangle, Bed, Hash, Clock, Check,
   ChevronRight, ExternalLink, RefreshCw, RotateCcw, Plus, X, Sparkles,
 } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -37,6 +37,7 @@ export const BookingDetail: React.FC = () => {
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [cancelOpen,   setCancelOpen]   = useState(false);
+  const [confirmOpen,  setConfirmOpen]  = useState(false);
   const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
   const [newExtraId,        setNewExtraId]        = useState('');
   const [newExtraQty,       setNewExtraQty]       = useState(1);
@@ -65,6 +66,8 @@ export const BookingDetail: React.FC = () => {
       }),
     });
   };
+
+  console.log(booking);
 
   return (
     <motion.div
@@ -101,6 +104,12 @@ export const BookingDetail: React.FC = () => {
             <button onClick={() => handleStatus('CHECKED_IN')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-teal-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-teal-900 transition-colors shadow-lg shadow-teal-800/10 disabled:opacity-50">
               <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
+            </button>
+          )}
+          {booking.status === 'awaiting' && (
+            <button onClick={() => setConfirmOpen(true)} disabled={updateStatus.isPending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-600 transition-colors">
+              <Check className="w-3.5 h-3.5" /> {t('common.confirm')}
             </button>
           )}
           {canCheckOut && (
@@ -326,6 +335,16 @@ export const BookingDetail: React.FC = () => {
       </div>
 
       {/* ── Modals ── */}
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => { handleStatus('CONFIRMED'); setConfirmOpen(false); }}
+        title={t('reservations.confirmBooking')}
+        message={t('reservations.confirmBookingMessage')}
+        confirmLabel={t('common.confirm')}
+        variant="warning"
+        isPending={updateStatus.isPending}
+      />
       <ConfirmModal
         isOpen={cancelOpen}
         onClose={() => setCancelOpen(false)}
