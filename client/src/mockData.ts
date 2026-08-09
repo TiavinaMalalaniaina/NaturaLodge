@@ -142,7 +142,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     roomType: "Suite",
     arrival: "2023-10-24",
     departure: "2023-10-28",
-    status: "confirmed",
+    status: "awaiting",
     totalAmount: 6000000
   },
   {
@@ -178,7 +178,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     roomType: "Penthouse",
     arrival: "2023-10-25",
     departure: "2023-10-27",
-    status: "confirmed",
+    status: "awaiting",
     totalAmount: 22000000
   },
   {
@@ -190,7 +190,7 @@ export const MOCK_BOOKINGS: Booking[] = [
     roomType: "Superior",
     arrival: "2023-10-26",
     departure: "2023-10-29",
-    status: "confirmed",
+    status: "awaiting",
     totalAmount: 2400000
   }
 ];

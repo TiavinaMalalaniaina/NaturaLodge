@@ -82,6 +82,7 @@ export type EffectiveStatus =
   | 'due_checkin'
   | 'in_progress'
   | 'overdue'
+  | 'awaiting'
   | 'checked_out'
   | 'cancelled';
 
@@ -107,6 +108,7 @@ function deriveEffectiveStatus(arrival: string, departure: string, status: Booki
   if (status === 'cancelled')   return 'cancelled';
   if (status === 'checked-out') return 'checked_out';
   if (status === 'checked-in')  return now > dep ? 'overdue' : 'in_progress';
+  if (status === 'awaiting')    return 'awaiting';
   if (now < arr) return arr.toDateString() === now.toDateString() ? 'due_checkin' : 'upcoming';
   if (now >= arr && now <= dep) return 'due_checkin';
   return 'overdue';
