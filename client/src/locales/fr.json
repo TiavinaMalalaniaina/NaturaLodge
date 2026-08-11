@@ -327,7 +327,7 @@
     "reference":             "Référence",
     "voidPayment":           "Annuler",
     "taxRate":               "Taux TVA (%)",
-    "status_pending":        "En attente",
+    "status_pending":        "Non payée",
     "status_paid":           "Payée",
     "status_partially_paid": "Part. payée",
     "status_refunded":       "Remboursée",
@@ -353,7 +353,7 @@
     "search":             "Rechercher par client ou numéro de facture…",
     "empty":              "Aucun paiement trouvé",
     "status_completed":   "Encaissé",
-    "status_pending":     "En attente",
+    "status_pending":     "Non payée",
     "status_failed":      "Échoué",
     "status_refunded":    "Remboursé"
   },

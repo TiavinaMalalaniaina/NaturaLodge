@@ -327,7 +327,7 @@
     "reference":             "Reference",
     "voidPayment":           "Void",
     "taxRate":               "VAT Rate (%)",
-    "status_pending":        "Pending",
+    "status_pending":        "Unpaid",
     "status_paid":           "Paid",
     "status_partially_paid": "Part. paid",
     "status_refunded":       "Refunded",
@@ -353,7 +353,7 @@
     "search":             "Search by guest or invoice number…",
     "empty":              "No payments found",
     "status_completed":   "Completed",
-    "status_pending":     "Pending",
+    "status_pending":     "Unpaid",
     "status_failed":      "Failed",
     "status_refunded":    "Refunded"
   },

@@ -647,11 +647,9 @@ export const Reservations: React.FC = () => {
                           <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[b.effectiveStatus])}>
                             {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])}
                           </span>
-                          {b.effectiveStatus === 'checked_out' && (
-                            <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[b.paymentStatus])}>
-                              {t(`invoice.status_${b.paymentStatus}`)}
-                            </span>
-                          )}
+                          <span className={cn('px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[b.paymentStatus])}>
+                            {t(`invoice.status_${b.paymentStatus}`)}
+                          </span>
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
