@@ -327,7 +327,7 @@
     "reference":             "Laharana",
     "voidPayment":           "Foana",
     "taxRate":               "Tahan'ny hetra (%)",
-    "status_pending":        "Miandry",
+    "status_pending":        "Tsy naloa",
     "status_paid":           "Naloa",
     "status_partially_paid": "Naloa ampahany",
     "status_refunded":       "Averina",
@@ -353,7 +353,7 @@
     "search":             "Hikaroka amin'ny vahiny na laharam-piraktiora…",
     "empty":              "Tsy misy fandoavam-bola hita",
     "status_completed":   "Voaray",
-    "status_pending":     "Miandry",
+    "status_pending":     "Tsy naloa",
     "status_failed":      "Tsy nety",
     "status_refunded":    "Naverina"
   },

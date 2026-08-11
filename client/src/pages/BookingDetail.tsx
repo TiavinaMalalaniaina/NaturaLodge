@@ -12,6 +12,7 @@ import {
   useAddBookingRoomExtra, useUpdateBookingRoomExtra, useRemoveBookingRoomExtra,
 } from '../hooks/useBookings';
 import { useExtras } from '../hooks/useExtras';
+import { useInvoiceByBooking } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -29,6 +30,7 @@ export const BookingDetail: React.FC = () => {
   const { addNotification } = useNotifications();
 
   const { data: booking, isLoading, isError } = useBooking(id!);
+  const { data: invoice } = useInvoiceByBooking(id ?? null);
   const updateStatus = useUpdateBookingStatus();
   const { data: extrasCatalog = [] } = useExtras();
   const addExtra    = useAddBookingRoomExtra();
@@ -43,6 +45,11 @@ export const BookingDetail: React.FC = () => {
   const [newExtraQty,       setNewExtraQty]       = useState(1);
 
   const activeExtrasCatalog = extrasCatalog.filter(ex => ex.isActive);
+  const paymentHistory = invoice?.payments ?? [];
+  const totalPaid = invoice
+    ? invoice.payments.filter(p => p.status === 'completed').reduce((sum, payment) => sum + payment.amount, 0)
+    : 0;
+  const remainingAmount = invoice ? Math.max(0, invoice.totalAmount - totalPaid) : 0;
 
   const notifyError = (err: unknown) => addNotification({
     source: 'system', title: 'Action failed', subtitle: getApiErrorMessage(err), amount: '--',
@@ -67,8 +74,6 @@ export const BookingDetail: React.FC = () => {
     });
   };
 
-  console.log(booking);
-
   return (
     <motion.div
       initial={{ x: 20, opacity: 0 }}
@@ -88,11 +93,9 @@ export const BookingDetail: React.FC = () => {
               <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[es])}>
                 {t(EFFECTIVE_STATUS_I18N_KEY[es])}
               </span>
-              {es === 'checked_out' && (
-                <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[booking.paymentStatus])}>
-                  {t(`invoice.status_${booking.paymentStatus}`)}
-                </span>
-              )}
+              <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[booking.paymentStatus])}>
+                {t(`invoice.status_${booking.paymentStatus}`)}
+              </span>
             </div>
             <p className="text-[10px] text-on-surface-variant/50 font-mono tracking-widest">#{booking.id.slice(-12).toUpperCase()}</p>
           </div>
@@ -323,6 +326,100 @@ export const BookingDetail: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Invoice summary */}
+          <div className="bg-white rounded-3xl border border-stone-200/60 p-6 organic-shadow">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" /> {t('invoice.title')}
+              </h4>
+              {invoice && (
+                <span className={cn(
+                  'px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border',
+                  invoice.status === 'paid' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                  invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                  invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                  'bg-amber-50 text-amber-700 border-amber-200',
+                )}>
+                  {t(`invoice.status_${invoice.status}`)}
+                </span>
+              )}
+            </div>
+
+            {!invoice ? (
+              <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 p-6 text-center text-sm text-on-surface-variant/50">
+                {t('invoice.noInvoice')}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.number')}</span>
+                    <span className="text-sm font-semibold text-on-surface">{invoice.number}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.total')}</span>
+                    <span className="text-sm font-semibold text-on-surface">{fmtAmount(invoice.totalAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.status_paid')}</span>
+                    <span className="text-sm font-semibold text-teal-700">{fmtAmount(totalPaid)}</span>
+                  </div>
+                  {remainingAmount > 0 && (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.remaining')}</span>
+                      <span className="text-sm font-semibold text-red-600">{fmtAmount(remainingAmount)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <button onClick={() => navigate(`/invoices/${booking.id}`)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-stone-50 border border-stone-100 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-100 transition-colors group">
+                  {t('invoice.title')}
+                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Payment history */}
+          <div className="bg-white rounded-3xl border border-stone-200/60 p-6 organic-shadow">
+            <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase mb-5 flex items-center gap-2">
+              <CreditCard className="w-3.5 h-3.5" /> {t('invoice.paymentHistory')}
+            </h4>
+
+            {paymentHistory.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 p-6 text-center text-sm text-on-surface-variant/50">
+                {t('invoice.noPayments')}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {paymentHistory.map(payment => (
+                  <div key={payment.id} className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-on-surface">{fmtAmount(payment.amount)}</p>
+                        <p className="text-[10px] text-on-surface-variant/50 mt-1 truncate">
+                          {t(`invoice.method_${payment.method}`)} · {fmtDate(payment.paidAt)}
+                        </p>
+                        {payment.reference && (
+                          <p className="text-[10px] font-mono text-on-surface-variant/40 mt-1 truncate">#{payment.reference}</p>
+                        )}
+                      </div>
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border',
+                        payment.status === 'completed' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                        payment.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                        'bg-stone-100 text-stone-500 border-stone-200',
+                      )}>
+                        {t(`payments.status_${payment.status}`)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick nav to reservations */}
