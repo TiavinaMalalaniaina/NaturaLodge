@@ -269,6 +269,7 @@
     "revertCheckIn":        "Revert Check-in",
     "forceOut":             "Force Out",
     "reassign":             "Reassign",
+    "revertCancelling":     "Revert Cancelling",
     "guest":                "Guest",
     "rooms":                "Rooms",
     "status":               "Status",

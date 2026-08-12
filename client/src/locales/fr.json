@@ -269,6 +269,7 @@
     "revertCheckIn":        "Annuler le check-in",
     "forceOut":             "Forcer la sortie",
     "reassign":             "Réassigner",
+    "revertCancelling":     "Annuler l'annulation",
     "guest":                "Client",
     "rooms":                "Chambres",
     "status":               "Statut",

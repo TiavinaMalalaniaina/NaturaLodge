@@ -62,11 +62,12 @@ export const BookingDetail: React.FC = () => {
   const canCheckIn  = es === 'due_checkin';
   const canCheckOut = es === 'in_progress' || es === 'overdue';
   const canRevert   = es === 'in_progress';
-  const canCancel   = es === 'upcoming' || es === 'due_checkin';
+  const canCancel   = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
+  const canRevertCancel = es === 'cancelled';
 
   const handleStatus = (status: string) => {
     updateStatus.mutate({ id: booking.id, status }, {
-      onSuccess: () => navigate(-1),
+      onSuccess: () => console.log(`Status changed to ${status}`),
       onError: (err) => addNotification({
         source: 'system', title: 'Action failed',
         subtitle: getApiErrorMessage(err), amount: '--',
@@ -131,6 +132,12 @@ export const BookingDetail: React.FC = () => {
             <button onClick={() => handleStatus('CONFIRMED')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors disabled:opacity-50">
               <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCheckIn')}
+            </button>
+          )}
+          {canRevertCancel && (
+            <button onClick={() => handleStatus('AWAITING')} disabled={updateStatus.isPending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors disabled:opacity-50">
+              <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCancelling')}
             </button>
           )}
           <button onClick={() => setReassignOpen(true)}
