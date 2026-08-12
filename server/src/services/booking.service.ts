@@ -84,7 +84,7 @@ export async function list(params: BookingListParams) {
     // posé (statut, date ou recherche), on montre tout ce qui matche.
     ...(status ? { status } : (search || startDate || endDate || date) ? {} : {
       OR: [
-        { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } },
+        { status: { notIn: ['CANCELLED'] as BookingStatus[] } },
         { status: 'CHECKED_OUT' as BookingStatus, invoices: { none: { status: { in: ['PAID', 'REFUNDED', 'CANCELLED'] as InvoiceStatus[] } } } },
       ],
     }),
