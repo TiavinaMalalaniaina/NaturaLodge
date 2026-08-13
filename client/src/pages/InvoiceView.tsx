@@ -1,38 +1,78 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Printer, Building2, CreditCard, Plus, Trash2, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment } from '../hooks/useInvoices';
-import { PaymentMethod, InvoiceStatus } from '../api/invoices';
+import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader } from '../components/QueryLoader';
 import { formatDate as fmtDate, formatCurrency as fmtAmount, todayLocalStr } from '../lib/format';
 import { INVOICE_STATUS_CLASS as STATUS_CLASS } from '../lib/statusColors';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
+
+const CollapsibleNote: React.FC<{ notes: string }> = ({ notes }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = React.useRef<HTMLParagraphElement>(null);
+
+  React.useEffect(() => {
+    const el = textRef.current;
+    if (el) {
+      // Vérifie si le texte réel dépasse la hauteur de 2 lignes
+      setIsTruncated(el.scrollHeight > el.clientHeight);
+    }
+  }, [notes]);
+
+  return (
+    <div className="mt-1">
+      <p
+        ref={textRef}
+        className={cn(
+          "text-[11px] text-stone-400 font-light break-words transition-all",
+          !isExpanded && "line-clamp-2"
+        )}
+      >
+        {notes}
+      </p>
+      {isTruncated && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded(prev => !prev)}
+          className="text-[9px] font-medium text-primary/70 hover:underline mt-0.5 block focus:outline-none"
+        >
+          {isExpanded ? "Voir moins" : "Voir plus"}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export const InvoiceView: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
-  const { t }    = useTranslation();
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const { data: invoice, isLoading, isError } = useInvoiceByBooking(bookingId ?? null);
   const generateInvoice = useGenerateInvoice();
-  const recordPayment   = useRecordPayment();
-  const voidPayment     = useVoidPayment();
+  const recordPayment = useRecordPayment();
+  const voidPayment = useVoidPayment();
 
   const [taxRate, setTaxRate] = useState(0);
-  const [notes,   setNotes]   = useState('');
+  const [notes, setNotes] = useState('');
   const [dueAt] = useState(() => todayLocalStr());
 
-  const [payAmount,    setPayAmount]    = useState('');
-  const [payMethod,    setPayMethod]    = useState<PaymentMethod>('cash');
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
   const [payReference, setPayReference] = useState('');
-  const [payNotes,     setPayNotes]     = useState('');
-  const [showPayForm,  setShowPayForm]  = useState(false);
-  const [apiError,     setApiError]     = useState('');
+  const [payNotes, setPayNotes] = useState('');
+  const [showPayForm, setShowPayForm] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [isConfirmRefundModalOpen, setConfirmRefundModalOpen] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
 
   const handleGenerate = () => {
     if (!bookingId) return;
@@ -66,19 +106,20 @@ export const InvoiceView: React.FC = () => {
     );
   };
 
-  const handleVoidPayment = (paymentId: string) => {
+  const handleVoidPayment = () => {
     if (!invoice) return;
+    if (!selectedPaymentId) return;
     setApiError('');
-    voidPayment.mutate({ invoiceId: invoice.id, paymentId }, {
+    voidPayment.mutate({ invoiceId: invoice.id, paymentId: selectedPaymentId }, {
       onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
     });
   };
 
   const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'RECEPTIONIST';
-  const canVoid   = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canVoid = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const noInvoice = !isLoading && (isError || !invoice);
 
-  const subtotal  = invoice ? invoice.totalAmount - invoice.taxAmount : 0;
+  const subtotal = invoice ? invoice.totalAmount - invoice.taxAmount : 0;
   const totalPaid = invoice
     ? invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     : 0;
@@ -91,7 +132,7 @@ export const InvoiceView: React.FC = () => {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-8 pb-20 max-w-5xl mx-auto"
+      className="space-y-8"
     >
       {/* ── Header (hidden on print) ── */}
       <div className="no-print flex items-center justify-between gap-4">
@@ -373,38 +414,52 @@ export const InvoiceView: React.FC = () => {
               ) : (
                 <div className="divide-y divide-stone-100">
                   {invoice.payments.map(p => (
-                    <div key={p.id} className="p-5 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-9 h-9 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center shrink-0">
-                          <CreditCard className="w-4 h-4 text-on-surface-variant/50" />
+                    <div key={p.id} className="p-5 flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                          <CreditCard className="w-4 h-4 text-stone-500" />
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-on-surface">{fmtAmount(p.amount)}</p>
-                          <p className="text-[10px] text-on-surface-variant/50 mt-0.5 truncate">
-                            {t(`invoice.method_${p.method}`)} · {fmtDate(p.paidAt)} · {p.processedBy.name}
-                          </p>
-                          {p.reference && (
-                            <p className="text-[10px] font-mono text-on-surface-variant/40 mt-0.5 truncate">#{p.reference}</p>
+                        <div className="min-w-0 flex-1 flex flex-col gap-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <p className="text-sm font-bold text-stone-900 tracking-tight">{fmtAmount(p.amount)}</p>
+                          </div>
+
+                          {/* Afficher la référence uniquement si ce n'est pas du cash et qu'elle existe */}
+                          {p.reference && p.method !== 'cash' && (
+                            <span className="text-[10px] font-mono font-medium px-2 py-0.5 bg-stone-100 text-stone-600 rounded-md w-fit">
+                              #{p.reference}
+                            </span>
                           )}
+
+                          {/* Utilisation de flex-wrap pour éviter la troncature sur les petits écrans */}
+                          <div className="flex items-center gap-1.5 text-[11px] text-stone-500 flex-wrap leading-relaxed">
+                            <span className="font-medium text-stone-700">{t(`invoice.method_${p.method}`)}</span>
+                            <span className="text-stone-300">•</span>
+                            <span>{fmtDate(p.paidAt)}</span>
+                            <span className="text-stone-300">•</span>
+                            <span className="italic text-stone-400">{p.processedBy.name}</span>
+                          </div>
+
+                          <CollapsibleNote notes={p.notes ? p.notes : ""} />
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-3 shrink-0 pt-0.5">
                         <span className={cn(
                           'px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border',
                           p.status === 'completed' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                          p.status === 'refunded'  ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                                     'bg-stone-100 text-stone-500 border-stone-200',
+                            p.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              'bg-stone-100 text-stone-500 border-stone-200',
                         )}>
                           {p.status}
                         </span>
                         {canVoid && p.status === 'completed' && (
                           <button
-                            onClick={() => handleVoidPayment(p.id)}
+                            onClick={() => { setSelectedPaymentId(p.id); setConfirmRefundModalOpen(true); }}
                             disabled={voidPayment.isPending}
                             className="p-2 rounded-xl text-on-surface-variant/40 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                             title={t('invoice.voidPayment')}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
@@ -416,6 +471,15 @@ export const InvoiceView: React.FC = () => {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={isConfirmRefundModalOpen}
+        onClose={() => setConfirmRefundModalOpen(false)}
+        onConfirm={() => { handleVoidPayment(); setConfirmRefundModalOpen(false); }}
+        title={t('invoice.cancelTitle')}
+        message={t('invoice.cancelMessage')}
+        confirmLabel={t('invoice.confirmCancel')}
+        isPending={voidPayment.isPending}
+      />
     </motion.div>
   );
 };

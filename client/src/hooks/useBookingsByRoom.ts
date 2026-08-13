@@ -6,7 +6,7 @@ export function useBookingsByRoom(bookings: RichBooking[]): Map<string, RichBook
   return useMemo(() => {
     const map = new Map<string, RichBooking[]>();
     for (const b of bookings) {
-      if (b.status === 'cancelled' || b.status === 'checked-out') continue;
+      if (b.status === 'cancelled') continue;
       for (const br of b.rooms) {
         const existing = map.get(br.room.id);
         if (existing) existing.push(b);

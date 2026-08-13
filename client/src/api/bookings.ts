@@ -1,3 +1,4 @@
+import { BookingNote } from '../types';
 import { api } from './client';
 import { ExtraPricing } from './extras';
 
@@ -25,6 +26,13 @@ export interface BookingRoomEntry {
   extras: BookingRoomExtraEntry[];
 }
 
+interface ApiBookingNote {
+  id: string;
+  author: { id: string; name: string; role: string };
+  content: string;
+  createdAt: string;
+}
+
 interface ApiBookingRoomExtra {
   id: string; extraId: string; quantity: number; unitPrice: number; pricing: string;
   extra: { name: string };
@@ -38,6 +46,15 @@ interface ApiBookingRoom {
     roomType: { id: string; name: string; rate: number };
   };
   extras?: ApiBookingRoomExtra[];
+}
+
+function normalizeBookingNote(e: ApiBookingNote): BookingNote {
+  return {
+    id: e.id,
+    author: e.author,
+    content: e.content,
+    createdAt: e.createdAt,
+  }; 
 }
 
 function normalizeBookingRoomExtra(e: ApiBookingRoomExtra): BookingRoomExtraEntry {
@@ -64,17 +81,18 @@ function normalizeBookingRoom(br: ApiBookingRoom): BookingRoomEntry {
       type:   br.room.roomType.name,
       rate:   br.room.rateOverride ?? br.room.roomType.rate,
     },
-    extras: (br.extras ?? []).map(normalizeBookingRoomExtra),
+    extras: (br.extras ?? []).map(normalizeBookingRoomExtra)
   };
 }
 
 interface ApiBooking {
   id: string; guestId: string;
   arrival: string; departure: string; status: string;
-  totalAmount: number; notes?: string;
+  totalAmount: number;
   nights?: number; effectiveStatus?: string; paymentStatus?: string;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
   rooms: ApiBookingRoom[];
+  bookingNotes?: ApiBookingNote[];
 }
 
 export type EffectiveStatus =
@@ -127,6 +145,7 @@ export interface RichBooking {
   paymentStatus: PaymentStatus;
   guest: { id: string; name: string; email: string; avatar?: string; status: string };
   rooms: BookingRoomEntry[];
+  notes: BookingNote[];
 }
 
 export function normalizeBooking(b: ApiBooking): RichBooking {
@@ -145,10 +164,13 @@ export function normalizeBooking(b: ApiBooking): RichBooking {
 
   const rooms: BookingRoomEntry[] = b.rooms.map(normalizeBookingRoom);
 
+
+  const notes: BookingNote[] = b.bookingNotes ? b.bookingNotes.map(normalizeBookingNote) : [];
+
   return {
     id: b.id, guestId: b.guestId, guestName: b.guest.name,
     arrival, departure, status, totalAmount: b.totalAmount,
-    nights, effectiveStatus, paymentStatus, guest: b.guest, rooms,
+    nights, effectiveStatus, paymentStatus, guest: b.guest, rooms, notes
   };
 }
 
@@ -254,4 +276,9 @@ export const createBooking = async (payload: {
 }): Promise<RichBooking> => {
   const { data } = await api.post<ApiBooking>('/bookings', payload);
   return normalizeBooking(data);
+};
+
+export const addBookingNote = async (bookingId: string, content: string ): Promise<BookingNote> => {  
+  const { data } = await api.post<BookingNote>(`/bookings/${bookingId}/notes`, { content: content });
+  return normalizeBookingNote(data);
 };

@@ -49,7 +49,9 @@
     "unassigned":   "Unassigned",
     "notSet":       "Not set",
     "apply":        "Apply",
-    "optional":     "optional"
+    "optional":     "optional",
+    "showMore":     "Show more",
+    "showLess":     "Show less"
   },
   "status": {
     "available":    "Available",
@@ -269,6 +271,7 @@
     "revertCheckIn":        "Revert Check-in",
     "forceOut":             "Force Out",
     "reassign":             "Reassign",
+    "revertCancelling":     "Revert Cancelling",
     "guest":                "Guest",
     "rooms":                "Rooms",
     "status":               "Status",
@@ -339,7 +342,10 @@
     "method_online":         "Online",
     "method_mvola":          "MVOLA",
     "method_MVOLA":          "MVOLA",
-    "method_orange_money":   "Orange Money"
+    "method_orange_money":   "Orange Money",
+    "cancelTitle":           "Cancel Payment ?",
+    "cancelMessage":         "This will refund the payment and notify the system. The action cannot be undone.",
+    "confirmCancel":         "Yes, refund"
   },
   "invoices": {
     "title":      "Invoices",

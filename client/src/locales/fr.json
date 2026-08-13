@@ -49,7 +49,9 @@
     "unassigned":   "Non assigné",
     "notSet":       "Non défini",
     "apply":        "Appliquer",
-    "optional":     "optionnel"
+    "optional":     "optionnel",
+    "showMore":     "Montrer plus",
+    "showLess":     "Montrer moins"
   },
   "status": {
     "available":    "Disponible",
@@ -269,6 +271,7 @@
     "revertCheckIn":        "Annuler le check-in",
     "forceOut":             "Forcer la sortie",
     "reassign":             "Réassigner",
+    "revertCancelling":     "Annuler l'annulation",
     "guest":                "Client",
     "rooms":                "Chambres",
     "status":               "Statut",
@@ -339,7 +342,10 @@
     "method_online":         "En ligne",
     "method_mvola":          "MVOLA",
     "method_MVOLA":          "MVOLA",
-    "method_orange_money":   "Orange Money"
+    "method_orange_money":   "Orange Money",
+    "cancelTitle":           "Annuler le paiement ?",
+    "cancelMessage":         "Cela libérera remboursera le paiement et notifiera le système. Cette action est irréversible.",
+    "confirmCancel":         "Oui, remboursé"
   },
   "invoices": {
     "title":      "Factures",

@@ -29,6 +29,10 @@ const include = {
     orderBy: { issuedAt: 'desc' as const },
     take:    1,
   },
+  bookingNotes: {
+    include: { author: { select: { id: true, name: true, role: true } } },
+    orderBy: { createdAt: 'desc' as const },
+  },
 };
 
 export type EffectiveStatus =
@@ -84,7 +88,7 @@ export async function list(params: BookingListParams) {
     // posé (statut, date ou recherche), on montre tout ce qui matche.
     ...(status ? { status } : (search || startDate || endDate || date) ? {} : {
       OR: [
-        { status: { notIn: ['CHECKED_OUT', 'CANCELLED'] as BookingStatus[] } },
+        { status: { notIn: ['CANCELLED'] as BookingStatus[] } },
         { status: 'CHECKED_OUT' as BookingStatus, invoices: { none: { status: { in: ['PAID', 'REFUNDED', 'CANCELLED'] as InvoiceStatus[] } } } },
       ],
     }),
@@ -518,3 +522,17 @@ export async function remove(id: string): Promise<void> {
     data:  { status: 'AVAILABLE' },
   });
 }
+
+export function addBookingNote(bookingId: string, content: string, authorId: string) {
+  return prisma.bookingNote.create({
+    data: { content, bookingId, authorId },
+    include: { author: { select: { id: true, name: true, role: true } } },
+  });
+}
+
+export async function removeBookingNote(bookingId: string, noteId: string): Promise<void> {
+  const note = await prisma.bookingNote.findUnique({ where: { id: noteId } });
+  if (!note || note.bookingId !== bookingId) throw new NotFoundError('BookingNote');
+  await prisma.bookingNote.delete({ where: { id: noteId } });
+}
+
