@@ -49,7 +49,9 @@
     "unassigned":   "Tsy voatendry",
     "notSet":       "Tsy voafaritra",
     "apply":        "Ampiharo",
-    "optional":     "tsy tsy maintsy"
+    "optional":     "tsy tsy maintsy",
+    "showMore":     "Mampiseho mihoatra",
+    "showLess":     "Mampiseho kely"
   },
   "status": {
     "available":    "Afaka",
@@ -269,6 +271,7 @@
     "revertCheckIn":        "Manafoana ny fidirana",
     "forceOut":             "Anery hivoaka",
     "reassign":             "Hanova efitrano",
+    "revertCancelling":     "Haverina",
     "guest":                "Vahiny",
     "rooms":                "Efitrano",
     "status":               "Sata",
@@ -327,7 +330,7 @@
     "reference":             "Laharana",
     "voidPayment":           "Foana",
     "taxRate":               "Tahan'ny hetra (%)",
-    "status_pending":        "Miandry",
+    "status_pending":        "Tsy naloa",
     "status_paid":           "Naloa",
     "status_partially_paid": "Naloa ampahany",
     "status_refunded":       "Averina",
@@ -339,7 +342,10 @@
     "method_online":         "An-tserasera",
     "method_MVOLA":          "MVOLA",
     "method_mvola":          "MVOLA",
-    "method_orange_money":   "Orange Money"
+    "method_orange_money":   "Orange Money",
+    "cancelTitle":           "Hamerina vola ve ?",
+    "cancelMessage":         "Hanafaka izy io, hamerina ny fandoavam-bola ary hampandre ny rafitra. Tsy azo averina intsony ity hetsika ity.",
+    "confirmCancel":         "Eny, averina"
   },
   "invoices": {
     "title":      "Faktiora",
@@ -353,7 +359,7 @@
     "search":             "Hikaroka amin'ny vahiny na laharam-piraktiora…",
     "empty":              "Tsy misy fandoavam-bola hita",
     "status_completed":   "Voaray",
-    "status_pending":     "Miandry",
+    "status_pending":     "Tsy naloa",
     "status_failed":      "Tsy nety",
     "status_refunded":    "Naverina"
   },

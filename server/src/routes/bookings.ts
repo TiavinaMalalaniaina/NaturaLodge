@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import {
   bookingSchema, bookingListSchema, bookingStatusSchema, reassignSchema, addBookingRoomSchema,
   addBookingRoomExtraSchema, updateBookingRoomExtraSchema,
+  bookingNoteSchema,
 } from '../validation/booking.schema';
 import * as bookingService from '../services/booking.service';
 
@@ -72,5 +73,18 @@ bookingsRouter.delete('/:id/rooms/:roomId/extras/:extraId', authorize('ADMIN', '
 
 bookingsRouter.delete('/:id', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   await bookingService.remove(req.params.id);
+  res.status(204).send();
+}));
+
+
+// ─── Notes ───────────────────────────────────────────────────────
+bookingsRouter.post('/:id/notes', asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = bookingNoteSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await bookingService.addBookingNote(req.params.id, parsed.data.content, req.user!.id));
+}));
+
+bookingsRouter.delete('/:id/notes/:noteId', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  await bookingService.removeBookingNote(req.params.id, req.params.noteId);
   res.status(204).send();
 }));
