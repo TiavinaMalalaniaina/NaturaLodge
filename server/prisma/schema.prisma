@@ -9,22 +9,23 @@ datasource db {
 // ─── Auth / Staff ────────────────────────────────────────────────
 
 model User {
-  id                String      @id @default(cuid())
-  username          String      @unique
-  email             String?     @unique
+  id                String        @id @default(cuid())
+  username          String        @unique
+  email             String?       @unique
   password          String
   name              String
-  role              Role        @default(RECEPTIONIST)
-  status            UserStatus  @default(ACTIVE)
+  role              Role          @default(RECEPTIONIST)
+  status            UserStatus    @default(ACTIVE)
   avatar            String?
-  joinedDate        DateTime    @default(now())
+  joinedDate        DateTime      @default(now())
   lastLogin         DateTime?
   guestNotes        GuestNote[]
   createdBookings   Booking[]
   issuedInvoices    Invoice[]
   processedPayments Payment[]
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  bookingNotes      BookingNote[]
 }
 
 enum Role {
@@ -127,20 +128,21 @@ model RoomFeature {
 // ─── Bookings ────────────────────────────────────────────────────
 
 model Booking {
-  id          String        @id @default(cuid())
-  guest       Guest         @relation(fields: [guestId], references: [id])
-  guestId     String
-  createdBy   User?         @relation(fields: [createdById], references: [id])
-  createdById String?
-  rooms       BookingRoom[]
-  invoices    Invoice[]
-  arrival     DateTime
-  departure   DateTime
-  status      BookingStatus @default(AWAITING)
-  totalAmount Int
-  notes       String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  guest        Guest         @relation(fields: [guestId], references: [id])
+  guestId      String
+  createdBy    User?         @relation(fields: [createdById], references: [id])
+  createdById  String?
+  rooms        BookingRoom[]
+  invoices     Invoice[]
+  arrival      DateTime
+  departure    DateTime
+  status       BookingStatus @default(AWAITING)
+  totalAmount  Int
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bookingNotes BookingNote[]
 }
 
 model BookingRoom {
@@ -156,6 +158,16 @@ model BookingRoom {
 
   @@unique([bookingId, roomId])
   @@index([roomId, arrival, departure])
+}
+
+model BookingNote {
+  id        String   @id @default(cuid())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
 }
 
 enum BookingStatus {

@@ -23,6 +23,13 @@ export interface StaffNote {
   createdAt: string;
 }
 
+export interface BookingNote {
+  id: string;
+  author: { id: string; name: string; role: string };
+  content: string;
+  createdAt: string;
+}
+
 export type StaffRole = 'admin' | 'manager' | 'receptionist' | 'housekeeping';
 
 export interface StaffMember {

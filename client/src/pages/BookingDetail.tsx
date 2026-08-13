@@ -3,6 +3,7 @@ import {
   ArrowLeft, Calendar, Users, CreditCard, FileText,
   LogIn, LogOut, AlertTriangle, Bed, Hash, Clock, Check,
   ChevronRight, ExternalLink, RefreshCw, RotateCcw, Plus, X, Sparkles,
+  Send,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { cn } from '../lib/utils';
 import {
   useBooking, useUpdateBookingStatus,
   useAddBookingRoomExtra, useUpdateBookingRoomExtra, useRemoveBookingRoomExtra,
+  useAddBookingNote,
 } from '../hooks/useBookings';
 import { useExtras } from '../hooks/useExtras';
 import { useInvoiceByBooking } from '../hooks/useInvoices';
@@ -33,16 +35,18 @@ export const BookingDetail: React.FC = () => {
   const { data: invoice } = useInvoiceByBooking(id ?? null);
   const updateStatus = useUpdateBookingStatus();
   const { data: extrasCatalog = [] } = useExtras();
-  const addExtra    = useAddBookingRoomExtra();
+  const addExtra = useAddBookingRoomExtra();
   const updateExtra = useUpdateBookingRoomExtra();
   const removeExtra = useRemoveBookingRoomExtra();
+  const addNote = useAddBookingNote();
 
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [cancelOpen,   setCancelOpen]   = useState(false);
-  const [confirmOpen,  setConfirmOpen]  = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
-  const [newExtraId,        setNewExtraId]        = useState('');
-  const [newExtraQty,       setNewExtraQty]       = useState(1);
+  const [newExtraId, setNewExtraId] = useState('');
+  const [newExtraQty, setNewExtraQty] = useState(1);
+  const [noteInput, setNoteInput] = useState('');
 
   const activeExtrasCatalog = extrasCatalog.filter(ex => ex.isActive);
   const paymentHistory = invoice?.payments ?? [];
@@ -59,10 +63,10 @@ export const BookingDetail: React.FC = () => {
   if (isError || !booking) return <PageError />;
 
   const es = booking.effectiveStatus;
-  const canCheckIn  = es === 'due_checkin';
+  const canCheckIn = es === 'due_checkin';
   const canCheckOut = es === 'in_progress' || es === 'overdue';
-  const canRevert   = es === 'in_progress';
-  const canCancel   = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
+  const canRevert = es === 'in_progress';
+  const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
 
   const handleStatus = (status: string) => {
@@ -72,6 +76,13 @@ export const BookingDetail: React.FC = () => {
         source: 'system', title: 'Action failed',
         subtitle: getApiErrorMessage(err), amount: '--',
       }),
+    });
+  };
+
+  const handleSendNote = () => {
+    if (!noteInput.trim()) return;
+    addNote.mutate({ bookingId: id!, content: noteInput.trim() }, {
+      onSuccess: () => setNoteInput(''),
     });
   };
 
@@ -167,10 +178,10 @@ export const BookingDetail: React.FC = () => {
             <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase mb-6">{t('bookingDetail.staySummary')}</h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
               {[
-                { icon: Calendar,   label: t('reservations.arrivalDate'),   value: fmtDate(booking.arrival) },
-                { icon: Calendar,   label: t('reservations.departureDate'), value: fmtDate(booking.departure) },
-                { icon: Clock,      label: t('reservations.nights'),        value: `${booking.nights} ${booking.nights > 1 ? t('common.nights') : t('common.night')}` },
-                { icon: CreditCard, label: t('common.total'),               value: fmtAmount(booking.totalAmount) },
+                { icon: Calendar, label: t('reservations.arrivalDate'), value: fmtDate(booking.arrival) },
+                { icon: Calendar, label: t('reservations.departureDate'), value: fmtDate(booking.departure) },
+                { icon: Clock, label: t('reservations.nights'), value: `${booking.nights} ${booking.nights > 1 ? t('common.nights') : t('common.night')}` },
+                { icon: CreditCard, label: t('common.total'), value: fmtAmount(booking.totalAmount) },
               ].map((item, i) => (
                 <div key={i} className="flex flex-col gap-2">
                   <div className="w-9 h-9 rounded-xl bg-stone-50 flex items-center justify-center text-primary border border-stone-100">
@@ -289,6 +300,49 @@ export const BookingDetail: React.FC = () => {
               })}
             </div>
           </div>
+          {/* Staff notes */}
+          <div className="bg-white rounded-3xl border border-stone-200/60 organic-shadow overflow-hidden flex flex-col" style={{ height: 600 }}>
+            <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-50/50 shrink-0">
+              <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase flex items-center gap-2">
+                <FileText className="w-3 h-4" /> {t('guests.staffNotes')}
+              </h4>
+              <span className="text-[8px] font-bold text-on-surface-variant/40 uppercase tracking-widest">{t('guests.privateToTeam')}</span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
+              {booking.notes.length === 0 && (
+                <p className="text-center text-sm text-on-surface-variant/30 italic pt-4">{t('guests.noNotes')}</p>
+              )}
+              {booking.notes.map(note => (
+                <div key={note.id} className="bg-stone-50 p-3.5 rounded-2xl border border-stone-100 flex flex-col gap-1.5">
+                  <div className="flex justify-end items-start">
+                    <span className="font-mono text-[9px] text-on-surface-variant/40">
+                      {note.author.name} - {fmtDate(note.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-on-surface-variant leading-relaxed font-light">{note.content}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-4 bg-stone-50 border-t border-stone-100 shrink-0">
+              <div className="relative">
+                <input type="text"
+                  value={noteInput}
+                  onChange={e => setNoteInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSendNote()}
+                  placeholder={t('guests.addNote')}
+                  className="w-full h-12 pl-5 pr-14 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-primary transition-all"
+                />
+                <button
+                  onClick={handleSendNote}
+                  disabled={!noteInput.trim() || addNote.isPending}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:bg-primary-container transition-all disabled:opacity-40">
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Right col (1/3) ── */}
@@ -323,9 +377,9 @@ export const BookingDetail: React.FC = () => {
             <div className="space-y-3">
               {[
                 { label: t('bookingDetail.bookingId'), value: booking.id.slice(-12).toUpperCase() },
-                { label: t('bookingDetail.status'),    value: t(EFFECTIVE_STATUS_I18N_KEY[es]) },
-                { label: t('bookingDetail.rooms'),     value: booking.rooms.map(br => `#${br.room.number}`).join(', ') },
-                { label: t('common.total'),            value: fmtAmount(booking.totalAmount) },
+                { label: t('bookingDetail.status'), value: t(EFFECTIVE_STATUS_I18N_KEY[es]) },
+                { label: t('bookingDetail.rooms'), value: booking.rooms.map(br => `#${br.room.number}`).join(', ') },
+                { label: t('common.total'), value: fmtAmount(booking.totalAmount) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex items-center justify-between py-2 border-b border-stone-50 last:border-0">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{label}</span>
@@ -345,9 +399,9 @@ export const BookingDetail: React.FC = () => {
                 <span className={cn(
                   'px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border',
                   invoice.status === 'paid' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                  invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                  invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                  'bg-amber-50 text-amber-700 border-amber-200',
+                    invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                        'bg-amber-50 text-amber-700 border-amber-200',
                 )}>
                   {t(`invoice.status_${invoice.status}`)}
                 </span>
@@ -417,8 +471,8 @@ export const BookingDetail: React.FC = () => {
                       <span className={cn(
                         'px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border',
                         payment.status === 'completed' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                        payment.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                        'bg-stone-100 text-stone-500 border-stone-200',
+                          payment.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                            'bg-stone-100 text-stone-500 border-stone-200',
                       )}>
                         {t(`payments.status_${payment.status}`)}
                       </span>
