@@ -49,7 +49,9 @@
     "unassigned":   "Tsy voatendry",
     "notSet":       "Tsy voafaritra",
     "apply":        "Ampiharo",
-    "optional":     "tsy tsy maintsy"
+    "optional":     "tsy tsy maintsy",
+    "showMore":     "Mampiseho mihoatra",
+    "showLess":     "Mampiseho kely"
   },
   "status": {
     "available":    "Afaka",
@@ -340,7 +342,10 @@
     "method_online":         "An-tserasera",
     "method_MVOLA":          "MVOLA",
     "method_mvola":          "MVOLA",
-    "method_orange_money":   "Orange Money"
+    "method_orange_money":   "Orange Money",
+    "cancelTitle":           "Hamerina vola ve ?",
+    "cancelMessage":         "Hanafaka izy io, hamerina ny fandoavam-bola ary hampandre ny rafitra. Tsy azo averina intsony ity hetsika ity.",
+    "confirmCancel":         "Eny, averina"
   },
   "invoices": {
     "title":      "Faktiora",
