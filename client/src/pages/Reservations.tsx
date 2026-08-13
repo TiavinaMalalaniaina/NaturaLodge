@@ -132,7 +132,6 @@ export const Reservations: React.FC = () => {
       return true;
     });
   }, [allGridRooms, searchQuery, statusFilter, roomTypeFilter, viewMode]);
-
   // ── Grid helpers ──────────────────────────────────────────────────
 
 

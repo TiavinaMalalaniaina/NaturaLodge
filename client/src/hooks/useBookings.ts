@@ -3,6 +3,7 @@ import {
   fetchBooking, fetchBookings, createBooking, updateBookingStatus, reassignRoom,
   addBookingRoom, removeBookingRoom, addBookingRoomExtra, updateBookingRoomExtra, removeBookingRoomExtra,
   BookingParams,
+  addBookingNote,
 } from '../api/bookings';
 import { ROOMS_KEY } from './useRooms';
 import { INVOICES_KEY } from './useInvoices';
@@ -124,5 +125,15 @@ export function useRemoveBookingRoomExtra() {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: INVOICES_KEY });
     },
+  });
+}
+
+export function useAddBookingNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bookingId, content }: { bookingId: string; content: string }) =>
+      addBookingNote(bookingId, content),
+    onSuccess: (_data, { bookingId }) =>
+      qc.invalidateQueries({ queryKey: [...BOOKINGS_KEY, bookingId] }),
   });
 }

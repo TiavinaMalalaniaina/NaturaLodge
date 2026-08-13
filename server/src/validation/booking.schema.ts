@@ -62,9 +62,14 @@ export const updateBookingRoomExtraSchema = z.object({
   quantity: z.number().int().positive(),
 });
 
+export const bookingNoteSchema = z.object({
+  content: z.string().min(1),
+});
+
 export type BookingInput = z.infer<typeof bookingSchema>;
 export type BookingListParams = z.infer<typeof bookingListSchema>;
 export type ReassignInput = z.infer<typeof reassignSchema>;
 export type AddBookingRoomInput = z.infer<typeof addBookingRoomSchema>;
 export type AddBookingRoomExtraInput = z.infer<typeof addBookingRoomExtraSchema>;
 export type UpdateBookingRoomExtraInput = z.infer<typeof updateBookingRoomExtraSchema>;
+export type BookingNoteInput = z.infer<typeof bookingNoteSchema>;
