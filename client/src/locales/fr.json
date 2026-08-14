@@ -343,6 +343,7 @@
     "method_mvola":          "MVOLA",
     "method_MVOLA":          "MVOLA",
     "method_orange_money":   "Orange Money",
+    "method_ORANGE_MONEY":   "Orange Money",
     "cancelTitle":           "Annuler le paiement ?",
     "cancelMessage":         "Cela libérera remboursera le paiement et notifiera le système. Cette action est irréversible.",
     "confirmCancel":         "Oui, remboursé"
