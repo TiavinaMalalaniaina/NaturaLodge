@@ -18,7 +18,7 @@ import { useInvoiceByBooking } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
@@ -42,7 +42,7 @@ export const BookingDetail: React.FC = () => {
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<StatusActionKey | null>(null);
   const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
   const [newExtraId, setNewExtraId] = useState('');
   const [newExtraQty, setNewExtraQty] = useState(1);
@@ -116,19 +116,19 @@ export const BookingDetail: React.FC = () => {
         {/* Actions */}
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {canCheckIn && (
-            <button onClick={() => handleStatus('CHECKED_IN')} disabled={updateStatus.isPending}
+            <button onClick={() => setPendingAction('checkin')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-teal-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-teal-900 transition-colors shadow-lg shadow-teal-800/10 disabled:opacity-50">
               <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
             </button>
           )}
           {booking.status === 'awaiting' && (
-            <button onClick={() => setConfirmOpen(true)} disabled={updateStatus.isPending}
+            <button onClick={() => setPendingAction('confirm')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-600 transition-colors">
               <Check className="w-3.5 h-3.5" /> {t('common.confirm')}
             </button>
           )}
           {canCheckOut && (
-            <button onClick={() => handleStatus('CHECKED_OUT')} disabled={updateStatus.isPending}
+            <button onClick={() => setPendingAction(es === 'overdue' ? 'forceOut' : 'checkout')} disabled={updateStatus.isPending}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors shadow-lg disabled:opacity-50',
                 es === 'overdue'
@@ -140,13 +140,13 @@ export const BookingDetail: React.FC = () => {
             </button>
           )}
           {canRevert && (
-            <button onClick={() => handleStatus('CONFIRMED')} disabled={updateStatus.isPending}
+            <button onClick={() => setPendingAction('revert')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors disabled:opacity-50">
               <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCheckIn')}
             </button>
           )}
           {canRevertCancel && (
-            <button onClick={() => handleStatus('AWAITING')} disabled={updateStatus.isPending}
+            <button onClick={() => setPendingAction('revertCancel')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors disabled:opacity-50">
               <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCancelling')}
             </button>
@@ -494,13 +494,15 @@ export const BookingDetail: React.FC = () => {
 
       {/* ── Modals ── */}
       <ConfirmModal
-        isOpen={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        onConfirm={() => { handleStatus('CONFIRMED'); setConfirmOpen(false); }}
-        title={t('reservations.confirmBooking')}
-        message={t('reservations.confirmBookingMessage')}
-        confirmLabel={t('common.confirm')}
-        variant="warning"
+        isOpen={!!pendingAction}
+        onClose={() => setPendingAction(null)}
+        onConfirm={() => {
+          if (pendingAction) handleStatus(STATUS_ACTIONS[pendingAction].status);
+          setPendingAction(null);
+        }}
+        title={pendingAction ? t(STATUS_ACTIONS[pendingAction].titleKey) : ''}
+        message={pendingAction ? t(STATUS_ACTIONS[pendingAction].messageKey) : ''}
+        variant={pendingAction ? STATUS_ACTIONS[pendingAction].variant : 'warning'}
         isPending={updateStatus.isPending}
       />
       <ConfirmModal

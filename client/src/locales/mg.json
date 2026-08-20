@@ -146,6 +146,8 @@
     "cannotRemoveLastRoom":    "Tsy azo esorina ny efitrano farany",
     "removeRoomTitle":         "Esorina ve ity efitrano ity?",
     "removeRoomMessage":       "Hesorina amin'ny fanjifana ny efitrano. Tsy azo averina ity ezaka ity.",
+    "confirmReassignTitle":    "Hanamafy ny fanovana?",
+    "confirmReassignMessage":  "Hovaovaina ny efitrano, ny daty ary/na ny vidiny amin'ity firesevana ity.",
     "newStay":                 "Fiatoana vaovao",
     "reservationEntry":        "Fanoratana firesevana",
     "selectGuest":             "Misafidy mombamomba",
@@ -211,7 +213,9 @@
     "noDescription":       "Tsy misy famaritana.",
     "maintenanceConflicts":     "{{count}} firesevana mavitrika amin'ity efitrano ity",
     "maintenanceConflictsNote": "Ireto firesevana ireto dia tsy maintsy hovaliana na hofoanana.",
-    "roomInMaintenance":        "Ity efitrano ity dia amin'ny fikarakara ary tsy azo atao firesevana."
+    "roomInMaintenance":        "Ity efitrano ity dia amin'ny fikarakara ary tsy azo atao firesevana.",
+    "confirmMaintenanceTitle":   "Hametraka amin'ny fikarakara?",
+    "confirmMaintenanceMessage": "Tsy azo atao firesevana ity efitrano ity raha mbola amin'ny fikarakara."
   },
   "roomTypes": {
     "title":               "Karazana efitrano",
@@ -282,7 +286,17 @@
     "addExtra":             "Hampiditra fanampiny",
     "chooseExtra":          "Misafidiana fanampiny…",
     "extraQuantity":        "Isa",
-    "removeExtra":          "Hanaisotra ity fanampiny ity"
+    "removeExtra":          "Hanaisotra ity fanampiny ity",
+    "confirmCheckinTitle":       "Hanamafy ny fidirana?",
+    "confirmCheckinMessage":     "Ho voarakitra ny vahiny ary ho feno ny efitrano.",
+    "confirmCheckoutTitle":      "Hanamafy ny fivoahana?",
+    "confirmCheckoutMessage":    "Hafahana ny efitrano ary ho afaka indray.",
+    "confirmForceOutTitle":      "Anery hivoaka?",
+    "confirmForceOutMessage":    "Tapitra ny fotoana. Hamarana ny fitoerana ary hafahana avy hatrany ny efitrano.",
+    "confirmRevertTitle":        "Manafoana ny fidirana?",
+    "confirmRevertMessage":      "Hiverina ho voamafy ny fitoerana.",
+    "confirmRevertCancelTitle":  "Foana ny fanafoanana?",
+    "confirmRevertCancelMessage":"Hiverina ho miandry fanamafisana ny firesevana."
   },
   "extras": {
     "title":            "Fanampiny",

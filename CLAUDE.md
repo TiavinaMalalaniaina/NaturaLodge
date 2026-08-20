@@ -257,7 +257,7 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 ## Branches Git
 
 - `main` — branche de production stable
-- `feature/reservation-calendar-and-implementation` — branche courante
+- `develop` — branche d'intégration ; les branches `feature/*` et `bugfix/*` sont mergées ici via PR avant d'être portées sur `main`
 
 ---
 

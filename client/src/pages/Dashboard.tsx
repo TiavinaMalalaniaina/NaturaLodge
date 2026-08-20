@@ -10,14 +10,17 @@ import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
+import { STATUS_ACTIONS } from '../lib/bookingStatus';
 import { formatCurrency } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const [isAlertDispatched, setIsAlertDispatched] = useState(false);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [pendingCheckinId, setPendingCheckinId] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -166,7 +169,7 @@ export const Dashboard: React.FC = () => {
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] font-bold tracking-[0.1em] text-on-surface-variant/40 uppercase mb-1">ETA {arrival.eta}</span>
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleQuickCheckin(arrival.id); }}
+                            onClick={(e) => { e.stopPropagation(); setPendingCheckinId(arrival.id); }}
                             disabled={checkingInId === arrival.id}
                             className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-[9px] font-bold uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed">
                             {checkingInId === arrival.id ? t('common.saving') : t('dashboard.quickCheckin')}
@@ -266,6 +269,18 @@ export const Dashboard: React.FC = () => {
         </aside>
       </div>
 
+      <ConfirmModal
+        isOpen={!!pendingCheckinId}
+        onClose={() => setPendingCheckinId(null)}
+        onConfirm={() => {
+          if (pendingCheckinId) handleQuickCheckin(pendingCheckinId);
+          setPendingCheckinId(null);
+        }}
+        title={t(STATUS_ACTIONS.checkin.titleKey)}
+        message={t(STATUS_ACTIONS.checkin.messageKey)}
+        variant={STATUS_ACTIONS.checkin.variant}
+        isPending={updateStatus.isPending}
+      />
     </div>
   );
 };

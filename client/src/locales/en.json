@@ -146,6 +146,8 @@
     "cannotRemoveLastRoom":    "Cannot remove the last room",
     "removeRoomTitle":         "Remove this room?",
     "removeRoomMessage":       "The room will be removed from the booking. This action cannot be undone.",
+    "confirmReassignTitle":    "Confirm changes?",
+    "confirmReassignMessage":  "This will update the room, dates and/or rate for this booking.",
     "newStay":                 "New Stay",
     "reservationEntry":        "Reservation Entry",
     "selectGuest":             "Select Guest Profile",
@@ -211,7 +213,9 @@
     "noDescription":       "No description provided.",
     "maintenanceConflicts":     "{{count}} active booking(s) on this room",
     "maintenanceConflictsNote": "These bookings must be reassigned or cancelled.",
-    "roomInMaintenance":        "This room is under maintenance and cannot be booked."
+    "roomInMaintenance":        "This room is under maintenance and cannot be booked.",
+    "confirmMaintenanceTitle":   "Flag for maintenance?",
+    "confirmMaintenanceMessage": "This room won't be bookable while under maintenance."
   },
   "roomTypes": {
     "title":               "Room Types",
@@ -282,7 +286,17 @@
     "addExtra":             "Add an extra",
     "chooseExtra":          "Choose an extra…",
     "extraQuantity":        "Qty",
-    "removeExtra":          "Remove this extra"
+    "removeExtra":          "Remove this extra",
+    "confirmCheckinTitle":       "Confirm check-in?",
+    "confirmCheckinMessage":     "The guest will be checked in and the room marked occupied.",
+    "confirmCheckoutTitle":      "Confirm check-out?",
+    "confirmCheckoutMessage":    "The room will be freed and become available again.",
+    "confirmForceOutTitle":      "Force check-out?",
+    "confirmForceOutMessage":    "This stay is overdue. This will immediately close the stay and free the room.",
+    "confirmRevertTitle":        "Revert check-in?",
+    "confirmRevertMessage":      "The stay will go back to confirmed, as before check-in.",
+    "confirmRevertCancelTitle":  "Revert cancellation?",
+    "confirmRevertCancelMessage":"The booking will go back to pending confirmation."
   },
   "extras": {
     "title":            "Extras",

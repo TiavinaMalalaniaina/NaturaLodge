@@ -146,6 +146,8 @@
     "cannotRemoveLastRoom":    "Impossible de retirer la dernière chambre",
     "removeRoomTitle":         "Retirer cette chambre ?",
     "removeRoomMessage":       "La chambre sera retirée de la réservation. Cette action ne peut pas être annulée.",
+    "confirmReassignTitle":    "Confirmer les modifications ?",
+    "confirmReassignMessage":  "Cela mettra à jour la chambre, les dates et/ou le tarif de cette réservation.",
     "newStay":                 "Nouveau séjour",
     "reservationEntry":        "Saisie de réservation",
     "selectGuest":             "Sélectionner un profil client",
@@ -211,7 +213,9 @@
     "noDescription":       "Aucune description.",
     "maintenanceConflicts":     "{{count}} réservation(s) active(s) sur cette chambre",
     "maintenanceConflictsNote": "Ces réservations doivent être réassignées ou annulées.",
-    "roomInMaintenance":        "Cette chambre est en maintenance et ne peut pas être réservée."
+    "roomInMaintenance":        "Cette chambre est en maintenance et ne peut pas être réservée.",
+    "confirmMaintenanceTitle":   "Mettre en maintenance ?",
+    "confirmMaintenanceMessage": "La chambre ne sera plus réservable tant qu'elle est en maintenance."
   },
   "roomTypes": {
     "title":               "Types de chambre",
@@ -282,7 +286,17 @@
     "addExtra":             "Ajouter un supplément",
     "chooseExtra":          "Choisir un supplément…",
     "extraQuantity":        "Qté",
-    "removeExtra":          "Retirer ce supplément"
+    "removeExtra":          "Retirer ce supplément",
+    "confirmCheckinTitle":       "Confirmer le check-in ?",
+    "confirmCheckinMessage":     "Le client sera enregistré et la chambre passera en occupée.",
+    "confirmCheckoutTitle":      "Confirmer le check-out ?",
+    "confirmCheckoutMessage":    "La chambre sera libérée et redeviendra disponible.",
+    "confirmForceOutTitle":      "Forcer la sortie ?",
+    "confirmForceOutMessage":    "Le séjour est en retard. Cela clôturera le séjour et libérera la chambre immédiatement.",
+    "confirmRevertTitle":        "Annuler le check-in ?",
+    "confirmRevertMessage":      "Le séjour repassera en confirmé, comme avant l'enregistrement.",
+    "confirmRevertCancelTitle":  "Annuler l'annulation ?",
+    "confirmRevertCancelMessage":"La réservation repassera en attente de confirmation."
   },
   "extras": {
     "title":            "Suppléments",
