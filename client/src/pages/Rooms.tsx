@@ -17,6 +17,7 @@ import { ROOM_STATUS_BORDER_CLASS, ROOM_STATUS_BADGE_CLASS } from '../lib/status
 import { FilterChip } from '../components/FilterChip';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 type StatusTab = 'all' | 'available' | 'occupied' | 'maintenance';
 
@@ -34,6 +35,7 @@ export const Rooms: React.FC = () => {
   const [isExtraModalOpen, setIsExtraModalOpen]             = useState(false);
   const [activeDropdown, setActiveDropdown]                 = useState<string | null>(null);
   const [conflictsInfo, setConflictsInfo]                   = useState<{ roomNumber: string; list: ConflictBooking[] } | null>(null);
+  const [maintenanceTarget, setMaintenanceTarget]           = useState<Room | null>(null);
 
   const [statusTab,       setStatusTab]       = useState<StatusTab>('all');
   const [roomTypeFilter,  setRoomTypeFilter]  = useState('ALL');
@@ -254,7 +256,11 @@ export const Rooms: React.FC = () => {
                       className="absolute right-0 top-7 z-20 w-48 bg-white border border-stone-200 rounded-2xl shadow-xl overflow-hidden"
                     >
                       <button
-                        onClick={() => { handleMaintenanceToggle(room); setActiveDropdown(null); }}
+                        onClick={() => {
+                          if (room.status === 'maintenance') handleMaintenanceToggle(room);
+                          else setMaintenanceTarget(room);
+                          setActiveDropdown(null);
+                        }}
                         disabled={updateStatus.isPending}
                         className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 transition-colors disabled:opacity-40"
                       >
@@ -397,6 +403,18 @@ export const Rooms: React.FC = () => {
         )}
       </AnimatePresence>
 
+      <ConfirmModal
+        isOpen={!!maintenanceTarget}
+        onClose={() => setMaintenanceTarget(null)}
+        onConfirm={() => {
+          if (maintenanceTarget) handleMaintenanceToggle(maintenanceTarget);
+          setMaintenanceTarget(null);
+        }}
+        title={t('rooms.confirmMaintenanceTitle')}
+        message={t('rooms.confirmMaintenanceMessage')}
+        variant="warning"
+        isPending={updateStatus.isPending}
+      />
       <AddRoomModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

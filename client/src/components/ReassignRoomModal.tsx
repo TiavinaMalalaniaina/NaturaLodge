@@ -49,6 +49,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
   const [newArrival,   setNewArrival]   = useState('');
   const [newDeparture, setNewDeparture] = useState('');
   const [removeTarget, setRemoveTarget] = useState<BookingRoomRef | null>(null);
+  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
 
   const envelopeArrival   = rooms.length ? rooms.reduce((min, r) => r.arrival < min ? r.arrival : min, rooms[0].arrival) : todayStr();
   const envelopeDeparture = rooms.length ? rooms.reduce((max, r) => r.departure > max ? r.departure : max, rooms[0].departure) : todayStr();
@@ -64,6 +65,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
       setServerError(null);
       setShowList(true);
       setRemoveTarget(null);
+      setConfirmSubmitOpen(false);
     }
   }, [isOpen]);
 
@@ -550,7 +552,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                 className="px-6 py-3.5 bg-white text-on-surface-variant border border-stone-200 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-stone-50 transition-all disabled:opacity-40">
                 {t('common.cancel')}
               </button>
-              <button disabled={!hasChanges || isPending} onClick={handleConfirm}
+              <button disabled={!hasChanges || isPending} onClick={() => setConfirmSubmitOpen(true)}
                 className={cn(
                   'flex-1 py-3.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3',
                   hasChanges && !isPending ? 'bg-zinc-900 text-white hover:bg-black shadow-xl shadow-black/10' : 'bg-stone-200 text-stone-400 cursor-not-allowed',
@@ -569,6 +571,17 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
     </Modal>
 
     <ConfirmModal
+      isOpen={confirmSubmitOpen}
+      onClose={() => setConfirmSubmitOpen(false)}
+      onConfirm={() => { setConfirmSubmitOpen(false); handleConfirm(); }}
+      title={t('reservations.confirmReassignTitle')}
+      message={t('reservations.confirmReassignMessage')}
+      confirmLabel={t('common.confirm')}
+      variant="warning"
+      isPending={isPending}
+      zIndexClassName="z-[130]"
+    />
+    <ConfirmModal
       isOpen={!!removeTarget}
       onClose={() => setRemoveTarget(null)}
       onConfirm={() => {
@@ -582,6 +595,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
       message={t('reservations.removeRoomMessage')}
       confirmLabel={t('common.confirm')}
       isPending={removeRoom.isPending}
+      zIndexClassName="z-[130]"
     />
     </>
   );
