@@ -70,3 +70,28 @@ ALTER TABLE "JournalLine" ADD CONSTRAINT "JournalLine_entryId_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "JournalLine" ADD CONSTRAINT "JournalLine_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "LedgerAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Plan comptable minimal, inséré directement dans la migration (pas seulement via
+-- prisma/seedChartOfAccounts.ts) : une base existante avec des paiements historiques doit avoir
+-- ces comptes déjà en place au moment où la migration suivante (20260821195859_add_payment_account)
+-- rétro-remplit Payment.accountId par code — sinon ce rétro-remplissage échoue silencieusement et
+-- l'ALTER COLUMN ... SET NOT NULL qui suit plante sur les lignes non résolues. ON CONFLICT DO
+-- NOTHING par sécurité si jamais rejouée, mais la table vient d'être créée, ne devrait jamais matcher.
+INSERT INTO "LedgerAccount" ("id", "code", "name", "type", "isCashAccount", "updatedAt") VALUES
+  ('acc_101000',  '101000',  'Capital / Apports propriétaire',      'EQUITY',    false, CURRENT_TIMESTAMP),
+  ('acc_411000',  '411000',  'Clients',                             'ASSET',     false, CURRENT_TIMESTAMP),
+  ('acc_401000',  '401000',  'Fournisseurs',                        'LIABILITY', false, CURRENT_TIMESTAMP),
+  ('acc_4457000', '4457000', 'TVA collectée',                       'LIABILITY', false, CURRENT_TIMESTAMP),
+  ('acc_4456000', '4456000', 'TVA déductible',                      'ASSET',     false, CURRENT_TIMESTAMP),
+  ('acc_530000',  '530000',  'Caisse principale',                   'ASSET',     true,  CURRENT_TIMESTAMP),
+  ('acc_512100',  '512100',  'Mobile Money — Mvola',                'ASSET',     true,  CURRENT_TIMESTAMP),
+  ('acc_512200',  '512200',  'Mobile Money — Orange Money 0323763499', 'ASSET',     true,  CURRENT_TIMESTAMP),
+  ('acc_512300',  '512300',  'Mobile Money — Orange Money 0323762757', 'ASSET',     true,  CURRENT_TIMESTAMP),
+  ('acc_606100',  '606100',  'Achats de fournitures',               'EXPENSE',   false, CURRENT_TIMESTAMP),
+  ('acc_606200',  '606200',  'Eau, électricité',                    'EXPENSE',   false, CURRENT_TIMESTAMP),
+  ('acc_615000',  '615000',  'Entretien et réparations',            'EXPENSE',   false, CURRENT_TIMESTAMP),
+  ('acc_623000',  '623000',  'Publicité, marketing',                'EXPENSE',   false, CURRENT_TIMESTAMP),
+  ('acc_641000',  '641000',  'Rémunérations du personnel',          'EXPENSE',   false, CURRENT_TIMESTAMP),
+  ('acc_628000',  '628000',  'Autres charges',                      'EXPENSE',   false, CURRENT_TIMESTAMP),
+  ('acc_706000',  '706000',  'Prestations d''hébergement',          'REVENUE',   false, CURRENT_TIMESTAMP)
+ON CONFLICT ("code") DO NOTHING;
