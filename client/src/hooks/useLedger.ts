@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchCashAccounts, fetchLedgerEntries, fetchLedgerSummary, createTransfer,
+  fetchCashAccounts, fetchLedgerEntries, fetchLedgerSummary, createTransfer, createContribution,
   fetchBalanceSheet, fetchIncomeStatement,
 } from '../api/ledger';
 
@@ -59,6 +59,19 @@ export function useCreateTransfer() {
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
       qc.invalidateQueries({ queryKey: LEDGER_ENTRIES_KEY });
       qc.invalidateQueries({ queryKey: LEDGER_SUMMARY_KEY });
+    },
+  });
+}
+
+export function useCreateContribution() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createContribution,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: LEDGER_ENTRIES_KEY });
+      qc.invalidateQueries({ queryKey: LEDGER_SUMMARY_KEY });
+      qc.invalidateQueries({ queryKey: BALANCE_SHEET_KEY });
     },
   });
 }

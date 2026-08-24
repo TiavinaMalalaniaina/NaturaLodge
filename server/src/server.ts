@@ -12,14 +12,20 @@ import { extrasRouter } from './routes/extras';
 import { paymentsRouter } from './routes/payments';
 import { ledgerRouter } from './routes/ledger';
 import { expensesRouter } from './routes/expenses';
+import { auditLogsRouter } from './routes/auditLogs';
 import { startScheduler } from './lib/scheduler';
 import { errorHandler } from './middleware/errorHandler';
+import { auditLogger } from './middleware/auditLog';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
 app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:3000', credentials: true }));
 app.use(express.json());
+// Monté avant les routers : le middleware n'écrit qu'au moment où la réponse se termine
+// (`res.on('finish')`), donc `req.user` — posé par `authenticate` plus loin dans la chaîne pour
+// chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
+app.use(auditLogger);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '0.0.2' }));
 
@@ -34,6 +40,7 @@ app.use('/api/extras', extrasRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/ledger', ledgerRouter);
 app.use('/api/expenses', expensesRouter);
+app.use('/api/audit-logs', auditLogsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 
