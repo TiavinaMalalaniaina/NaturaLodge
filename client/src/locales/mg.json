@@ -12,7 +12,10 @@
     "staff":         "Mpiasa",
     "settings":      "Fikirana",
     "logout":        "Hivoaka",
-    "portal":        "Valan-toerana fitantanana"
+    "portal":        "Valan-toerana fitantanana",
+    "groupGeneral":    "Ankapobeny",
+    "groupAccounting": "Kaonty",
+    "groupAdmin":      "Fitantanana"
   },
   "topbar": {
     "searchPlaceholder": "Karohy mpiasa, efitrano, vahiny…",

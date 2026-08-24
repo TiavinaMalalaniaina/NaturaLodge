@@ -12,7 +12,10 @@
     "staff":         "Personnel",
     "settings":      "Paramètres",
     "logout":        "Déconnexion",
-    "portal":        "Portail de gestion"
+    "portal":        "Portail de gestion",
+    "groupGeneral":    "Général",
+    "groupAccounting": "Comptabilité",
+    "groupAdmin":      "Administration"
   },
   "topbar": {
     "searchPlaceholder": "Chercher un client, une chambre…",

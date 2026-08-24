@@ -12,7 +12,10 @@
     "staff":         "Staff Cabinet",
     "settings":      "Settings",
     "logout":        "Sign out",
-    "portal":        "Management Portal"
+    "portal":        "Management Portal",
+    "groupGeneral":    "General",
+    "groupAccounting": "Accounting",
+    "groupAdmin":      "Administration"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
