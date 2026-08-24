@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Wallet, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, PiggyBank } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { useCashAccounts, useLedgerEntries, useLedgerSummary } from '../hooks/useLedger';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateTransferModal } from '../components/CreateTransferModal';
+import { CreateContributionModal } from '../components/CreateContributionModal';
 import { formatDate, formatCurrency, dateToLocalStr, todayLocalStr, startOfDayIso, endOfDayIso } from '../lib/format';
 
 const CATEGORY_KEY: Record<string, string> = {
@@ -26,6 +27,7 @@ export const Treasury: React.FC = () => {
   const [dateTo,   setDateTo]   = useState(todayLocalStr());
   const [page, setPage] = useState(1);
   const [isTransferOpen, setTransferOpen] = useState(false);
+  const [isContributionOpen, setContributionOpen] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useCashAccounts();
   const { data: summary } = useLedgerSummary({
@@ -57,13 +59,22 @@ export const Treasury: React.FC = () => {
             {t('treasury.totalBalance')} — {formatCurrency(totalBalance)}
           </p>
         </div>
-        <button
-          onClick={() => setTransferOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
-        >
-          <ArrowLeftRight className="w-4 h-4" />
-          {t('treasury.transfer')}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setContributionOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
+          >
+            <PiggyBank className="w-4 h-4" />
+            {t('treasury.contribution')}
+          </button>
+          <button
+            onClick={() => setTransferOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            {t('treasury.transfer')}
+          </button>
+        </div>
       </div>
 
       {/* ── Cash account cards ── */}
@@ -197,6 +208,7 @@ export const Treasury: React.FC = () => {
       )}
 
       <CreateTransferModal isOpen={isTransferOpen} onClose={() => setTransferOpen(false)} />
+      <CreateContributionModal isOpen={isContributionOpen} onClose={() => setContributionOpen(false)} />
     </div>
   );
 };

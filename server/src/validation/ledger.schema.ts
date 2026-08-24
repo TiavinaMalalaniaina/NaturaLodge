@@ -23,6 +23,12 @@ export const transferSchema = z.object({
   path:    ['toAccountId'],
 });
 
+export const contributionSchema = z.object({
+  toAccountId: z.string().min(1),
+  amount:      z.number().int().positive(),
+  memo:        z.string().optional(),
+});
+
 export const balanceSheetQuerySchema = z.object({
   asOf: z.string().datetime().optional(),
 });
@@ -36,5 +42,6 @@ export const exportQuerySchema = z.object({
 export type LedgerEntriesParams = z.infer<typeof ledgerEntriesQuerySchema>;
 export type LedgerSummaryParams = z.infer<typeof ledgerSummaryQuerySchema>;
 export type TransferInput = z.infer<typeof transferSchema>;
+export type ContributionInput = z.infer<typeof contributionSchema>;
 export type BalanceSheetParams = z.infer<typeof balanceSheetQuerySchema>;
 export type ExportQueryParams = z.infer<typeof exportQuerySchema>;

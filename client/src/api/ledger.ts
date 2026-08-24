@@ -80,6 +80,16 @@ export const createTransfer = async (payload: TransferPayload): Promise<void> =>
   await api.post('/ledger/transfer', payload);
 };
 
+export interface ContributionPayload {
+  toAccountId: string;
+  amount:      number;
+  memo?:       string;
+}
+
+export const createContribution = async (payload: ContributionPayload): Promise<void> => {
+  await api.post('/ledger/contributions', payload);
+};
+
 export interface BalanceSheetRow {
   id:      string;
   code:    string;

@@ -415,7 +415,9 @@
     "transfer":          "Transfer",
     "fromAccount":       "From account",
     "toAccount":         "To account",
-    "sameAccountError":  "Source and destination accounts must be different."
+    "sameAccountError":  "Source and destination accounts must be different.",
+    "contribution":      "Contribution",
+    "contributionHint":  "Money injected from outside the hotel (owner contribution...) — credited to the capital account, not operating revenue."
   },
   "reports": {
     "title":                 "Reports",

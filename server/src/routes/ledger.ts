@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { asyncHandler } from '../middleware/asyncHandler';
 import {
-  ledgerEntriesQuerySchema, ledgerSummaryQuerySchema, transferSchema,
+  ledgerEntriesQuerySchema, ledgerSummaryQuerySchema, transferSchema, contributionSchema,
   balanceSheetQuerySchema, exportQuerySchema,
 } from '../validation/ledger.schema';
 import * as ledgerService from '../services/ledger.service';
@@ -35,6 +35,13 @@ ledgerRouter.post('/transfer', authorize('ADMIN', 'MANAGER'), asyncHandler(async
   const parsed = transferSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
   res.status(201).json(await ledgerService.transfer({ ...parsed.data, performedById: req.user!.id }));
+}));
+
+// POST /ledger/contributions  ──  apport externe (propriétaire...) sur un compte de trésorerie
+ledgerRouter.post('/contributions', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = contributionSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await ledgerService.recordContribution({ ...parsed.data, performedById: req.user!.id }));
 }));
 
 // GET /ledger/balance-sheet  ──  bilan simplifié (actif/passif) à une date donnée

@@ -415,7 +415,9 @@
     "transfer":          "Famindrana",
     "fromAccount":       "Kaonty niaviana",
     "toAccount":         "Kaonty nalefana",
-    "sameAccountError":  "Tsy maintsy samy hafa ny kaonty niaviana sy ny kaonty nalefana."
+    "sameAccountError":  "Tsy maintsy samy hafa ny kaonty niaviana sy ny kaonty nalefana.",
+    "contribution":      "Fandraisana anjara",
+    "contributionHint":  "Vola avy any ivelan'ny hotely (fandraisan'anjaran'ny tompony...) — mankany amin'ny kaontim-panjaka, tsy vola azo tamin'ny asa."
   },
   "reports": {
     "title":                 "Tatitra",

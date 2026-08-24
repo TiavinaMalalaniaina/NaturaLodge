@@ -141,6 +141,34 @@ export async function transfer(params: TransferParams) {
   });
 }
 
+export type ContributionParams = {
+  toAccountId:   string;
+  amount:        number;
+  memo?:         string;
+  performedById?: string;
+};
+
+// Argent injecté depuis l'extérieur de l'hôtel (apport du propriétaire, etc.) — Débit le compte
+// de trésorerie choisi / Crédit 101000 Capital. Symétrique d'une dépense (Débit charge / Crédit
+// trésorerie), mais ici la contrepartie est aux capitaux propres, pas une charge.
+export async function recordContribution(params: ContributionParams) {
+  const account = await prisma.ledgerAccount.findUnique({ where: { id: params.toAccountId } });
+  if (!account) throw new NotFoundError('Compte de trésorerie');
+  if (!account.isCashAccount) {
+    throw new ConflictError('Un apport ne peut être crédité que sur un compte de trésorerie.');
+  }
+
+  return postEntry({
+    source:     'CONTRIBUTION',
+    postedById: params.performedById,
+    memo:       params.memo ?? `Apport — ${account.name}`,
+    lines: [
+      { accountId: params.toAccountId, debit:  params.amount },
+      { accountCode: '101000',         credit: params.amount },
+    ],
+  });
+}
+
 export async function getCashAccountsBalances() {
   const accounts = await prisma.ledgerAccount.findMany({
     where:   { isCashAccount: true, isActive: true },
