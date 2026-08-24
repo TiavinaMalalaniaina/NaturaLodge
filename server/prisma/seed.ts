@@ -3,6 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import { config } from 'dotenv'
+import { seedChartOfAccounts } from './seedChartOfAccounts'
 
 config()
 
@@ -226,6 +227,7 @@ const STAFF_DATA = [
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  await seedChartOfAccounts(prisma)
 
   // ── Room Features (upsert by fixed id) ────────────────────────────────────
   const featureDefs = [

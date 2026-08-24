@@ -30,7 +30,7 @@ bookingsRouter.post('/', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), asyncHan
 bookingsRouter.patch('/:id/status', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = bookingStatusSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await bookingService.updateStatus(req.params.id, parsed.data.status));
+  res.json(await bookingService.updateStatus(req.params.id, parsed.data.status, req.user!.id));
 }));
 
 // PATCH /bookings/:id/reassign  ── remplacer la chambre et/ou les dates d'une ligne de réservation

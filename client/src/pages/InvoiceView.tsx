@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment } from '../hooks/useInvoices';
+import { useCashAccounts } from '../hooks/useLedger';
 import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader } from '../components/QueryLoader';
@@ -65,14 +66,19 @@ export const InvoiceView: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [dueAt] = useState(() => todayLocalStr());
 
+  const { data: cashAccounts } = useCashAccounts();
+
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
+  const [payAccountId, setPayAccountId] = useState('');
   const [payReference, setPayReference] = useState('');
   const [payNotes, setPayNotes] = useState('');
   const [showPayForm, setShowPayForm] = useState(false);
   const [apiError, setApiError] = useState('');
   const [isConfirmRefundModalOpen, setConfirmRefundModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+
+  const selectedAccountId = payAccountId || cashAccounts?.[0]?.id || '';
 
   const handleGenerate = () => {
     if (!bookingId) return;
@@ -90,13 +96,14 @@ export const InvoiceView: React.FC = () => {
   const handleRecordPayment = () => {
     if (!invoice) return;
     const amount = parseInt(payAmount, 10);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || !selectedAccountId) return;
     setApiError('');
     recordPayment.mutate(
-      { invoiceId: invoice.id, amount, method: payMethod, reference: payReference || undefined, notes: payNotes || undefined },
+      { invoiceId: invoice.id, amount, method: payMethod, accountId: selectedAccountId, reference: payReference || undefined, notes: payNotes || undefined },
       {
         onSuccess: () => {
           setPayAmount('');
+          setPayAccountId('');
           setPayReference('');
           setPayNotes('');
           setShowPayForm(false);
@@ -367,6 +374,18 @@ export const InvoiceView: React.FC = () => {
                       </select>
                     </div>
                     <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.account')}</label>
+                      <select
+                        value={selectedAccountId}
+                        onChange={e => setPayAccountId(e.target.value)}
+                        className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      >
+                        {(cashAccounts ?? []).map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
                       <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.reference')}</label>
                       <input
                         type="text"
@@ -393,7 +412,7 @@ export const InvoiceView: React.FC = () => {
                       </button>
                       <button
                         onClick={handleRecordPayment}
-                        disabled={!payAmount || recordPayment.isPending}
+                        disabled={!payAmount || !selectedAccountId || recordPayment.isPending}
                         className="px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
                       >
                         {recordPayment.isPending ? t('common.saving') : t('common.confirm')}
@@ -434,6 +453,8 @@ export const InvoiceView: React.FC = () => {
                           {/* Utilisation de flex-wrap pour éviter la troncature sur les petits écrans */}
                           <div className="flex items-center gap-1.5 text-[11px] text-stone-500 flex-wrap leading-relaxed">
                             <span className="font-medium text-stone-700">{t(`invoice.method_${p.method}`)}</span>
+                            <span className="text-stone-300">•</span>
+                            <span>{p.account.name}</span>
                             <span className="text-stone-300">•</span>
                             <span>{fmtDate(p.paidAt)}</span>
                             <span className="text-stone-300">•</span>
