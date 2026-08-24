@@ -23,6 +23,9 @@ const Invoices        = lazy(() => import('./pages/Invoices').then(m => ({ defau
 const Payments        = lazy(() => import('./pages/Payments').then(m => ({ default: m.Payments })));
 const InvoiceView     = lazy(() => import('./pages/InvoiceView').then(m => ({ default: m.InvoiceView })));
 const Settings        = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
+const Expenses         = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
+const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ default: m.Treasury })));
+const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 
 const App: React.FC = () => {
   return (
@@ -53,6 +56,9 @@ const App: React.FC = () => {
 
                   <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
                     <Route path="staff" element={<Staff />} />
+                    <Route path="expenses" element={<Expenses />} />
+                    <Route path="treasury" element={<Treasury />} />
+                    <Route path="reports" element={<Reports />} />
                   </Route>
                 </Route>
               </Route>

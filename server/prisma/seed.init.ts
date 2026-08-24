@@ -4,6 +4,7 @@ import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
 import { config } from 'dotenv'
+import { seedChartOfAccounts } from './seedChartOfAccounts'
 
 config()
 
@@ -26,6 +27,8 @@ function generatePassword(length = 16): string {
 }
 
 async function main() {
+  await seedChartOfAccounts(prisma)
+
   const username = process.env.INIT_ADMIN_USERNAME ?? 'admin'
   const email    = process.env.INIT_ADMIN_EMAIL
   const password = process.env.INIT_ADMIN_PASSWORD ?? generatePassword()

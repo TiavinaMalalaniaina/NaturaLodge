@@ -26,6 +26,8 @@ model User {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   bookingNotes      BookingNote[]
+  journalEntries    JournalEntry[]
+  approvedExpenses  Expense[]
 }
 
 enum Role {
@@ -268,6 +270,11 @@ model Payment {
   amount        Int
   method        PaymentMethod
   status        PaymentStatus @default(COMPLETED)
+  // Compte de trésorerie réel qui a reçu l'argent (caisse, Mvola, Orange Money N°x...) — distinct
+  // de `method` qui reste le canal de paiement affiché au client (une même méthode Orange Money
+  // peut atterrir sur l'un ou l'autre des 2 numéros).
+  account       LedgerAccount @relation(fields: [accountId], references: [id])
+  accountId     String
   reference     String?
   paidAt        DateTime      @default(now())
   notes         String?
@@ -287,4 +294,96 @@ enum PaymentStatus {
   PENDING
   FAILED
   REFUNDED
+}
+
+// ─── Comptabilité (partie double) ───────────────────────────────
+
+model LedgerAccount {
+  id            String            @id @default(cuid())
+  code          String            @unique
+  name          String
+  type          LedgerAccountType
+  // Comptes qui représentent un lieu physique d'argent (caisse, banque, mobile money) — ce sont
+  // eux qui alimentent le tableau de bord "où est l'argent", par opposition aux comptes de
+  // charges/produits/tiers qui n'ont pas de solde en espèces.
+  isCashAccount Boolean           @default(false)
+  parent        LedgerAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
+  parentId      String?
+  children      LedgerAccount[]   @relation("AccountHierarchy")
+  isActive      Boolean           @default(true)
+  lines         JournalLine[]
+  payments      Payment[]
+  expenses      Expense[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+enum LedgerAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model JournalEntry {
+  id               String        @id @default(cuid())
+  number           String        @unique
+  date             DateTime      @default(now())
+  memo             String?
+  source           JournalSource
+  relatedPaymentId String?
+  relatedInvoiceId String?
+  relatedExpenseId String?
+  postedBy         User?         @relation(fields: [postedById], references: [id])
+  postedById       String?
+  lines            JournalLine[]
+  createdAt        DateTime      @default(now())
+}
+
+enum JournalSource {
+  INVOICE
+  INVOICE_CANCEL
+  PAYMENT
+  PAYMENT_VOID
+  EXPENSE
+  TRANSFER
+  MANUAL
+}
+
+model JournalLine {
+  id          String        @id @default(cuid())
+  entry       JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId     String
+  account     LedgerAccount @relation(fields: [accountId], references: [id])
+  accountId   String
+  debit       Int           @default(0)
+  credit      Int           @default(0)
+  description String?
+
+  @@index([accountId])
+  @@index([entryId])
+}
+
+model Expense {
+  id           String          @id @default(cuid())
+  category     ExpenseCategory
+  amount       Int
+  description  String
+  paidFrom     LedgerAccount   @relation(fields: [paidFromId], references: [id])
+  paidFromId   String
+  approvedBy   User?           @relation(fields: [approvedById], references: [id])
+  approvedById String?
+  incurredAt   DateTime        @default(now())
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+enum ExpenseCategory {
+  SUPPLIES
+  UTILITIES
+  MAINTENANCE
+  MARKETING
+  SALARIES
+  OTHER
 }

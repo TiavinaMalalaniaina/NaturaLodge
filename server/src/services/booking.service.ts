@@ -232,37 +232,46 @@ export async function create(data: BookingInput, createdById: string) {
   });
 }
 
-export async function updateStatus(id: string, status: BookingStatus) {
-  const booking = await prisma.booking.update({
-    where: { id },
-    data:  { status },
-    include,
+// Transactionnelle : le passage en CANCELLED annule aussi la facture de la réservation s'il y en
+// a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
+// ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
+export async function updateStatus(id: string, status: BookingStatus, actingUserId?: string) {
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.update({
+      where: { id },
+      data:  { status },
+      include,
+    });
+
+    const roomIds = booking.rooms.map(br => br.roomId);
+
+    if (status === 'CHECKED_IN') {
+      // Check-in direct → OCCUPIED immédiat
+      await tx.room.updateMany({
+        where: { id: { in: roomIds }, status: { not: 'MAINTENANCE' } },
+        data:  { status: 'OCCUPIED' },
+      });
+    } else if (status === 'CHECKED_OUT' || status === 'CANCELLED') {
+      // Recalculer : une autre réservation active peut déjà couvrir aujourd'hui
+      await applyRoomStatuses(roomIds, tx);
+    }
+
+    if (status === 'CHECKED_OUT') {
+      // Ne crédite plus lifetimeValue ici : ce montant coté n'a aucune garantie de correspondre à ce
+      // qui est réellement facturé/payé. lifetimeValue est désormais crédité au moment du paiement
+      // réel (voir invoice.service.ts: addPayment/voidPayment), pas au check-out.
+      await tx.guest.update({
+        where: { id: booking.guestId },
+        data:  { totalStays: { increment: 1 } },
+      });
+    }
+
+    if (status === 'CANCELLED') {
+      await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx);
+    }
+
+    return { ...booking, paymentStatus: computePaymentStatus(booking) };
   });
-
-  const roomIds = booking.rooms.map(br => br.roomId);
-
-  if (status === 'CHECKED_IN') {
-    // Check-in direct → OCCUPIED immédiat
-    await prisma.room.updateMany({
-      where: { id: { in: roomIds }, status: { not: 'MAINTENANCE' } },
-      data:  { status: 'OCCUPIED' },
-    });
-  } else if (status === 'CHECKED_OUT' || status === 'CANCELLED') {
-    // Recalculer : une autre réservation active peut déjà couvrir aujourd'hui
-    await applyRoomStatuses(roomIds);
-  }
-
-  if (status === 'CHECKED_OUT') {
-    // Ne crédite plus lifetimeValue ici : ce montant coté n'a aucune garantie de correspondre à ce
-    // qui est réellement facturé/payé. lifetimeValue est désormais crédité au moment du paiement
-    // réel (voir invoice.service.ts: addPayment/voidPayment), pas au check-out.
-    await prisma.guest.update({
-      where: { id: booking.guestId },
-      data:  { totalStays: { increment: 1 } },
-    });
-  }
-
-  return { ...booking, paymentStatus: computePaymentStatus(booking) };
 }
 
 // Recalcule le montant total et l'enveloppe (arrival/departure) globale de la réservation à

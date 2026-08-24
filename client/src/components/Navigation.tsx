@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -28,6 +28,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { path: '/guests',       label: t('nav.guests'),       icon: Users           },
     // { path: '/amenities',    label: t('nav.amenities'),    icon: Star            },
     { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
+    { path: '/expenses',     label: t('nav.expenses'),     icon: Receipt         },
+    { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet          },
+    { path: '/reports',      label: t('nav.reports'),      icon: Scale           },
     { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
     { path: '/settings',     label: t('nav.settings'),     icon: Settings        },
   ];

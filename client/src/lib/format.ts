@@ -29,6 +29,18 @@ export function addDaysToLocalStr(dateStr: string, days: number): string {
   return dateToLocalStr(date);
 }
 
+// Bornes d'un filtre de date envoyées à l'API : `new Date("YYYY-MM-DD").toISOString()` ancre à
+// minuit UTC, donc minuit + 3h (UTC+3 à Madagascar) — un dateTo="aujourd'hui" exclurait alors tout
+// ce qui a été enregistré après 3h du matin. Ajouter une heure locale explicite (sans suffixe Z)
+// force le parsing en heure locale, pas UTC.
+export function startOfDayIso(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00`).toISOString();
+}
+
+export function endOfDayIso(dateStr: string): string {
+  return new Date(`${dateStr}T23:59:59.999`).toISOString();
+}
+
 export function nightsBetween(arrival: Date | string, departure: Date | string): number {
   const a = typeof arrival === 'string' ? new Date(arrival) : arrival;
   const b = typeof departure === 'string' ? new Date(departure) : departure;
