@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -21,19 +21,62 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
   const { t }     = useTranslation();
 
-  const navItems = [
-    { path: '/dashboard',    label: t('nav.dashboard'),    icon: LayoutDashboard },
-    { path: '/reservations', label: t('nav.reservations'), icon: CalendarDays    },
-    { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
-    { path: '/guests',       label: t('nav.guests'),       icon: Users           },
-    // { path: '/amenities',    label: t('nav.amenities'),    icon: Star            },
-    { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
-    { path: '/expenses',     label: t('nav.expenses'),     icon: Receipt         },
-    { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet          },
-    { path: '/reports',      label: t('nav.reports'),      icon: Scale           },
-    { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
-    { path: '/settings',     label: t('nav.settings'),     icon: Settings        },
+  const navGroups = [
+    {
+      key:   'general',
+      label: t('nav.groupGeneral'),
+      items: [
+        { path: '/dashboard',    label: t('nav.dashboard'),    icon: LayoutDashboard },
+        { path: '/reservations', label: t('nav.reservations'), icon: CalendarDays    },
+        { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
+        { path: '/guests',       label: t('nav.guests'),       icon: Users           },
+        // { path: '/amenities', label: t('nav.amenities'),    icon: Star            },
+      ],
+    },
+    {
+      key:   'accounting',
+      label: t('nav.groupAccounting'),
+      items: [
+        { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
+        { path: '/expenses',     label: t('nav.expenses'),     icon: Receipt         },
+        { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet          },
+        { path: '/reports',      label: t('nav.reports'),      icon: Scale           },
+      ],
+    },
+    {
+      key:   'admin',
+      label: t('nav.groupAdmin'),
+      items: [
+        { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
+        { path: '/settings',     label: t('nav.settings'),     icon: Settings        },
+        // Réservé ADMIN côté serveur (authorize('ADMIN') sur /api/audit-logs) — filtré ici aussi
+        // plutôt que laissé visible pour être redirigé au clic, moins déroutant pour MANAGER.
+        ...(user?.role === 'ADMIN' ? [{ path: '/audit-log', label: t('nav.auditLog'), icon: ShieldAlert }] : []),
+      ],
+    },
   ];
+
+  // Le groupe contenant la page active s'ouvre automatiquement (au montage et à chaque
+  // navigation) — jamais atterrir sur une page dont le groupe est replié. Les autres groupes
+  // gardent l'état choisi par l'utilisateur.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const active = navGroups.find(g => g.items.some(i => location.pathname.startsWith(i.path)));
+    return new Set(active ? [active.key] : [navGroups[0].key]);
+  });
+
+  useEffect(() => {
+    const active = navGroups.find(g => g.items.some(i => location.pathname.startsWith(i.path)));
+    if (active) setOpenGroups(prev => prev.has(active.key) ? prev : new Set(prev).add(active.key));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -75,22 +118,50 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </div>
 
       <nav className="flex-1 px-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.path);
+        {navGroups.map((group) => {
+          const isOpen = openGroups.has(group.key);
           return (
-            <button
-              key={item.path}
-              onClick={() => handleNavigate(item.path)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-sans text-sm tracking-wide",
-                isActive
-                  ? "bg-teal-50 text-primary font-semibold"
-                  : "text-on-surface-variant hover:bg-surface-container-high"
-              )}
-            >
-              <item.icon className={cn("w-5 h-5", isActive ? "fill-primary/10" : "")} />
-              {item.label}
-            </button>
+            <div key={group.key}>
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+              >
+                {group.label}
+                <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isOpen ? "rotate-180" : "")} />
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-1 pb-2">
+                      {group.items.map((item) => {
+                        const isActive = location.pathname.startsWith(item.path);
+                        return (
+                          <button
+                            key={item.path}
+                            onClick={() => handleNavigate(item.path)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 font-sans text-sm tracking-wide",
+                              isActive
+                                ? "bg-teal-50 text-primary font-semibold"
+                                : "text-on-surface-variant hover:bg-surface-container-high"
+                            )}
+                          >
+                            <item.icon className={cn("w-5 h-5", isActive ? "fill-primary/10" : "")} />
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           );
         })}
       </nav>

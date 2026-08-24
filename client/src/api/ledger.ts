@@ -5,11 +5,12 @@ export interface CashAccount {
   code:    string;
   name:    string;
   balance: number;
+  allowedMethods: string[];
 }
 
 export const fetchCashAccounts = async (): Promise<CashAccount[]> => {
-  const { data } = await api.get<CashAccount[]>('/ledger/cash-accounts');
-  return data;
+  const { data } = await api.get<any[]>('/ledger/cash-accounts');
+  return data.map(a => ({ ...a, allowedMethods: (a.allowedMethods ?? []).map((m: string) => m.toLowerCase()) }));
 };
 
 export interface LedgerEntry {
@@ -77,6 +78,16 @@ export interface TransferPayload {
 
 export const createTransfer = async (payload: TransferPayload): Promise<void> => {
   await api.post('/ledger/transfer', payload);
+};
+
+export interface ContributionPayload {
+  toAccountId: string;
+  amount:      number;
+  memo?:       string;
+}
+
+export const createContribution = async (payload: ContributionPayload): Promise<void> => {
+  await api.post('/ledger/contributions', payload);
 };
 
 export interface BalanceSheetRow {

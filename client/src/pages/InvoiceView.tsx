@@ -78,7 +78,12 @@ export const InvoiceView: React.FC = () => {
   const [isConfirmRefundModalOpen, setConfirmRefundModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
 
-  const selectedAccountId = payAccountId || cashAccounts?.[0]?.id || '';
+  // Filtre le sélecteur de compte selon la méthode choisie (ex: Mvola -> seul le compte Mvola) —
+  // repli sur tous les comptes si aucun n'est associé à cette méthode (ex: carte/virement, pas
+  // encore de banque configurée) pour ne jamais bloquer l'enregistrement d'un paiement.
+  const accountsForMethod = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
+  const availableAccounts = accountsForMethod.length > 0 ? accountsForMethod : (cashAccounts ?? []);
+  const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
 
   const handleGenerate = () => {
     if (!bookingId) return;
@@ -365,10 +370,10 @@ export const InvoiceView: React.FC = () => {
                       <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.method')}</label>
                       <select
                         value={payMethod}
-                        onChange={e => setPayMethod(e.target.value as PaymentMethod)}
+                        onChange={e => { setPayMethod(e.target.value as PaymentMethod); setPayAccountId(''); }}
                         className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        {(['cash', 'card', 'bank_transfer', 'online', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
+                        {(['cash', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
                           <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
                         ))}
                       </select>
@@ -380,7 +385,7 @@ export const InvoiceView: React.FC = () => {
                         onChange={e => setPayAccountId(e.target.value)}
                         className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        {(cashAccounts ?? []).map(a => (
+                        {availableAccounts.map(a => (
                           <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
                       </select>

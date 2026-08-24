@@ -28,6 +28,7 @@ model User {
   bookingNotes      BookingNote[]
   journalEntries    JournalEntry[]
   approvedExpenses  Expense[]
+  auditLogs         AuditLog[]
 }
 
 enum Role {
@@ -307,6 +308,10 @@ model LedgerAccount {
   // eux qui alimentent le tableau de bord "où est l'argent", par opposition aux comptes de
   // charges/produits/tiers qui n'ont pas de solde en espèces.
   isCashAccount Boolean           @default(false)
+  // Méthodes de paiement que ce compte peut recevoir (ex: Caisse -> [CASH]) — filtre le
+  // sélecteur de compte du formulaire de paiement selon la méthode choisie. Vide pour les
+  // méthodes sans compte dédié pour l'instant (CARD/BANK_TRANSFER/ONLINE, pas de banque encore).
+  allowedMethods PaymentMethod[]  @default([])
   parent        LedgerAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
   parentId      String?
   children      LedgerAccount[]   @relation("AccountHierarchy")
@@ -348,6 +353,7 @@ enum JournalSource {
   PAYMENT_VOID
   EXPENSE
   TRANSFER
+  CONTRIBUTION
   MANUAL
 }
 
@@ -386,4 +392,29 @@ enum ExpenseCategory {
   MARKETING
   SALARIES
   OTHER
+}
+
+// ─── Audit ───────────────────────────────────────────────────────
+
+// Capture générique de toute requête mutante (POST/PATCH/PUT/DELETE) authentifiée, posée par un
+// middleware global plutôt qu'appelée à la main dans chaque service — sinon "toutes les actions"
+// suppose de retoucher chaque route existante et d'y penser pour chaque future. En contrepartie,
+// pas de texte métier lisible par écriture (ex: "Jean a confirmé la réservation X") : juste la
+// requête brute (méthode, chemin, corps assaini, code retour), ce qui reste exploitable pour
+// répondre à "qui a fait quoi, quand" sans devoir maintenir une liste de messages à jour.
+model AuditLog {
+  id           String   @id @default(cuid())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId       String?
+  method       String
+  path         String
+  resourceType String?
+  resourceId   String?
+  statusCode   Int
+  body         Json?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
 }

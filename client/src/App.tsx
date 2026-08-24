@@ -26,6 +26,7 @@ const Settings        = lazy(() => import('./pages/Settings').then(m => ({ defau
 const Expenses         = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
 const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ default: m.Treasury })));
 const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const AuditLog            = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLog })));
 
 const App: React.FC = () => {
   return (
@@ -59,6 +60,10 @@ const App: React.FC = () => {
                     <Route path="expenses" element={<Expenses />} />
                     <Route path="treasury" element={<Treasury />} />
                     <Route path="reports" element={<Reports />} />
+                  </Route>
+
+                  <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+                    <Route path="audit-log" element={<AuditLog />} />
                   </Route>
                 </Route>
               </Route>
