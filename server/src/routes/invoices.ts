@@ -39,6 +39,11 @@ invoicesRouter.patch('/:id', authorize('ADMIN', 'MANAGER'), asyncHandler(async (
   res.json(await invoiceService.update(req.params.id, parsed.data));
 }));
 
+// POST /invoices/:id/cancel  ──  annuler la facture, extourne la part non encaissée
+invoicesRouter.post('/:id/cancel', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await invoiceService.cancelInvoice(req.params.id, req.user!.id));
+}));
+
 // POST /invoices/:id/payments  ──  enregistrer un paiement
 invoicesRouter.post('/:id/payments', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = paymentSchema.safeParse(req.body);
@@ -48,5 +53,5 @@ invoicesRouter.post('/:id/payments', authorize('ADMIN', 'MANAGER', 'RECEPTIONIST
 
 // DELETE /invoices/:id/payments/:paymentId  ──  annuler un paiement
 invoicesRouter.delete('/:id/payments/:paymentId', authorize('ADMIN', 'MANAGER'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-  res.json(await invoiceService.voidPayment(req.params.id, req.params.paymentId));
+  res.json(await invoiceService.voidPayment(req.params.id, req.params.paymentId, req.user!.id));
 }));

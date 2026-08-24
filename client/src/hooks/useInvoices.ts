@@ -4,6 +4,7 @@ import {
   generateInvoice, recordPayment, voidPayment, updateInvoice,
   PaymentPayload,
 } from '../api/invoices';
+import { CASH_ACCOUNTS_KEY } from './useLedger';
 
 export const INVOICES_KEY = ['invoices'] as const;
 
@@ -43,6 +44,7 @@ export function useRecordPayment() {
     onSuccess: (inv) => {
       qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
       qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
     },
   });
 }
@@ -55,6 +57,7 @@ export function useVoidPayment() {
     onSuccess: (inv) => {
       qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
       qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
     },
   });
 }

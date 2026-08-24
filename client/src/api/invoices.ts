@@ -23,6 +23,7 @@ export interface InvoicePayment {
   notes:       string | null;
   paidAt:      string;
   processedBy: { id: string; name: string; role: string };
+  account:     { id: string; code: string; name: string };
 }
 
 export interface Invoice {
@@ -121,6 +122,7 @@ export const generateInvoice = async (payload: GeneratePayload): Promise<Invoice
 export interface PaymentPayload {
   amount:    number;
   method:    string;
+  accountId: string;
   reference?: string;
   notes?:    string;
 }

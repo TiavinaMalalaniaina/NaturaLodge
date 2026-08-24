@@ -55,7 +55,9 @@ export const Payments: React.FC = () => {
     { key: 'cash',          label: t('invoice.method_cash') },
     { key: 'card',          label: t('invoice.method_card') },
     { key: 'bank_transfer', label: t('invoice.method_bank_transfer') },
-    { key: 'online',        label: t('invoice.method_online') }
+    { key: 'online',        label: t('invoice.method_online') },
+    { key: 'mvola',         label: t('invoice.method_mvola') },
+    { key: 'orange_money',  label: t('invoice.method_orange_money') },
   ];
 
   if (isLoading) return <PageLoader />;

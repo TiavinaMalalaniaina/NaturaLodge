@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Users, LogIn, Construction, Plus, Check } from 'lucide-react';
+import { TrendingUp, Users, LogIn, Construction, Plus, Check, Wallet } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -7,17 +7,21 @@ import { NewBookingsFeed } from '../components/NewBookingsFeed';
 import { useNotifications } from '../context/NotificationContext';
 import { useRooms } from '../hooks/useRooms';
 import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
+import { useCashAccounts } from '../hooks/useLedger';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
+import { STATUS_ACTIONS } from '../lib/bookingStatus';
 import { formatCurrency } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
   const [isAlertDispatched, setIsAlertDispatched] = useState(false);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
+  const [pendingCheckinId, setPendingCheckinId] = useState<string | null>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
 
@@ -25,6 +29,9 @@ export const Dashboard: React.FC = () => {
   const { data: bookingsPage } = useBookings({ limit: 100 });
   const bookings = bookingsPage?.data ?? [];
   const updateStatus = useUpdateBookingStatus();
+  const canViewTreasury = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const { data: cashAccounts } = useCashAccounts();
+  const totalCashBalance = (cashAccounts ?? []).reduce((sum, a) => sum + a.balance, 0);
 
   const { data: checkedOutPage } = useBookings({ status: 'CHECKED_OUT', limit: 50, sort: 'departure', order: 'desc' });
   const pendingPayments = (checkedOutPage?.data ?? []).filter(b => b.paymentStatus !== 'paid').slice(0, 5);
@@ -166,7 +173,7 @@ export const Dashboard: React.FC = () => {
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] font-bold tracking-[0.1em] text-on-surface-variant/40 uppercase mb-1">ETA {arrival.eta}</span>
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleQuickCheckin(arrival.id); }}
+                            onClick={(e) => { e.stopPropagation(); setPendingCheckinId(arrival.id); }}
                             disabled={checkingInId === arrival.id}
                             className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all text-[9px] font-bold uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed">
                             {checkingInId === arrival.id ? t('common.saving') : t('dashboard.quickCheckin')}
@@ -205,6 +212,20 @@ export const Dashboard: React.FC = () => {
 
         <aside className="space-y-10">
           <NewBookingsFeed />
+
+          {canViewTreasury && (
+            <button onClick={() => navigate('/treasury')}
+              className="w-full text-left bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow hover:border-primary/30 transition-all">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-2 rounded-lg bg-stone-50 text-primary">
+                  <Wallet className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t('dashboard.viewTreasury')}</span>
+              </div>
+              <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{t('treasury.totalBalance')}</p>
+              <p className="font-mono text-2xl font-bold text-on-surface">{formatCurrency(totalCashBalance)}</p>
+            </button>
+          )}
 
           <div className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow">
             <div className="flex items-center justify-between mb-4">
@@ -266,6 +287,18 @@ export const Dashboard: React.FC = () => {
         </aside>
       </div>
 
+      <ConfirmModal
+        isOpen={!!pendingCheckinId}
+        onClose={() => setPendingCheckinId(null)}
+        onConfirm={() => {
+          if (pendingCheckinId) handleQuickCheckin(pendingCheckinId);
+          setPendingCheckinId(null);
+        }}
+        title={t(STATUS_ACTIONS.checkin.titleKey)}
+        message={t(STATUS_ACTIONS.checkin.messageKey)}
+        variant={STATUS_ACTIONS.checkin.variant}
+        isPending={updateStatus.isPending}
+      />
     </div>
   );
 };

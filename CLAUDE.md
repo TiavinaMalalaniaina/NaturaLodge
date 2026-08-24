@@ -257,7 +257,7 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 ## Branches Git
 
 - `main` — branche de production stable
-- `feature/reservation-calendar-and-implementation` — branche courante
+- `develop` — branche d'intégration ; les branches `feature/*` et `bugfix/*` sont mergées ici via PR avant d'être portées sur `main`
 
 ---
 
@@ -270,5 +270,3 @@ cd client && npx tsc --noEmit
 # Vérification TypeScript serveur
 cd server && npx tsc --noEmit
 ```
-
-Erreurs pré-existantes, hors scope (à ne pas essayer de corriger sans qu'on le demande) : `src/mockData.ts`, `AddGuestModal.tsx` (notification `amount` manquant), `Reservations.tsx` (`BLOCK_CLS.checked_in` — clé absente du type `EffectiveStatus`).

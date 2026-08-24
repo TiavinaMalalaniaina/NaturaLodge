@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Wifi,
@@ -33,6 +34,7 @@ export const RoomDetail: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
   const [roomState, setRoomState]                 = useState<Room | undefined>(undefined);
   const [conflicts, setConflicts]                 = useState<ConflictBooking[]>([]);
+  const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
 
   const room = roomState ?? roomData;
 
@@ -79,7 +81,7 @@ export const RoomDetail: React.FC = () => {
               </p>
               <div className="h-3 w-[1px] bg-stone-200" />
               <button
-                onClick={handleMaintenanceToggle}
+                onClick={() => room.status === 'maintenance' ? handleMaintenanceToggle() : setConfirmMaintenanceOpen(true)}
                 disabled={updateStatus.isPending}
                 className={cn(
                   "flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40",
@@ -260,6 +262,15 @@ export const RoomDetail: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         room={room}
         onUpdate={(updated) => setRoomState(updated)}
+      />
+      <ConfirmModal
+        isOpen={confirmMaintenanceOpen}
+        onClose={() => setConfirmMaintenanceOpen(false)}
+        onConfirm={() => { handleMaintenanceToggle(); setConfirmMaintenanceOpen(false); }}
+        title={t('rooms.confirmMaintenanceTitle')}
+        message={t('rooms.confirmMaintenanceMessage')}
+        variant="warning"
+        isPending={updateStatus.isPending}
       />
     </motion.div>
   );

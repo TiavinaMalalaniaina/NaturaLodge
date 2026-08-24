@@ -6,6 +6,9 @@
     "guests":        "Clients",
     "amenities":     "Équipements",
     "invoices":      "Factures",
+    "expenses":      "Dépenses",
+    "treasury":      "Trésorerie",
+    "reports":       "Rapports",
     "staff":         "Personnel",
     "settings":      "Paramètres",
     "logout":        "Déconnexion",
@@ -102,7 +105,8 @@
     "notifyTeam":        "Notifier l'équipe",
     "teamNotified":      "Équipe notifiée",
     "pendingPayments":   "Paiements en attente",
-    "noPendingPayments": "Aucun paiement en attente"
+    "noPendingPayments": "Aucun paiement en attente",
+    "viewTreasury":      "Voir tout"
   },
   "reservations": {
     "title":                   "Réservations",
@@ -146,6 +150,8 @@
     "cannotRemoveLastRoom":    "Impossible de retirer la dernière chambre",
     "removeRoomTitle":         "Retirer cette chambre ?",
     "removeRoomMessage":       "La chambre sera retirée de la réservation. Cette action ne peut pas être annulée.",
+    "confirmReassignTitle":    "Confirmer les modifications ?",
+    "confirmReassignMessage":  "Cela mettra à jour la chambre, les dates et/ou le tarif de cette réservation.",
     "newStay":                 "Nouveau séjour",
     "reservationEntry":        "Saisie de réservation",
     "selectGuest":             "Sélectionner un profil client",
@@ -211,7 +217,9 @@
     "noDescription":       "Aucune description.",
     "maintenanceConflicts":     "{{count}} réservation(s) active(s) sur cette chambre",
     "maintenanceConflictsNote": "Ces réservations doivent être réassignées ou annulées.",
-    "roomInMaintenance":        "Cette chambre est en maintenance et ne peut pas être réservée."
+    "roomInMaintenance":        "Cette chambre est en maintenance et ne peut pas être réservée.",
+    "confirmMaintenanceTitle":   "Mettre en maintenance ?",
+    "confirmMaintenanceMessage": "La chambre ne sera plus réservable tant qu'elle est en maintenance."
   },
   "roomTypes": {
     "title":               "Types de chambre",
@@ -282,7 +290,17 @@
     "addExtra":             "Ajouter un supplément",
     "chooseExtra":          "Choisir un supplément…",
     "extraQuantity":        "Qté",
-    "removeExtra":          "Retirer ce supplément"
+    "removeExtra":          "Retirer ce supplément",
+    "confirmCheckinTitle":       "Confirmer le check-in ?",
+    "confirmCheckinMessage":     "Le client sera enregistré et la chambre passera en occupée.",
+    "confirmCheckoutTitle":      "Confirmer le check-out ?",
+    "confirmCheckoutMessage":    "La chambre sera libérée et redeviendra disponible.",
+    "confirmForceOutTitle":      "Forcer la sortie ?",
+    "confirmForceOutMessage":    "Le séjour est en retard. Cela clôturera le séjour et libérera la chambre immédiatement.",
+    "confirmRevertTitle":        "Annuler le check-in ?",
+    "confirmRevertMessage":      "Le séjour repassera en confirmé, comme avant l'enregistrement.",
+    "confirmRevertCancelTitle":  "Annuler l'annulation ?",
+    "confirmRevertCancelMessage":"La réservation repassera en attente de confirmation."
   },
   "extras": {
     "title":            "Suppléments",
@@ -327,6 +345,7 @@
     "noPayments":            "Aucun paiement enregistré",
     "amount":                "Montant",
     "method":                "Méthode",
+    "account":               "Compte reçu",
     "reference":             "Référence",
     "voidPayment":           "Annuler",
     "taxRate":               "Taux TVA (%)",
@@ -363,6 +382,53 @@
     "status_pending":     "Non payée",
     "status_failed":      "Échoué",
     "status_refunded":    "Remboursé"
+  },
+  "expenses": {
+    "title":              "Dépenses",
+    "count":              "{{count}} dépense(s)",
+    "record":             "Enregistrer une dépense",
+    "category":           "Catégorie",
+    "description":        "Description",
+    "date":               "Date",
+    "empty":              "Aucune dépense enregistrée",
+    "category_supplies":    "Fournitures",
+    "category_utilities":   "Eau, électricité",
+    "category_maintenance": "Entretien",
+    "category_marketing":   "Marketing",
+    "category_salaries":    "Salaires",
+    "category_other":       "Autres"
+  },
+  "treasury": {
+    "title":             "Trésorerie",
+    "totalBalance":      "Solde total",
+    "from":              "Du",
+    "to":                "Au",
+    "revenueInvoiced":   "Revenu facturé",
+    "revenueCollected":  "Revenu encaissé",
+    "totalExpenses":     "Dépenses",
+    "netCashFlow":       "Résultat net",
+    "statement":         "Relevé",
+    "noEntries":         "Aucun mouvement sur cette période",
+    "transfer":          "Virement",
+    "fromAccount":       "Compte source",
+    "toAccount":         "Compte destination",
+    "sameAccountError":  "Le compte source et le compte destination doivent être différents."
+  },
+  "reports": {
+    "title":                 "Rapports",
+    "exportCsv":             "Exporter le grand livre (CSV)",
+    "balanceSheet":          "Bilan",
+    "asOf":                  "À la date du",
+    "assets":                "Actif",
+    "liabilitiesAndEquity":  "Passif & Capitaux propres",
+    "netIncomeToDate":       "Résultat cumulé non affecté",
+    "total":                 "Total",
+    "noData":                "Aucune donnée",
+    "unbalanced":            "Le bilan ne s'équilibre pas — signalez ce cas, ce n'est pas censé arriver.",
+    "incomeStatement":       "Compte de résultat",
+    "revenue":               "Produits",
+    "expenses":              "Charges",
+    "netIncome":             "Résultat net"
   },
   "settings": {
     "title":             "Paramètres",

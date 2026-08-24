@@ -13,6 +13,7 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   variant?: 'danger' | 'warning';
   isPending?: boolean;
+  zIndexClassName?: string;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -21,12 +22,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   confirmLabel,
   variant = 'danger',
   isPending = false,
+  zIndexClassName = 'z-[110]',
 }) => {
   const { t } = useTranslation();
   const resolvedConfirmLabel = confirmLabel ?? t('common.confirm');
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} zIndexClassName="z-[110]"
+    <Modal isOpen={isOpen} onClose={onClose} title={title} zIndexClassName={zIndexClassName}
       className="max-w-sm bg-white rounded-3xl shadow-2xl border border-stone-100 p-8">
       <button onClick={onClose}
         className="absolute top-5 right-5 p-1.5 rounded-full text-on-surface-variant/40 hover:bg-stone-100 transition-colors">

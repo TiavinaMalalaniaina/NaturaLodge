@@ -1,0 +1,40 @@
+import { z } from 'zod';
+
+export const ledgerEntriesQuerySchema = z.object({
+  accountId: z.string().min(1),
+  page:      z.coerce.number().int().min(1).default(1),
+  limit:     z.coerce.number().int().min(1).max(500).default(20),
+  dateFrom:  z.string().datetime().optional(),
+  dateTo:    z.string().datetime().optional(),
+});
+
+export const ledgerSummaryQuerySchema = z.object({
+  dateFrom: z.string().datetime().optional(),
+  dateTo:   z.string().datetime().optional(),
+});
+
+export const transferSchema = z.object({
+  fromAccountId: z.string().min(1),
+  toAccountId:   z.string().min(1),
+  amount:        z.number().int().positive(),
+  memo:          z.string().optional(),
+}).refine(d => d.fromAccountId !== d.toAccountId, {
+  message: 'Le compte source et le compte destination doivent être différents.',
+  path:    ['toAccountId'],
+});
+
+export const balanceSheetQuerySchema = z.object({
+  asOf: z.string().datetime().optional(),
+});
+
+export const exportQuerySchema = z.object({
+  accountId: z.string().optional(),
+  dateFrom:  z.string().datetime().optional(),
+  dateTo:    z.string().datetime().optional(),
+});
+
+export type LedgerEntriesParams = z.infer<typeof ledgerEntriesQuerySchema>;
+export type LedgerSummaryParams = z.infer<typeof ledgerSummaryQuerySchema>;
+export type TransferInput = z.infer<typeof transferSchema>;
+export type BalanceSheetParams = z.infer<typeof balanceSheetQuerySchema>;
+export type ExportQueryParams = z.infer<typeof exportQuerySchema>;
