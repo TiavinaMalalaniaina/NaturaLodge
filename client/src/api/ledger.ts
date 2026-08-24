@@ -5,11 +5,12 @@ export interface CashAccount {
   code:    string;
   name:    string;
   balance: number;
+  allowedMethods: string[];
 }
 
 export const fetchCashAccounts = async (): Promise<CashAccount[]> => {
-  const { data } = await api.get<CashAccount[]>('/ledger/cash-accounts');
-  return data;
+  const { data } = await api.get<any[]>('/ledger/cash-accounts');
+  return data.map(a => ({ ...a, allowedMethods: (a.allowedMethods ?? []).map((m: string) => m.toLowerCase()) }));
 };
 
 export interface LedgerEntry {

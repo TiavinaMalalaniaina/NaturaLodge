@@ -307,6 +307,10 @@ model LedgerAccount {
   // eux qui alimentent le tableau de bord "où est l'argent", par opposition aux comptes de
   // charges/produits/tiers qui n'ont pas de solde en espèces.
   isCashAccount Boolean           @default(false)
+  // Méthodes de paiement que ce compte peut recevoir (ex: Caisse -> [CASH]) — filtre le
+  // sélecteur de compte du formulaire de paiement selon la méthode choisie. Vide pour les
+  // méthodes sans compte dédié pour l'instant (CARD/BANK_TRANSFER/ONLINE, pas de banque encore).
+  allowedMethods PaymentMethod[]  @default([])
   parent        LedgerAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
   parentId      String?
   children      LedgerAccount[]   @relation("AccountHierarchy")
