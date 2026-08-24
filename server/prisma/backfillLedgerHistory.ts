@@ -16,6 +16,10 @@ import * as ledgerService from '../src/services/ledger.service'
 // syncInvoiceWithBooking) — et par cohérence leurs paiements éventuels aussi, pour ne jamais
 // créditer 411000 Clients sans le débit d'origine correspondant.
 
+// Défaut Prisma (5000ms) trop court en pratique contre une base distante à latence élevée
+// (ex: Render) — chaque écriture fait plusieurs allers-retours dans une seule transaction.
+const TX_TIMEOUT_MS = 20_000
+
 async function main() {
   const invoices = await prisma.invoice.findMany({
     where:   { status: { notIn: ['CANCELLED', 'REFUNDED'] } },
@@ -43,7 +47,7 @@ async function main() {
           { accountCode: '706000', credit: subtotal },
           ...(invoice.taxAmount > 0 ? [{ accountCode: '4457000', credit: invoice.taxAmount } as const] : []),
         ],
-      })
+      }, prisma, TX_TIMEOUT_MS)
       postedInvoices++
     }
 
@@ -70,7 +74,7 @@ async function main() {
             { accountId: payment.accountId, debit: payment.amount },
             { accountCode: '411000', credit: payment.amount },
           ],
-        })
+        }, prisma, TX_TIMEOUT_MS)
         postedPayments++
       }
 
@@ -90,7 +94,7 @@ async function main() {
               { accountCode: '411000', debit: payment.amount },
               { accountId: payment.accountId, credit: payment.amount },
             ],
-          })
+          }, prisma, TX_TIMEOUT_MS)
           postedVoids++
         }
       }

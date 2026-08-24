@@ -38,7 +38,10 @@ async function generateEntryNumber(client: PrismaOrTx): Promise<string> {
 // Point de passage unique pour toute écriture comptable : aucune JournalLine ne doit être créée
 // ailleurs. Vérifie l'équilibre (Σdebit === Σcredit) avant de committer — c'est l'invariant de
 // base de la partie double, non exprimable comme contrainte SQL native sur plusieurs lignes.
-export async function postEntry(data: PostEntryInput, client: PrismaOrTx = prisma) {
+// `txTimeoutMs` : dépasse le défaut Prisma (5000ms) uniquement quand appelé hors transaction sur
+// une base distante à forte latence (ex: backfillLedgerHistory.ts contre une base de prod) — sans
+// effet quand un `client` transactionnel est déjà fourni par l'appelant.
+export async function postEntry(data: PostEntryInput, client: PrismaOrTx = prisma, txTimeoutMs?: number) {
   if (data.lines.length < 2) {
     throw new ConflictError('Une écriture comptable doit comporter au moins deux lignes.');
   }
@@ -96,7 +99,9 @@ export async function postEntry(data: PostEntryInput, client: PrismaOrTx = prism
   // logique que generateInvoiceNumber dans invoice.service.ts. Appelé avec un `tx` existant
   // (Phase 2/3, écriture postée dans la même transaction que l'opération métier) : pas de
   // transaction imbriquée, on l'exécute directement dans celle du client.
-  return client === prisma ? prisma.$transaction(run) : run(client);
+  return client === prisma
+    ? prisma.$transaction(run, txTimeoutMs ? { timeout: txTimeoutMs } : undefined)
+    : run(client);
 }
 
 export type TransferParams = {
