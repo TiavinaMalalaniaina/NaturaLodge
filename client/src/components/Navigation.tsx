@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -49,6 +49,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       items: [
         { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
         { path: '/settings',     label: t('nav.settings'),     icon: Settings        },
+        // Réservé ADMIN côté serveur (authorize('ADMIN') sur /api/audit-logs) — filtré ici aussi
+        // plutôt que laissé visible pour être redirigé au clic, moins déroutant pour MANAGER.
+        ...(user?.role === 'ADMIN' ? [{ path: '/audit-log', label: t('nav.auditLog'), icon: ShieldAlert }] : []),
       ],
     },
   ];

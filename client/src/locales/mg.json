@@ -15,7 +15,8 @@
     "portal":        "Valan-toerana fitantanana",
     "groupGeneral":    "Ankapobeny",
     "groupAccounting": "Kaonty",
-    "groupAdmin":      "Fitantanana"
+    "groupAdmin":      "Fitantanana",
+    "auditLog":        "Diarin'ny asa"
   },
   "topbar": {
     "searchPlaceholder": "Karohy mpiasa, efitrano, vahiny…",
@@ -434,6 +435,12 @@
     "revenue":               "Vola miditra",
     "expenses":              "Fandaniana",
     "netIncome":             "Vokatra madio"
+  },
+  "auditLog": {
+    "title":        "Diarin'ny asa",
+    "count":        "Asa {{count}}",
+    "resourceType": "Loharano",
+    "empty":        "Tsy misy asa voarakitra amin'ity vanim-potoana ity"
   },
   "settings": {
     "title":             "Fikirana",

@@ -15,7 +15,8 @@
     "portal":        "Management Portal",
     "groupGeneral":    "General",
     "groupAccounting": "Accounting",
-    "groupAdmin":      "Administration"
+    "groupAdmin":      "Administration",
+    "auditLog":        "Audit Log"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
@@ -434,6 +435,12 @@
     "revenue":               "Revenue",
     "expenses":              "Expenses",
     "netIncome":             "Net income"
+  },
+  "auditLog": {
+    "title":        "Audit Log",
+    "count":        "{{count}} action(s)",
+    "resourceType": "Resource",
+    "empty":        "No actions recorded in this period"
   },
   "settings": {
     "title":             "Settings",

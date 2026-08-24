@@ -15,7 +15,8 @@
     "portal":        "Portail de gestion",
     "groupGeneral":    "Général",
     "groupAccounting": "Comptabilité",
-    "groupAdmin":      "Administration"
+    "groupAdmin":      "Administration",
+    "auditLog":        "Journal d'audit"
   },
   "topbar": {
     "searchPlaceholder": "Chercher un client, une chambre…",
@@ -434,6 +435,12 @@
     "revenue":               "Produits",
     "expenses":              "Charges",
     "netIncome":             "Résultat net"
+  },
+  "auditLog": {
+    "title":        "Journal d'audit",
+    "count":        "{{count}} action(s)",
+    "resourceType": "Ressource",
+    "empty":        "Aucune action enregistrée sur cette période"
   },
   "settings": {
     "title":             "Paramètres",
