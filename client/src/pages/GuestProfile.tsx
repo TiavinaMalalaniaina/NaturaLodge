@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, nightsBetween, formatCurrency } from '../lib/format';
 import { BOOKING_STATUS_CLASS } from '../lib/statusColors';
 import { AddGuestModal } from '../components/AddGuestModal';
+import { useAuth } from '../context/AuthContext';
 
 function bookingNights(b: GuestBooking) {
   return nightsBetween(b.arrival, b.departure);
@@ -22,6 +23,7 @@ export const GuestProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { can } = useAuth();
 
   const { data: guest, isLoading, isError } = useGuest(id!);
   const addNote = useAddGuestNote();
@@ -60,10 +62,12 @@ export const GuestProfile: React.FC = () => {
           <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-5 py-2.5 rounded-xl border border-primary/30 text-primary font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-teal-50 transition-colors">
             <Printer className="w-3.5 h-3.5" /> Summary
           </button>
-          <button onClick={() => setIsEditModalOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-primary-container shadow-lg shadow-primary/10 transition-all">
-            <Edit className="w-3.5 h-3.5" /> {t('common.edit')}
-          </button>
+          {can('guests.update') && (
+            <button onClick={() => setIsEditModalOpen(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-primary-container shadow-lg shadow-primary/10 transition-all">
+              <Edit className="w-3.5 h-3.5" /> {t('common.edit')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -247,23 +251,25 @@ export const GuestProfile: React.FC = () => {
               ))}
             </div>
 
-            <div className="p-4 bg-stone-50 border-t border-stone-100 shrink-0">
-              <div className="relative">
-                <input type="text"
-                  value={noteInput}
-                  onChange={e => setNoteInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendNote()}
-                  placeholder={t('guests.addNote')}
-                  className="w-full h-12 pl-5 pr-14 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-primary transition-all"
-                />
-                <button
-                  onClick={handleSendNote}
-                  disabled={!noteInput.trim() || addNote.isPending}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:bg-primary-container transition-all disabled:opacity-40">
-                  <Send className="w-4 h-4" />
-                </button>
+            {can('guests.add_note') && (
+              <div className="p-4 bg-stone-50 border-t border-stone-100 shrink-0">
+                <div className="relative">
+                  <input type="text"
+                    value={noteInput}
+                    onChange={e => setNoteInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSendNote()}
+                    placeholder={t('guests.addNote')}
+                    className="w-full h-12 pl-5 pr-14 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-primary transition-all"
+                  />
+                  <button
+                    onClick={handleSendNote}
+                    disabled={!noteInput.trim() || addNote.isPending}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:bg-primary-container transition-all disabled:opacity-40">
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

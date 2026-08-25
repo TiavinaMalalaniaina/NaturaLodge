@@ -43,7 +43,9 @@ const App: React.FC = () => {
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="reservations" element={<Reservations />} />
-                  <Route path="reservations/new" element={<NewReservation />} />
+                  <Route element={<ProtectedRoute permission="bookings.create" />}>
+                    <Route path="reservations/new" element={<NewReservation />} />
+                  </Route>
                   <Route path="reservations/:id" element={<BookingDetail />} />
                   <Route path="rooms" element={<Rooms />} />
                   <Route path="rooms/types" element={<RoomTypes />} />

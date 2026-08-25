@@ -8,6 +8,7 @@ import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateTransferModal } from '../components/CreateTransferModal';
 import { CreateContributionModal } from '../components/CreateContributionModal';
 import { formatDate, formatCurrency, dateToLocalStr, todayLocalStr, startOfDayIso, endOfDayIso } from '../lib/format';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORY_KEY: Record<string, string> = {
   SUPPLIES: 'supplies', UTILITIES: 'utilities', MAINTENANCE: 'maintenance',
@@ -21,6 +22,7 @@ const firstOfMonth = () => {
 
 export const Treasury: React.FC = () => {
   const { t } = useTranslation();
+  const { can } = useAuth();
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState(firstOfMonth());
@@ -60,20 +62,24 @@ export const Treasury: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setContributionOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
-          >
-            <PiggyBank className="w-4 h-4" />
-            {t('treasury.contribution')}
-          </button>
-          <button
-            onClick={() => setTransferOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-            {t('treasury.transfer')}
-          </button>
+          {can('ledger.contribute') && (
+            <button
+              onClick={() => setContributionOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
+            >
+              <PiggyBank className="w-4 h-4" />
+              {t('treasury.contribution')}
+            </button>
+          )}
+          {can('ledger.transfer') && (
+            <button
+              onClick={() => setTransferOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              {t('treasury.transfer')}
+            </button>
+          )}
         </div>
       </div>
 

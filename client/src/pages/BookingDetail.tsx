@@ -24,11 +24,13 @@ import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
 
 export const BookingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { can } = useAuth();
   const { addNotification } = useNotifications();
 
   const { data: booking, isLoading, isError } = useBooking(id!);
@@ -115,19 +117,19 @@ export const BookingDetail: React.FC = () => {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          {canCheckIn && (
+          {can('bookings.update_status') && canCheckIn && (
             <button onClick={() => setPendingAction('checkin')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-teal-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-teal-900 transition-colors shadow-lg shadow-teal-800/10 disabled:opacity-50">
               <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
             </button>
           )}
-          {booking.status === 'awaiting' && (
+          {can('bookings.update_status') && booking.status === 'awaiting' && (
             <button onClick={() => setPendingAction('confirm')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-600 transition-colors">
               <Check className="w-3.5 h-3.5" /> {t('common.confirm')}
             </button>
           )}
-          {canCheckOut && (
+          {can('bookings.update_status') && canCheckOut && (
             <button onClick={() => setPendingAction(es === 'overdue' ? 'forceOut' : 'checkout')} disabled={updateStatus.isPending}
               className={cn(
                 'flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-colors shadow-lg disabled:opacity-50',
@@ -139,27 +141,29 @@ export const BookingDetail: React.FC = () => {
               {es === 'overdue' ? t('bookingDetail.forceOut') : t('reservations.checkout')}
             </button>
           )}
-          {canRevert && (
+          {can('bookings.update_status') && canRevert && (
             <button onClick={() => setPendingAction('revert')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors disabled:opacity-50">
               <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCheckIn')}
             </button>
           )}
-          {canRevertCancel && (
+          {can('bookings.update_status') && canRevertCancel && (
             <button onClick={() => setPendingAction('revertCancel')} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors disabled:opacity-50">
               <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCancelling')}
             </button>
           )}
-          <button onClick={() => setReassignOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 text-on-surface-variant rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5" /> {t('bookingDetail.reassign')}
-          </button>
+          {can('bookings.reassign') && (
+            <button onClick={() => setReassignOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 text-on-surface-variant rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
+              <RefreshCw className="w-3.5 h-3.5" /> {t('bookingDetail.reassign')}
+            </button>
+          )}
           <button onClick={() => navigate(`/invoices/${booking.id}`)}
             className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 text-on-surface-variant rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
             <FileText className="w-3.5 h-3.5" /> {t('invoice.title')}
           </button>
-          {canCancel && (
+          {can('bookings.update_status') && canCancel && (
             <button onClick={() => setCancelOpen(true)} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-500 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-50 transition-colors disabled:opacity-50">
               {t('common.cancel')}
@@ -239,30 +243,36 @@ export const BookingDetail: React.FC = () => {
                             <span className="text-on-surface-variant truncate">{extra.name}</span>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            <div className="flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-1.5 py-0.5">
-                              <button
-                                onClick={() => extra.quantity > 1
-                                  ? updateExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId, quantity: extra.quantity - 1 }, { onError: notifyError })
-                                  : removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
-                                className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">−</button>
-                              <span className="font-mono w-4 text-center">{extra.quantity}</span>
-                              <button
-                                onClick={() => updateExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId, quantity: extra.quantity + 1 }, { onError: notifyError })}
-                                className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">+</button>
-                            </div>
+                            {can('bookings.manage_rooms') ? (
+                              <div className="flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-1.5 py-0.5">
+                                <button
+                                  onClick={() => extra.quantity > 1
+                                    ? updateExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId, quantity: extra.quantity - 1 }, { onError: notifyError })
+                                    : removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
+                                  className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">−</button>
+                                <span className="font-mono w-4 text-center">{extra.quantity}</span>
+                                <button
+                                  onClick={() => updateExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId, quantity: extra.quantity + 1 }, { onError: notifyError })}
+                                  className="text-on-surface-variant/50 hover:text-primary transition-colors px-0.5">+</button>
+                              </div>
+                            ) : (
+                              <span className="font-mono w-4 text-center text-on-surface-variant/60">{extra.quantity}</span>
+                            )}
                             <span className="font-mono text-on-surface-variant/60">
                               {fmtAmount(extra.unitPrice * extra.quantity * (extra.pricing === 'per_night' ? nights : 1))}
                             </span>
-                            <button
-                              onClick={() => removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
-                              className="p-1 text-on-surface-variant/30 hover:text-red-500 transition-colors">
-                              <X className="w-3 h-3" />
-                            </button>
+                            {can('bookings.manage_rooms') && (
+                              <button
+                                onClick={() => removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
+                                className="p-1 text-on-surface-variant/30 hover:text-red-500 transition-colors">
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
 
-                      {isAdding ? (
+                      {can('bookings.manage_rooms') && (isAdding ? (
                         <div className="flex items-center gap-2 pt-1">
                           <select value={newExtraId} onChange={e => setNewExtraId(e.target.value)}
                             className="flex-1 h-8 px-2 bg-white border border-stone-200 rounded-lg text-[11px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
@@ -293,7 +303,7 @@ export const BookingDetail: React.FC = () => {
                           className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
                           <Plus className="w-3 h-3" /> {t('bookingDetail.addExtra')}
                         </button>
-                      )}
+                      ))}
                     </div>
                   </div>
                 );
@@ -325,23 +335,25 @@ export const BookingDetail: React.FC = () => {
               ))}
             </div>
 
-            <div className="p-4 bg-stone-50 border-t border-stone-100 shrink-0">
-              <div className="relative">
-                <input type="text"
-                  value={noteInput}
-                  onChange={e => setNoteInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSendNote()}
-                  placeholder={t('guests.addNote')}
-                  className="w-full h-12 pl-5 pr-14 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-primary transition-all"
-                />
-                <button
-                  onClick={handleSendNote}
-                  disabled={!noteInput.trim() || addNote.isPending}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:bg-primary-container transition-all disabled:opacity-40">
-                  <Send className="w-4 h-4" />
-                </button>
+            {can('bookings.add_note') && (
+              <div className="p-4 bg-stone-50 border-t border-stone-100 shrink-0">
+                <div className="relative">
+                  <input type="text"
+                    value={noteInput}
+                    onChange={e => setNoteInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSendNote()}
+                    placeholder={t('guests.addNote')}
+                    className="w-full h-12 pl-5 pr-14 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-primary transition-all"
+                  />
+                  <button
+                    onClick={handleSendNote}
+                    disabled={!noteInput.trim() || addNote.isPending}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-lg text-white flex items-center justify-center hover:bg-primary-container transition-all disabled:opacity-40">
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
