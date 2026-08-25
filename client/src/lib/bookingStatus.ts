@@ -1,5 +1,6 @@
-import { EffectiveStatus } from '../api/bookings';
-import type { UserRole } from '../context/AuthContext';
+import { EffectiveStatus, PaymentStatus } from '../api/bookings';
+
+type CanFn = (permissionKey: string) => boolean;
 
 export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatus, string> = {
   upcoming:           'Upcoming',
@@ -38,12 +39,21 @@ export const EFFECTIVE_STATUS_CLASS: Record<EffectiveStatus, string> = {
 };
 
 // Miroir de `assertBookingModifiable` (server/src/services/booking.service.ts) : CANCELLED/CLOSED
-// bloqués pour tout le monde ; check-outée mais pas encore clôturée → réservé MANAGER/ADMIN, le
-// réceptionniste perd la main dès que le client est parti.
-export function canModifyBooking(es: EffectiveStatus, role: UserRole | undefined): boolean {
+// bloqués pour tout le monde ; check-outée mais pas encore clôturée → réservé à qui a la
+// permission `bookings.modify_after_checkout` (ADMIN/MANAGER par défaut, configurable via
+// l'écran Permissions — pas un rôle codé en dur).
+export function canModifyBooking(es: EffectiveStatus, can: CanFn): boolean {
   if (es === 'cancelled' || es === 'closed') return false;
-  if (es === 'checked_out_unpaid' || es === 'checked_out_paid') return role === 'ADMIN' || role === 'MANAGER';
+  if (es === 'checked_out_unpaid' || es === 'checked_out_paid') return can('bookings.modify_after_checkout');
   return true;
+}
+
+// Miroir de `updateStatus` (server/src/services/booking.service.ts) : le check-out (normal ou
+// forcé) d'une réservation impayée/partiellement payée requiert la permission
+// `bookings.checkout_unpaid`.
+export function canCheckOutBooking(paymentStatus: PaymentStatus, can: CanFn): boolean {
+  if (paymentStatus === 'paid') return true;
+  return can('bookings.checkout_unpaid');
 }
 
 export type StatusActionKey = 'confirm' | 'checkin' | 'checkout' | 'forceOut' | 'revert' | 'revertCancel';

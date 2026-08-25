@@ -31,7 +31,7 @@ bookingsRouter.post('/', can('bookings.create'), asyncHandler(async (req: AuthRe
 bookingsRouter.patch('/:id/status', can('bookings.update_status'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = bookingStatusSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await bookingService.updateStatus(req.params.id, parsed.data.status, req.user!.id));
+  res.json(await bookingService.updateStatus(req.params.id, parsed.data.status, req.user!.role, req.user!.id));
 }));
 
 // PATCH /bookings/:id/close  ── clôture définitive, réservée manager/admin, uniquement depuis

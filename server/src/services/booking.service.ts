@@ -2,6 +2,7 @@ import { BookingStatus, Role, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { TERMINAL_STATUSES } from '../lib/bookingStatus';
+import { roleHasPermission } from '../lib/permissions';
 import { NotFoundError, ConflictError, ForbiddenError } from '../errors/AppError';
 import {
   AddBookingRoomExtraInput, AddBookingRoomInput, BookingInput, BookingListParams,
@@ -262,13 +263,20 @@ export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | '
 // Transactionnelle : le passage en CANCELLED annule aussi la facture de la réservation s'il y en
 // a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
 // ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
-export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserId?: string) {
+export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: Role, actingUserId?: string) {
   return prisma.$transaction(async (tx) => {
     let status: BookingStatus = requestedStatus;
     if (requestedStatus === 'CHECKED_OUT') {
       const current = await tx.booking.findUnique({ where: { id }, include: { invoices: invoicesForStatus } });
       if (!current) throw new NotFoundError('Réservation');
-      status = computePaymentStatus(current) === 'paid' ? 'CHECKED_OUT_PAID' : 'CHECKED_OUT_UNPAID';
+      const isPaid = computePaymentStatus(current) === 'paid';
+      // Check-outer une réservation encore impayée/partiellement payée requiert la permission
+      // `bookings.checkout_unpaid` (ADMIN/MANAGER par défaut, configurable via l'écran Permissions)
+      // — pas un contrôle de rôle codé en dur.
+      if (!isPaid && !(await roleHasPermission(actingUserRole, 'bookings.checkout_unpaid'))) {
+        throw new ForbiddenError('Seuls un manager ou un administrateur peuvent check-outer une réservation impayée ou partiellement payée');
+      }
+      status = isPaid ? 'CHECKED_OUT_PAID' : 'CHECKED_OUT_UNPAID';
     }
 
     const booking = await tx.booking.update({
@@ -363,16 +371,16 @@ async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId
 }
 
 // CANCELLED/CLOSED restent bloqués pour tout le monde, sans exception. Une réservation
-// check-outée mais pas encore clôturée reste modifiable, mais réservée à MANAGER/ADMIN — le
-// réceptionniste perd la main dès que le client est parti (décision produit : la permission seule,
-// FRONT_DESK, ne suffit plus à distinguer ce cas, d'où ce contrôle de rôle explicite ici).
+// check-outée mais pas encore clôturée reste modifiable par qui a la permission
+// `bookings.modify_after_checkout` (ADMIN/MANAGER par défaut, configurable via l'écran
+// Permissions) — pas un contrôle de rôle codé en dur, comme le reste du système d'autorisation.
 const CHECKED_OUT_NOT_CLOSED: BookingStatus[] = ['CHECKED_OUT', 'CHECKED_OUT_UNPAID', 'CHECKED_OUT_PAID'];
 
-function assertBookingModifiable(status: BookingStatus, actingUserRole: Role): void {
+async function assertBookingModifiable(status: BookingStatus, actingUserRole: Role): Promise<void> {
   if (status === 'CANCELLED' || status === 'CLOSED') {
     throw new ConflictError('Impossible de modifier une réservation clôturée');
   }
-  if (CHECKED_OUT_NOT_CLOSED.includes(status) && actingUserRole !== 'ADMIN' && actingUserRole !== 'MANAGER') {
+  if (CHECKED_OUT_NOT_CLOSED.includes(status) && !(await roleHasPermission(actingUserRole, 'bookings.modify_after_checkout'))) {
     throw new ForbiddenError('Seuls un manager ou un administrateur peuvent modifier une réservation déjà check-outée');
   }
 }
@@ -386,7 +394,7 @@ export async function reassign(bookingId: string, data: ReassignInput, actingUse
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    assertBookingModifiable(booking.status, actingUserRole);
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === oldRoomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -445,7 +453,7 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput, acti
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    assertBookingModifiable(booking.status, actingUserRole);
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const arrival   = data.arrival   ? new Date(data.arrival)   : booking.arrival;
     const departure = data.departure ? new Date(data.departure) : booking.departure;
@@ -491,7 +499,7 @@ export async function removeRoom(bookingId: string, roomId: string, actingUserRo
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    assertBookingModifiable(booking.status, actingUserRole);
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -514,7 +522,7 @@ export async function addExtraToRoom(bookingId: string, roomId: string, data: Ad
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    assertBookingModifiable(booking.status, actingUserRole);
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -553,7 +561,7 @@ export async function updateExtraQuantity(bookingId: string, roomId: string, ext
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    assertBookingModifiable(booking.status, actingUserRole);
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -574,7 +582,7 @@ export async function removeExtraFromRoom(bookingId: string, roomId: string, ext
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    assertBookingModifiable(booking.status, actingUserRole);
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');

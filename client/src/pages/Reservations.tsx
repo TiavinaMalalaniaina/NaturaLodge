@@ -17,7 +17,7 @@ import { useBookings, useUpdateBookingStatus, useCloseBooking } from '../hooks/u
 import { useRooms } from '../hooks/useRooms';
 import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
@@ -52,7 +52,7 @@ const LABEL_W = 176;  // px for room label column
 
 export const Reservations: React.FC = () => {
   const { t } = useTranslation();
-  const { can, user } = useAuth();
+  const { can } = useAuth();
 
   // View
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
@@ -551,7 +551,7 @@ export const Reservations: React.FC = () => {
                               )}>
                               <div className="flex items-center justify-between gap-1">
                                 <p className="text-[10px] font-bold truncate leading-tight">{b.guestName}</p>
-                                {can('bookings.reassign') && canModifyBooking(b.effectiveStatus, user?.role) && (
+                                {can('bookings.reassign') && canModifyBooking(b.effectiveStatus, can) && (
                                   <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                     <button
                                       onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
@@ -788,7 +788,7 @@ export const Reservations: React.FC = () => {
                     <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
                   </button>
                 )}
-                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'in_progress' && (
+                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'in_progress' && canCheckOutBooking(selectedBooking.paymentStatus, can) && (
                   <button
                     onClick={() => setPendingAction({ id: selectedBooking.id, action: 'checkout' })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors">
@@ -802,7 +802,7 @@ export const Reservations: React.FC = () => {
                     <RotateCcw className="w-3.5 h-3.5" /> {t('reservations.revert')}
                   </button>
                 )}
-                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'overdue' && (
+                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'overdue' && canCheckOutBooking(selectedBooking.paymentStatus, can) && (
                   <button
                     onClick={() => setPendingAction({ id: selectedBooking.id, action: 'forceOut' })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-700 transition-colors">
@@ -826,7 +826,7 @@ export const Reservations: React.FC = () => {
 
                 <div className="w-px h-5 bg-stone-200 mx-1" />
 
-                {can('bookings.reassign') && canModifyBooking(selectedBooking.effectiveStatus, user?.role) && (
+                {can('bookings.reassign') && canModifyBooking(selectedBooking.effectiveStatus, can) && (
                   <button
                     onClick={() => { setReassignBooking({ id: selectedBooking.id, rooms: selectedBooking.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">

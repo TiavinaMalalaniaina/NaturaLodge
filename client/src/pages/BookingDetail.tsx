@@ -18,7 +18,7 @@ import { useInvoiceByBooking } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking as computeCanModifyBooking } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking as computeCanModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
@@ -30,7 +30,7 @@ export const BookingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { can, user } = useAuth();
+  const { can } = useAuth();
   const { addNotification } = useNotifications();
 
   const { data: booking, isLoading, isError } = useBooking(id!);
@@ -68,12 +68,12 @@ export const BookingDetail: React.FC = () => {
 
   const es = booking.effectiveStatus;
   const canCheckIn = es === 'due_checkin';
-  const canCheckOut = es === 'in_progress' || es === 'overdue';
+  const canCheckOut = (es === 'in_progress' || es === 'overdue') && canCheckOutBooking(booking.paymentStatus, can);
   const canRevert = es === 'in_progress';
   const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
   const canClose = can('bookings.close') && es === 'checked_out_paid';
-  const canModifyBooking = computeCanModifyBooking(es, user?.role);
+  const canModifyBooking = computeCanModifyBooking(es, can);
 
   const handleStatus = (status: string) => {
     updateStatus.mutate({ id: booking.id, status }, {
