@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { TERMINAL_STATUSES } from './bookingStatus';
 
 async function markArrivalsOccupied(): Promise<void> {
   const now   = new Date();
@@ -8,7 +9,7 @@ async function markArrivalsOccupied(): Promise<void> {
   const arrivingToday = await prisma.bookingRoom.findMany({
     where: {
       arrival: { gte: start, lte: end },
-      booking: { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+      booking: { status: { notIn: TERMINAL_STATUSES } },
       room:    { status: { not: 'MAINTENANCE' } },
     },
     select: { roomId: true },

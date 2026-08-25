@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { NotFoundError } from '../errors/AppError';
 import { RoomInput, RoomFeatureInput } from '../validation/room.schema';
+import { TERMINAL_STATUSES } from '../lib/bookingStatus';
 
 // Le client (client/src/api/rooms.ts `normalizeRoom`) réduit immédiatement `features` à un
 // tableau d'ids (`r.features.map(f => f.id)`) — `label`/`iconName` ne servent que sur le
@@ -57,7 +58,7 @@ export async function listAvailable(arrival: Date, departure: Date, excludeBooki
           arrival:  { lt: departure },
           departure: { gt: arrival },
           booking:  {
-            status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+            status: { notIn: TERMINAL_STATUSES },
             ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
           },
         },
@@ -139,7 +140,7 @@ export async function update(id: string, data: Partial<RoomInput>) {
     const conflicts = await prisma.booking.findMany({
       where: {
         rooms:     { some: { roomId: room.id } },
-        status:    { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+        status:    { notIn: TERMINAL_STATUSES },
         departure: { gte: new Date() },
       },
       select: {

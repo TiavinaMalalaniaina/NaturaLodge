@@ -3,13 +3,13 @@ import {
   ArrowLeft, Calendar, Users, CreditCard, FileText,
   LogIn, LogOut, AlertTriangle, Bed, Hash, Clock, Check,
   ChevronRight, ExternalLink, RefreshCw, RotateCcw, Plus, X, Sparkles,
-  Send,
+  Send, Lock,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import {
-  useBooking, useUpdateBookingStatus,
+  useBooking, useUpdateBookingStatus, useCloseBooking,
   useAddBookingRoomExtra, useUpdateBookingRoomExtra, useRemoveBookingRoomExtra,
   useAddBookingNote,
 } from '../hooks/useBookings';
@@ -36,6 +36,7 @@ export const BookingDetail: React.FC = () => {
   const { data: booking, isLoading, isError } = useBooking(id!);
   const { data: invoice } = useInvoiceByBooking(id ?? null);
   const updateStatus = useUpdateBookingStatus();
+  const closeBooking = useCloseBooking();
   const { data: extrasCatalog = [] } = useExtras();
   const addExtra = useAddBookingRoomExtra();
   const updateExtra = useUpdateBookingRoomExtra();
@@ -44,6 +45,7 @@ export const BookingDetail: React.FC = () => {
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<StatusActionKey | null>(null);
   const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
   const [newExtraId, setNewExtraId] = useState('');
@@ -70,6 +72,7 @@ export const BookingDetail: React.FC = () => {
   const canRevert = es === 'in_progress';
   const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
+  const canClose = can('bookings.close') && es === 'checked_out_paid';
 
   const handleStatus = (status: string) => {
     updateStatus.mutate({ id: booking.id, status }, {
@@ -167,6 +170,12 @@ export const BookingDetail: React.FC = () => {
             <button onClick={() => setCancelOpen(true)} disabled={updateStatus.isPending}
               className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-500 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-50 transition-colors disabled:opacity-50">
               {t('common.cancel')}
+            </button>
+          )}
+          {canClose && (
+            <button onClick={() => setCloseOpen(true)} disabled={closeBooking.isPending}
+              className="flex items-center gap-2 px-4 py-2.5 bg-stone-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors disabled:opacity-50">
+              <Lock className="w-3.5 h-3.5" /> {t('bookingDetail.close')}
             </button>
           )}
         </div>
@@ -525,6 +534,18 @@ export const BookingDetail: React.FC = () => {
         message={t('reservations.cancelMessage')}
         confirmLabel={t('reservations.confirmCancel')}
         isPending={updateStatus.isPending}
+      />
+      <ConfirmModal
+        isOpen={closeOpen}
+        onClose={() => setCloseOpen(false)}
+        onConfirm={() => {
+          closeBooking.mutate(booking.id, { onError: notifyError });
+          setCloseOpen(false);
+        }}
+        title={t('bookingDetail.confirmCloseTitle')}
+        message={t('bookingDetail.confirmCloseMessage')}
+        confirmLabel={t('bookingDetail.close')}
+        isPending={closeBooking.isPending}
       />
       <ReassignRoomModal
         isOpen={reassignOpen}

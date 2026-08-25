@@ -357,7 +357,7 @@ async function main() {
     createdById: string
     arrival:     Date
     departure:   Date
-    status:      'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED'
+    status:      'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT_UNPAID' | 'CANCELLED'
     totalAmount: number
     notes:       string | null
     roomId:      string
@@ -379,7 +379,7 @@ async function main() {
           createdById: pick(staff).id,
           arrival:     new Date(c),
           departure:   new Date(dep),
-          status:      'CHECKED_OUT',
+          status:      'CHECKED_OUT_UNPAID',
           totalAmount: rate * dur,
           notes:       null,
           roomId,
@@ -434,7 +434,7 @@ async function main() {
         createdById: pick(staff).id,
         arrival:     new Date(cursor),
         departure:   new Date(dep),
-        status:      isCancelled ? 'CANCELLED' : 'CHECKED_OUT',
+        status:      isCancelled ? 'CANCELLED' : 'CHECKED_OUT_UNPAID',
         totalAmount: rate * dur,
         notes:       Math.random() < 0.25 ? pick(BOOKING_NOTES) : null,
         roomId,
@@ -530,7 +530,7 @@ async function main() {
   )
 
   console.log(`\n✅ ${allBookings.length} bookings total`)
-  console.log(`   CHECKED_OUT: ${counts.CHECKED_OUT ?? 0}`)
+  console.log(`   CHECKED_OUT_UNPAID: ${counts.CHECKED_OUT_UNPAID ?? 0}`)
   console.log(`   CHECKED_IN:  ${counts.CHECKED_IN  ?? 0}  (today: in progress)`)
   console.log(`   CONFIRMED:   ${counts.CONFIRMED   ?? 0}  (incl. 7 arriving today)`)
   console.log(`   CANCELLED:   ${counts.CANCELLED   ?? 0}`)

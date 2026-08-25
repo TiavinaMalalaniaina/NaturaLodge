@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError } from '../errors/AppError';
 import { GenerateInvoiceInput, InvoiceListParams, PaymentInput, UpdateInvoiceInput } from '../validation/invoice.schema';
 import * as ledgerService from './ledger.service';
+import { resyncCheckoutPaymentStatus } from './booking.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -418,6 +419,7 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
     });
 
     await syncInvoiceStatus(invoiceId, tx);
+    await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
   });
@@ -455,6 +457,7 @@ export async function voidPayment(invoiceId: string, paymentId: string, voidedBy
     });
 
     await syncInvoiceStatus(invoiceId, tx);
+    await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
   });

@@ -1,33 +1,39 @@
 import { EffectiveStatus } from '../api/bookings';
 
 export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatus, string> = {
-  upcoming:    'Upcoming',
-  due_checkin: 'Due Check-in',
-  in_progress: 'In Progress',
-  overdue:     'Overdue',
-  awaiting:    'Awaiting',
-  checked_out: 'Checked Out',
-  cancelled:   'Cancelled',
+  upcoming:           'Upcoming',
+  due_checkin:        'Due Check-in',
+  in_progress:        'In Progress',
+  overdue:            'Overdue',
+  awaiting:           'Awaiting',
+  checked_out_unpaid: 'Checked Out — Unpaid',
+  checked_out_paid:   'Checked Out — Paid',
+  closed:             'Closed',
+  cancelled:          'Cancelled',
 };
 
 export const EFFECTIVE_STATUS_I18N_KEY: Record<EffectiveStatus, string> = {
-  upcoming:    'status.upcoming',
-  due_checkin: 'status.dueCheckin',
-  in_progress: 'status.inProgress',
-  overdue:     'status.overdue',
-  awaiting:    'status.awaiting',
-  checked_out: 'status.checkedOut',
-  cancelled:   'status.cancelled',
+  upcoming:           'status.upcoming',
+  due_checkin:        'status.dueCheckin',
+  in_progress:        'status.inProgress',
+  overdue:            'status.overdue',
+  awaiting:           'status.awaiting',
+  checked_out_unpaid: 'status.checkedOutUnpaid',
+  checked_out_paid:   'status.checkedOutPaid',
+  closed:             'status.closed',
+  cancelled:          'status.cancelled',
 };
 
 export const EFFECTIVE_STATUS_CLASS: Record<EffectiveStatus, string> = {
-  upcoming:    'bg-teal-50  text-teal-600  border-teal-100',
-  due_checkin: 'bg-amber-50 text-amber-600 border-amber-100',
-  in_progress: 'bg-zinc-900 text-white     border-zinc-900',
-  overdue:     'bg-red-50   text-red-600   border-red-100',
-  awaiting:    'bg-amber-50 text-amber-600 border-amber-100',
-  checked_out: 'bg-stone-50 text-stone-400 border-stone-200',
-  cancelled:   'bg-stone-50 text-stone-400 border-stone-200',
+  upcoming:           'bg-teal-50  text-teal-600  border-teal-100',
+  due_checkin:        'bg-amber-50 text-amber-600 border-amber-100',
+  in_progress:        'bg-zinc-900 text-white     border-zinc-900',
+  overdue:            'bg-red-50   text-red-600   border-red-100',
+  awaiting:           'bg-amber-50 text-amber-600 border-amber-100',
+  checked_out_unpaid: 'bg-rose-50  text-rose-500  border-rose-100',
+  checked_out_paid:   'bg-teal-50  text-teal-600  border-teal-100',
+  closed:             'bg-stone-50 text-stone-400 border-stone-200',
+  cancelled:          'bg-stone-50 text-stone-400 border-stone-200',
 };
 
 export type StatusActionKey = 'confirm' | 'checkin' | 'checkout' | 'forceOut' | 'revert' | 'revertCancel';

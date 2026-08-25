@@ -52,6 +52,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'bookings.view',          domain: 'bookings', description: 'Consulter les réservations',                                        roles: ALL_STAFF },
   { key: 'bookings.create',        domain: 'bookings', description: 'Créer une réservation',                                             roles: FRONT_DESK },
   { key: 'bookings.update_status', domain: 'bookings', description: 'Changer le statut d\'une réservation (confirmer, check-in/out, annuler)', roles: FRONT_DESK },
+  { key: 'bookings.close',         domain: 'bookings', description: 'Clôturer définitivement une réservation terminée et payée',            roles: ADMIN_MANAGER },
   { key: 'bookings.reassign',      domain: 'bookings', description: 'Réassigner la chambre d\'une réservation',                          roles: FRONT_DESK },
   { key: 'bookings.manage_rooms',  domain: 'bookings', description: 'Ajouter/retirer une chambre ou un supplément sur une réservation',   roles: FRONT_DESK },
   { key: 'bookings.delete',        domain: 'bookings', description: 'Supprimer une réservation',                                         roles: ADMIN_MANAGER },

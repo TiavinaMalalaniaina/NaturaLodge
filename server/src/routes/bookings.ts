@@ -34,6 +34,12 @@ bookingsRouter.patch('/:id/status', can('bookings.update_status'), asyncHandler(
   res.json(await bookingService.updateStatus(req.params.id, parsed.data.status, req.user!.id));
 }));
 
+// PATCH /bookings/:id/close  ── clôture définitive, réservée manager/admin, uniquement depuis
+// CHECKED_OUT_PAID (voir booking.service.ts closeBooking)
+bookingsRouter.patch('/:id/close', can('bookings.close'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await bookingService.closeBooking(req.params.id));
+}));
+
 // PATCH /bookings/:id/reassign  ── remplacer la chambre et/ou les dates d'une ligne de réservation
 bookingsRouter.patch('/:id/reassign', can('bookings.reassign'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = reassignSchema.safeParse(req.body);
