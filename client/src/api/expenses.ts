@@ -29,6 +29,8 @@ export interface ExpensesListParams {
   category?: string;
   page?:     number;
   limit?:    number;
+  dateFrom?: string;
+  dateTo?:   string;
 }
 
 export interface ExpensesList {

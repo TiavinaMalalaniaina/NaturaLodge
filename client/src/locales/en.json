@@ -401,6 +401,8 @@
     "category":           "Category",
     "description":        "Description",
     "date":               "Date",
+    "from":               "From",
+    "to":                 "To",
     "empty":              "No expenses recorded",
     "category_supplies":    "Supplies",
     "category_utilities":   "Utilities",

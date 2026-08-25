@@ -401,6 +401,8 @@
     "category":           "Catégorie",
     "description":        "Description",
     "date":               "Date",
+    "from":               "Du",
+    "to":                 "Au",
     "empty":              "Aucune dépense enregistrée",
     "category_supplies":    "Fournitures",
     "category_utilities":   "Eau, électricité",
