@@ -18,6 +18,7 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ isOpen
   const [fromAccountId, setFromAccountId] = useState('');
   const [toAccountId,   setToAccountId]   = useState('');
   const [amount,        setAmount]        = useState('');
+  const [fee,           setFee]           = useState('');
   const [memo,          setMemo]          = useState('');
   const [apiError,      setApiError]      = useState('');
 
@@ -28,6 +29,7 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ isOpen
     setFromAccountId('');
     setToAccountId('');
     setAmount('');
+    setFee('');
     setMemo('');
     setApiError('');
   };
@@ -41,10 +43,11 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ isOpen
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseInt(amount, 10);
+    const parsedFee = fee ? parseInt(fee, 10) : undefined;
     if (!parsedAmount || parsedAmount <= 0 || !selectedFromId || !selectedToId || isSameAccount) return;
     setApiError('');
     createTransfer.mutate(
-      { fromAccountId: selectedFromId, toAccountId: selectedToId, amount: parsedAmount, memo: memo || undefined },
+      { fromAccountId: selectedFromId, toAccountId: selectedToId, amount: parsedAmount, fee: parsedFee, memo: memo || undefined },
       {
         onSuccess: handleClose,
         onError:   (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
@@ -110,6 +113,18 @@ export const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ isOpen
               onChange={e => setAmount(e.target.value)}
               className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
             />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">
+              {t('treasury.transferFee')} <span className="normal-case font-normal opacity-40">{t('common.optional')}</span>
+            </label>
+            <input
+              type="number" min={0} value={fee}
+              onChange={e => setFee(e.target.value)}
+              className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            />
+            <p className="text-[10px] text-on-surface-variant/40 mt-1.5">{t('treasury.transferFeeHint')}</p>
           </div>
 
           <div>

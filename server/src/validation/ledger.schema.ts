@@ -17,6 +17,7 @@ export const transferSchema = z.object({
   fromAccountId: z.string().min(1),
   toAccountId:   z.string().min(1),
   amount:        z.number().int().positive(),
+  fee:           z.number().int().min(0).optional(),
   memo:          z.string().optional(),
 }).refine(d => d.fromAccountId !== d.toAccountId, {
   message: 'Le compte source et le compte destination doivent être différents.',
