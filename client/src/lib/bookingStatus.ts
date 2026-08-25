@@ -1,4 +1,5 @@
 import { EffectiveStatus } from '../api/bookings';
+import type { UserRole } from '../context/AuthContext';
 
 export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatus, string> = {
   upcoming:           'Upcoming',
@@ -35,6 +36,15 @@ export const EFFECTIVE_STATUS_CLASS: Record<EffectiveStatus, string> = {
   closed:             'bg-stone-50 text-stone-400 border-stone-200',
   cancelled:          'bg-stone-50 text-stone-400 border-stone-200',
 };
+
+// Miroir de `assertBookingModifiable` (server/src/services/booking.service.ts) : CANCELLED/CLOSED
+// bloqués pour tout le monde ; check-outée mais pas encore clôturée → réservé MANAGER/ADMIN, le
+// réceptionniste perd la main dès que le client est parti.
+export function canModifyBooking(es: EffectiveStatus, role: UserRole | undefined): boolean {
+  if (es === 'cancelled' || es === 'closed') return false;
+  if (es === 'checked_out_unpaid' || es === 'checked_out_paid') return role === 'ADMIN' || role === 'MANAGER';
+  return true;
+}
 
 export type StatusActionKey = 'confirm' | 'checkin' | 'checkout' | 'forceOut' | 'revert' | 'revertCancel';
 

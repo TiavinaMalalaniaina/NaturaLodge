@@ -17,7 +17,7 @@ import { useBookings, useUpdateBookingStatus, useCloseBooking } from '../hooks/u
 import { useRooms } from '../hooks/useRooms';
 import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
@@ -52,7 +52,7 @@ const LABEL_W = 176;  // px for room label column
 
 export const Reservations: React.FC = () => {
   const { t } = useTranslation();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
 
   // View
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
@@ -551,7 +551,7 @@ export const Reservations: React.FC = () => {
                               )}>
                               <div className="flex items-center justify-between gap-1">
                                 <p className="text-[10px] font-bold truncate leading-tight">{b.guestName}</p>
-                                {can('bookings.reassign') && (
+                                {can('bookings.reassign') && canModifyBooking(b.effectiveStatus, user?.role) && (
                                   <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                     <button
                                       onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
@@ -826,7 +826,7 @@ export const Reservations: React.FC = () => {
 
                 <div className="w-px h-5 bg-stone-200 mx-1" />
 
-                {can('bookings.reassign') && (
+                {can('bookings.reassign') && canModifyBooking(selectedBooking.effectiveStatus, user?.role) && (
                   <button
                     onClick={() => { setReassignBooking({ id: selectedBooking.id, rooms: selectedBooking.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">

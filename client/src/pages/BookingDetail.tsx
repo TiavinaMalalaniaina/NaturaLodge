@@ -18,7 +18,7 @@ import { useInvoiceByBooking } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking as computeCanModifyBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
@@ -30,7 +30,7 @@ export const BookingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const { addNotification } = useNotifications();
 
   const { data: booking, isLoading, isError } = useBooking(id!);
@@ -73,6 +73,7 @@ export const BookingDetail: React.FC = () => {
   const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
   const canClose = can('bookings.close') && es === 'checked_out_paid';
+  const canModifyBooking = computeCanModifyBooking(es, user?.role);
 
   const handleStatus = (status: string) => {
     updateStatus.mutate({ id: booking.id, status }, {
@@ -156,7 +157,7 @@ export const BookingDetail: React.FC = () => {
               <RotateCcw className="w-3.5 h-3.5" /> {t('bookingDetail.revertCancelling')}
             </button>
           )}
-          {can('bookings.reassign') && (
+          {can('bookings.reassign') && canModifyBooking && (
             <button onClick={() => setReassignOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 text-on-surface-variant rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
               <RefreshCw className="w-3.5 h-3.5" /> {t('bookingDetail.reassign')}
@@ -252,7 +253,7 @@ export const BookingDetail: React.FC = () => {
                             <span className="text-on-surface-variant truncate">{extra.name}</span>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            {can('bookings.manage_rooms') ? (
+                            {can('bookings.manage_rooms') && canModifyBooking ? (
                               <div className="flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-1.5 py-0.5">
                                 <button
                                   onClick={() => extra.quantity > 1
@@ -270,7 +271,7 @@ export const BookingDetail: React.FC = () => {
                             <span className="font-mono text-on-surface-variant/60">
                               {fmtAmount(extra.unitPrice * extra.quantity * (extra.pricing === 'per_night' ? nights : 1))}
                             </span>
-                            {can('bookings.manage_rooms') && (
+                            {can('bookings.manage_rooms') && canModifyBooking && (
                               <button
                                 onClick={() => removeExtra.mutate({ bookingId: booking.id, roomId: br.roomId, extraId: extra.extraId }, { onError: notifyError })}
                                 className="p-1 text-on-surface-variant/30 hover:text-red-500 transition-colors">
@@ -281,7 +282,7 @@ export const BookingDetail: React.FC = () => {
                         </div>
                       ))}
 
-                      {can('bookings.manage_rooms') && (isAdding ? (
+                      {can('bookings.manage_rooms') && canModifyBooking && (isAdding ? (
                         <div className="flex items-center gap-2 pt-1">
                           <select value={newExtraId} onChange={e => setNewExtraId(e.target.value)}
                             className="flex-1 h-8 px-2 bg-white border border-stone-200 rounded-lg text-[11px] outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">

@@ -1,8 +1,8 @@
-import { BookingStatus, Prisma } from '@prisma/client';
+import { BookingStatus, Role, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { TERMINAL_STATUSES } from '../lib/bookingStatus';
-import { NotFoundError, ConflictError } from '../errors/AppError';
+import { NotFoundError, ConflictError, ForbiddenError } from '../errors/AppError';
 import {
   AddBookingRoomExtraInput, AddBookingRoomInput, BookingInput, BookingListParams,
   ReassignInput, UpdateBookingRoomExtraInput,
@@ -362,7 +362,22 @@ async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId
   await invoiceService.syncInvoiceWithBooking(tx, bookingId);
 }
 
-export async function reassign(bookingId: string, data: ReassignInput) {
+// CANCELLED/CLOSED restent bloqués pour tout le monde, sans exception. Une réservation
+// check-outée mais pas encore clôturée reste modifiable, mais réservée à MANAGER/ADMIN — le
+// réceptionniste perd la main dès que le client est parti (décision produit : la permission seule,
+// FRONT_DESK, ne suffit plus à distinguer ce cas, d'où ce contrôle de rôle explicite ici).
+const CHECKED_OUT_NOT_CLOSED: BookingStatus[] = ['CHECKED_OUT', 'CHECKED_OUT_UNPAID', 'CHECKED_OUT_PAID'];
+
+function assertBookingModifiable(status: BookingStatus, actingUserRole: Role): void {
+  if (status === 'CANCELLED' || status === 'CLOSED') {
+    throw new ConflictError('Impossible de modifier une réservation clôturée');
+  }
+  if (CHECKED_OUT_NOT_CLOSED.includes(status) && actingUserRole !== 'ADMIN' && actingUserRole !== 'MANAGER') {
+    throw new ForbiddenError('Seuls un manager ou un administrateur peuvent modifier une réservation déjà check-outée');
+  }
+}
+
+export async function reassign(bookingId: string, data: ReassignInput, actingUserRole: Role) {
   const { oldRoomId, newRoomId } = data;
 
   // Vérification de conflit + mise à jour de la ligne + recalcul du total/dates + recalcul des
@@ -371,6 +386,7 @@ export async function reassign(bookingId: string, data: ReassignInput) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
+    assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === oldRoomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -425,13 +441,11 @@ export async function reassign(bookingId: string, data: ReassignInput) {
   });
 }
 
-export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
+export async function addRoom(bookingId: string, data: AddBookingRoomInput, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (TERMINAL_STATUSES.includes(booking.status)) {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    assertBookingModifiable(booking.status, actingUserRole);
 
     const arrival   = data.arrival   ? new Date(data.arrival)   : booking.arrival;
     const departure = data.departure ? new Date(data.departure) : booking.departure;
@@ -473,13 +487,11 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
   });
 }
 
-export async function removeRoom(bookingId: string, roomId: string) {
+export async function removeRoom(bookingId: string, roomId: string, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (TERMINAL_STATUSES.includes(booking.status)) {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -498,13 +510,11 @@ export async function removeRoom(bookingId: string, roomId: string) {
   });
 }
 
-export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput) {
+export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (TERMINAL_STATUSES.includes(booking.status)) {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -539,13 +549,11 @@ export async function addExtraToRoom(bookingId: string, roomId: string, data: Ad
   });
 }
 
-export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput) {
+export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (TERMINAL_STATUSES.includes(booking.status)) {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -562,13 +570,11 @@ export async function updateExtraQuantity(bookingId: string, roomId: string, ext
   });
 }
 
-export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string) {
+export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (TERMINAL_STATUSES.includes(booking.status)) {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -588,6 +594,9 @@ export async function removeExtraFromRoom(bookingId: string, roomId: string, ext
 export async function remove(id: string): Promise<void> {
   const booking = await prisma.booking.findUnique({ where: { id }, include: { rooms: true } });
   if (!booking) throw new NotFoundError('Réservation');
+  if (TERMINAL_STATUSES.includes(booking.status)) {
+    throw new ConflictError('Impossible de modifier une réservation clôturée');
+  }
 
   await prisma.booking.delete({ where: { id } });
 
