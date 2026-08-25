@@ -30,7 +30,7 @@ interface ApiGuest {
   address?: string; city?: string; country?: string; status: string;
   memberSince: string; totalStays: number; lifetimeValue: number;
   avatar?: string; preferences: string[];
-  notes: ApiNote[]; bookings?: ApiBooking[];
+  notes?: ApiNote[]; bookings?: ApiBooking[];
 }
 
 // ─── Normalized shapes ────────────────────────────────────────────
@@ -67,7 +67,7 @@ export function normalizeGuest(g: ApiGuest): Guest & { bookings?: GuestBooking[]
     lifetimeValue: g.lifetimeValue,
     avatar: g.avatar ?? '',
     preferences: g.preferences,
-    notes: g.notes.map((n): StaffNote => ({
+    notes: (g.notes ?? []).map((n): StaffNote => ({
       id: n.id,
       author: n.author,
       content: n.content,

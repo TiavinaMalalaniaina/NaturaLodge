@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchBooking, fetchBookings, createBooking, updateBookingStatus, reassignRoom,
+  fetchBooking, fetchBookings, createBooking, updateBookingStatus, closeBooking, reassignRoom,
   addBookingRoom, removeBookingRoom, addBookingRoomExtra, updateBookingRoomExtra, removeBookingRoomExtra,
   BookingParams,
   addBookingNote,
@@ -45,6 +45,16 @@ export function useUpdateBookingStatus() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ROOMS_KEY });
+    },
+  });
+}
+
+export function useCloseBooking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => closeBooking(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
     },
   });
 }

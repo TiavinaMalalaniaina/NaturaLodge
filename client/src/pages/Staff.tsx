@@ -16,7 +16,7 @@ const ROLES: Array<'ALL' | StaffRole> = ['ALL', 'admin', 'manager', 'receptionis
 
 export const Staff: React.FC = () => {
   const { data: staffList = [], isLoading, isError } = useStaff();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const updateStaff = useUpdateStaff();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -25,6 +25,7 @@ export const Staff: React.FC = () => {
   const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; name: string; role: StaffRole } | null>(null);
 
   const canManageRoles = user?.role === 'ADMIN';
+  const canCreateStaff = can('staff.create');
 
   const filteredStaff = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -54,12 +55,14 @@ export const Staff: React.FC = () => {
           <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-1 leading-none">Internal Cabinet</h2>
           <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/40">Manage staff access & roles</p>
         </div>
-        <button
-           onClick={() => setIsAddModalOpen(true)}
-           className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
-        >
-          <UserPlus className="w-4 h-4" /> Grant Access
-        </button>
+        {canCreateStaff && (
+          <button
+             onClick={() => setIsAddModalOpen(true)}
+             className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
+          >
+            <UserPlus className="w-4 h-4" /> Grant Access
+          </button>
+        )}
       </div>
 
       {/* Stats Grid */}

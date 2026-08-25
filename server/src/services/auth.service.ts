@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { NotFoundError, UnauthorizedError, ForbiddenError } from '../errors/AppError';
 import { LoginInput } from '../validation/auth.schema';
+import { getPermissionsForRole } from '../lib/permissions';
 
 export async function login(data: LoginInput) {
   const { username, password } = data;
@@ -27,12 +28,13 @@ export async function login(data: LoginInput) {
   return {
     token,
     user: {
-      id:       user.id,
-      username: user.username,
-      email:    user.email,
-      name:     user.name,
-      role:     user.role,
-      avatar:   user.avatar,
+      id:          user.id,
+      username:    user.username,
+      email:       user.email,
+      name:        user.name,
+      role:        user.role,
+      avatar:      user.avatar,
+      permissions: await getPermissionsForRole(user.role),
     },
   };
 }
@@ -43,5 +45,5 @@ export async function getMe(userId: string) {
     select: { id: true, username: true, email: true, name: true, role: true, avatar: true, status: true },
   });
   if (!user) throw new NotFoundError('Utilisateur');
-  return user;
+  return { ...user, permissions: await getPermissionsForRole(user.role) };
 }

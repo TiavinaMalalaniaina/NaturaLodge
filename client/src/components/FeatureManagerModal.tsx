@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { roomFeatureFormSchema, RoomFeatureFormValues } from '../lib/schemas/roomFeature.schema';
 import { Modal } from './Modal';
+import { useAuth } from '../context/AuthContext';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Wifi, Coffee, Wind, Tv, ShieldCheck, Map,
@@ -19,6 +20,8 @@ interface FeatureManagerModalProps {
 }
 
 export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen, onClose }) => {
+  const { can } = useAuth();
+  const canManage = can('rooms.manage_features');
   const { data: features = [], isLoading } = useRoomFeatures();
   const createFeature = useCreateRoomFeature();
   const deleteFeature = useDeleteRoomFeature();
@@ -91,22 +94,24 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
                           <p className="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-tighter">ID: {feature.id}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="p-2 text-on-surface-variant/40 hover:text-primary transition-colors">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(feature.id)} disabled={isDeleting}
-                          className="p-2 text-on-surface-variant/40 hover:text-red-500 transition-colors disabled:cursor-not-allowed">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {canManage && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button className="p-2 text-on-surface-variant/40 hover:text-primary transition-colors">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(feature.id)} disabled={isDeleting}
+                            className="p-2 text-on-surface-variant/40 hover:text-red-500 transition-colors disabled:cursor-not-allowed">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
               {/* Add form */}
-              {isAdding ? (
+              {canManage && (isAdding ? (
                 <motion.form onSubmit={handleSubmit(handleAdd)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                   className="space-y-4 p-6 bg-teal-50/50 rounded-2xl border border-primary/10">
                   {apiError && (
@@ -149,12 +154,14 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
                   <Plus className="w-4 h-4 group-hover:scale-125 transition-transform" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">New Attribute Definition</span>
                 </button>
-              )}
+              ))}
             </div>
 
             <div className="p-8 bg-stone-50 border-t border-stone-100">
               <p className="text-[10px] text-on-surface-variant/40 leading-relaxed text-center">
-                Modifying features here updates all available options in inventory management.
+                {canManage
+                  ? 'Modifying features here updates all available options in inventory management.'
+                  : 'Catalogue en lecture seule — seuls ADMIN et MANAGER peuvent le modifier.'}
               </p>
             </div>
     </Modal>

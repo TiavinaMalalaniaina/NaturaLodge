@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -18,9 +18,12 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const { t }     = useTranslation();
 
+  // `permission` optionnel = item toujours visible à tout personnel authentifié (dashboard,
+  // réservations...). Sinon filtré sur la même permission que celle qui protège la route
+  // (App.tsx/ProtectedRoute) — évite d'afficher un lien menant à une redirection immédiate.
   const navGroups = [
     {
       key:   'general',
@@ -38,23 +41,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: t('nav.groupAccounting'),
       items: [
         { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
-        { path: '/expenses',     label: t('nav.expenses'),     icon: Receipt         },
-        { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet          },
-        { path: '/reports',      label: t('nav.reports'),      icon: Scale           },
+        { path: '/expenses',     label: t('nav.expenses'),     icon: Receipt,        permission: 'expenses.view'       },
+        { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet,         permission: 'ledger.view_reports' },
+        { path: '/reports',      label: t('nav.reports'),      icon: Scale,          permission: 'ledger.view_reports' },
       ],
     },
     {
       key:   'admin',
       label: t('nav.groupAdmin'),
       items: [
-        { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck     },
+        { path: '/staff',        label: t('nav.staff'),        icon: ShieldCheck,    permission: 'staff.view'          },
         { path: '/settings',     label: t('nav.settings'),     icon: Settings        },
-        // Réservé ADMIN côté serveur (authorize('ADMIN') sur /api/audit-logs) — filtré ici aussi
-        // plutôt que laissé visible pour être redirigé au clic, moins déroutant pour MANAGER.
-        ...(user?.role === 'ADMIN' ? [{ path: '/audit-log', label: t('nav.auditLog'), icon: ShieldAlert }] : []),
+        { path: '/audit-log',    label: t('nav.auditLog'),     icon: ShieldAlert,    permission: 'auditLogs.view'      },
+        { path: '/permissions',  label: t('nav.permissions'),  icon: Lock,           permission: 'permissions.manage'  },
       ],
     },
-  ];
+  ].map(group => ({ ...group, items: group.items.filter(i => !i.permission || can(i.permission)) }));
 
   // Le groupe contenant la page active s'ouvre automatiquement (au montage et à chaque
   // navigation) — jamais atterrir sur une page dont le groupe est replié. Les autres groupes

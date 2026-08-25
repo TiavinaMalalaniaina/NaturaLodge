@@ -22,19 +22,19 @@ export const Dashboard: React.FC = () => {
   const [isAlertDispatched, setIsAlertDispatched] = useState(false);
   const [checkingInId, setCheckingInId] = useState<string | null>(null);
   const [pendingCheckinId, setPendingCheckinId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const { t } = useTranslation();
 
   const { data: rooms = [] } = useRooms();
   const { data: bookingsPage } = useBookings({ limit: 100 });
   const bookings = bookingsPage?.data ?? [];
   const updateStatus = useUpdateBookingStatus();
-  const canViewTreasury = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canViewTreasury = can('ledger.view_reports');
   const { data: cashAccounts } = useCashAccounts();
   const totalCashBalance = (cashAccounts ?? []).reduce((sum, a) => sum + a.balance, 0);
 
-  const { data: checkedOutPage } = useBookings({ status: 'CHECKED_OUT', limit: 50, sort: 'departure', order: 'desc' });
-  const pendingPayments = (checkedOutPage?.data ?? []).filter(b => b.paymentStatus !== 'paid').slice(0, 5);
+  const { data: unpaidPage } = useBookings({ status: 'CHECKED_OUT_UNPAID', limit: 5, sort: 'departure', order: 'desc' });
+  const pendingPayments = unpaidPage?.data ?? [];
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

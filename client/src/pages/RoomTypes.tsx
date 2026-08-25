@@ -11,6 +11,7 @@ import { PageLoader, PageError } from '../components/QueryLoader';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { getApiErrorMessage } from '../lib/apiError';
 import { formatCurrency } from '../lib/format';
+import { useAuth } from '../context/AuthContext';
 
 const BED_TYPES = ['King Size', 'Super King', 'Twin Signature', 'Double'];
 const VIEWS     = ['Garden View', 'Ocean View', 'Valley View', 'Pool View', 'Mountain View', 'Courtyard'];
@@ -27,6 +28,7 @@ const DEFAULT_FORM: FormState = {
 export const RoomTypes: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { can } = useAuth();
   const { data: roomTypes = [], isLoading, isError } = useRoomTypes();
   const { data: features  = [] } = useRoomFeatures();
   const createRoomType = useCreateRoomType();
@@ -178,16 +180,18 @@ export const RoomTypes: React.FC = () => {
                   <p className="text-lg font-display italic text-primary">
                     {formatCurrency(rt.rate)}<span className="text-[10px] text-on-surface-variant/40 font-sans">{t('bookingDetail.perNight')}</span>
                   </p>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => openEdit(rt)}
-                      className="p-2 text-on-surface-variant/40 hover:text-primary transition-colors" title={t('common.edit')}>
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => { setDeleteTarget(rt); setDeleteError(''); }}
-                      className="p-2 text-on-surface-variant/40 hover:text-red-500 transition-colors" title={t('common.delete')}>
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {can('roomTypes.manage') && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => openEdit(rt)}
+                        className="p-2 text-on-surface-variant/40 hover:text-primary transition-colors" title={t('common.edit')}>
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => { setDeleteTarget(rt); setDeleteError(''); }}
+                        className="p-2 text-on-surface-variant/40 hover:text-red-500 transition-colors" title={t('common.delete')}>
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -195,6 +199,7 @@ export const RoomTypes: React.FC = () => {
         </div>
 
         {/* ── Add / edit panel ── */}
+        {can('roomTypes.manage') && (
         <div className="lg:col-span-1">
           <div className="lg:sticky lg:top-6">
             {isFormOpen ? (
@@ -284,6 +289,7 @@ export const RoomTypes: React.FC = () => {
             )}
           </div>
         </div>
+        )}
       </div>
 
       <ConfirmModal

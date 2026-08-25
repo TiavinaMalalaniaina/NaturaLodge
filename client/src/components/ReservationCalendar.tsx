@@ -29,13 +29,15 @@ const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 // ─── Bar styles by status ─────────────────────────────────────────
 
 const BAR_CLS: Partial<Record<EffectiveStatus, string>> = {
-  upcoming:    'bg-primary/15 text-primary border-primary/20',
-  due_checkin: 'bg-amber-100  text-amber-800 border-amber-200',
-  in_progress: 'bg-teal-700   text-white     border-teal-600',
-  overdue:     'bg-red-100    text-red-700   border-red-200',
-  awaiting:    'bg-amber-100  text-amber-800 border-amber-200',
-  checked_out: 'bg-stone-100  text-stone-400 border-stone-200',
-  cancelled:   'bg-stone-50   text-stone-300 border-stone-100',
+  upcoming:           'bg-primary/15 text-primary border-primary/20',
+  due_checkin:        'bg-amber-100  text-amber-800 border-amber-200',
+  in_progress:        'bg-teal-700   text-white     border-teal-600',
+  overdue:             'bg-red-100    text-red-700   border-red-200',
+  awaiting:            'bg-amber-100  text-amber-800 border-amber-200',
+  checked_out_unpaid: 'bg-rose-50    text-rose-500  border-rose-100',
+  checked_out_paid:   'bg-stone-100  text-stone-400 border-stone-200',
+  closed:             'bg-stone-100  text-stone-400 border-stone-200',
+  cancelled:           'bg-stone-50   text-stone-300 border-stone-100',
 };
 
 // ─── Bar data ─────────────────────────────────────────────────────
@@ -305,7 +307,8 @@ export const ReservationCalendar: React.FC = () => {
           { label: 'Due check-in',cls: 'bg-amber-100 border-amber-200'   },
           { label: 'In progress', cls: 'bg-teal-700 border-teal-600'     },
           { label: 'Overdue',     cls: 'bg-red-100 border-red-200'       },
-          { label: 'Checked out', cls: 'bg-stone-100 border-stone-200'   },
+          { label: 'Checked out (unpaid)', cls: 'bg-rose-50 border-rose-100'   },
+          { label: 'Checked out (paid)',   cls: 'bg-stone-100 border-stone-200' },
         ] as const).map(({ label, cls }) => (
           <div key={label} className="flex items-center gap-1.5">
             <span className={cn('w-5 h-3 rounded border', cls)} />

@@ -217,17 +217,22 @@ npm run db:studio     # interface visuelle Prisma Studio
 ## Logique métier importante
 
 ### Statuts de réservation
-Les bookings ont un `status` DB (`CONFIRMED`, `CHECKED_IN`, `AWAITING`, `CANCELLED`, `CHECKED_OUT`) et un `effectiveStatus` calculé côté client :
+Les bookings ont un `status` DB (`CONFIRMED`, `CHECKED_IN`, `AWAITING`, `CANCELLED`, `CHECKED_OUT_UNPAID`, `CHECKED_OUT_PAID`, `CLOSED`, + `CHECKED_OUT` legacy conservé pour les lignes historiques mais plus jamais écrit) et un `effectiveStatus` calculé côté serveur (`booking.service.ts: computeEffectiveStatus`) :
 - `upcoming` — confirmé, arrivée future
 - `due_checkin` — arrivée aujourd'hui, pas encore checké
-- `in_progress` / `checked_in` — actuellement en séjour
-- `overdue` — départ dépassé sans checkout
-- `checked_out` / `cancelled`
+- `in_progress` / `overdue` — actuellement en séjour / départ dépassé sans checkout
+- `checked_out_unpaid` / `checked_out_paid` — terminé, selon que la facture est soldée ou non au moment du check-out
+- `closed` — clôturé définitivement (voir ci-dessous)
+- `cancelled`
 
-Mapping dans `src/lib/bookingStatus.ts`.
+Mapping dans `client/src/lib/bookingStatus.ts`.
+
+Le check-out (`PATCH /:id/status` avec `status: 'CHECKED_OUT'`, `can('bookings.update_status')`, FRONT_DESK) ne persiste jamais `CHECKED_OUT` littéralement : le service résout vers `CHECKED_OUT_UNPAID` ou `CHECKED_OUT_PAID` selon la facture au moment du geste. Un paiement enregistré ou annulé après coup (`invoice.service.ts: addPayment`/`voidPayment`) resynchronise automatiquement ce statut via `resyncCheckoutPaymentStatus` — jamais `CLOSED`, qui est final. La clôture (`PATCH /:id/close`, `can('bookings.close')`, ADMIN/MANAGER uniquement) n'est possible que depuis `CHECKED_OUT_PAID` (409 sinon).
+
+`server/src/lib/bookingStatus.ts` centralise `TERMINAL_STATUSES` (tous les statuts où une chambre n'est plus occupée) — à réutiliser plutôt que de recopier la liste dans une nouvelle vérification de conflit.
 
 ### Liste des réservations — filtre par défaut
-`GET /api/bookings` (`server/src/routes/bookings.ts`) exclut par défaut les réservations `CHECKED_OUT`/`CANCELLED` — sauf si un `status` explicite ou une `search` est fourni. Combiné au tri par défaut (`arrival asc`), ça fait remonter en premier les séjours en cours/en retard puis à venir, sans jamais montrer les anciennes réservations clôturées tant qu'on ne cherche pas explicitement. Ne pas retirer cette exclusion sans réintroduire un tri custom, sinon les vieilles réservations (les plus anciennes en date d'arrivée) redominent la première page.
+`GET /api/bookings` (`server/src/routes/bookings.ts`) exclut par défaut `CANCELLED`/`CHECKED_OUT_PAID`/`CLOSED` — sauf si un `status` explicite ou une `search` est fourni. `CHECKED_OUT_UNPAID` reste visible tant qu'il reste un paiement à suivre. Combiné au tri par défaut (`arrival asc`), ça fait remonter en premier les séjours en cours/en retard puis à venir, sans jamais montrer les anciennes réservations clôturées ou soldées tant qu'on ne cherche pas explicitement. Ne pas retirer cette exclusion sans réintroduire un tri custom, sinon les vieilles réservations (les plus anciennes en date d'arrivée) redominent la première page.
 
 ### Facturation
 - TVA configurée globalement via `HotelConfig.taxRate` (GET/PATCH `/api/settings`)

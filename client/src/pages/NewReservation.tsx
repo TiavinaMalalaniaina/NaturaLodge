@@ -18,6 +18,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { getApiErrorMessage } from '../lib/apiError';
 import { formatCurrency, resetDepartureIfInvalid, todayLocalStr, addDaysToLocalStr } from '../lib/format';
 import { FilterChip } from '../components/FilterChip';
+import { useAuth } from '../context/AuthContext';
 
 interface RoomDates { arrival: string; departure: string }
 interface RoomExtraSelection { extraId: string; quantity: number }
@@ -31,6 +32,7 @@ function roomNights(sel: RoomDates) {
 
 export const NewReservation: React.FC = () => {
   const { t } = useTranslation();
+  const { can } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialRoomId   = searchParams.get('roomId');
@@ -358,10 +360,12 @@ export const NewReservation: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-center mb-3">
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60">{t('reservations.selectGuest')}</label>
-                    <button type="button" onClick={() => setIsAddGuestModalOpen(true)}
-                      className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase flex items-center gap-1.5">
-                      <UserPlus className="w-3 h-3" /> {t('reservations.newGuestBtn')}
-                    </button>
+                    {can('guests.create') && (
+                      <button type="button" onClick={() => setIsAddGuestModalOpen(true)}
+                        className="text-[10px] font-bold text-primary hover:underline tracking-widest uppercase flex items-center gap-1.5">
+                        <UserPlus className="w-3 h-3" /> {t('reservations.newGuestBtn')}
+                      </button>
+                    )}
                   </div>
 
                   <div className="relative" ref={guestDropdownRef}>

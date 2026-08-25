@@ -3,11 +3,14 @@ import { InvoiceStatus } from '../api/invoices';
 import { RoomStatus, StaffRole, StaffMember } from '../types';
 
 export const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
-  confirmed:     'text-teal-600',
-  'checked-in':  'text-zinc-900',
-  'checked-out': 'text-stone-400',
-  cancelled:     'text-red-400',
-  awaiting:      'text-amber-600',
+  confirmed:            'text-teal-600',
+  'checked-in':         'text-zinc-900',
+  'checked-out':        'text-stone-400', // legacy
+  'checked-out-unpaid': 'text-rose-500',
+  'checked-out-paid':   'text-teal-600',
+  closed:               'text-stone-400',
+  cancelled:            'text-red-400',
+  awaiting:             'text-amber-600',
 };
 
 export const INVOICE_STATUS_CLASS: Record<InvoiceStatus, string> = {
