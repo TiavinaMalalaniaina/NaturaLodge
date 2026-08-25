@@ -426,6 +426,8 @@
     "fromAccount":       "From account",
     "toAccount":         "To account",
     "sameAccountError":  "Source and destination accounts must be different.",
+    "transferFee":       "Transfer fee",
+    "transferFeeHint":   "Added on top and charged to the source account — the destination account receives the full amount, the fee is booked as an expense.",
     "contribution":      "Contribution",
     "contributionHint":  "Money injected from outside the hotel (owner contribution...) — credited to the capital account, not operating revenue."
   },

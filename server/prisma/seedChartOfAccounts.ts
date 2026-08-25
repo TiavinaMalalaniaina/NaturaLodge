@@ -21,6 +21,7 @@ const CHART_OF_ACCOUNTS = [
   { code: '623000',  name: 'Publicité, marketing',                  type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },
   { code: '641000',  name: 'Rémunérations du personnel',            type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },
   { code: '628000',  name: 'Autres charges',                        type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },
+  { code: '627000',  name: 'Frais bancaires et de transfert',       type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },
   { code: '706000',  name: 'Prestations d\'hébergement',            type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
 ] as const satisfies readonly { code: string; name: string; type: string; isCashAccount: boolean; allowedMethods: PaymentMethod[] }[]
 
