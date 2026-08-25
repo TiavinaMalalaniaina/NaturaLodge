@@ -31,45 +31,51 @@ bookingsRouter.post('/', can('bookings.create'), asyncHandler(async (req: AuthRe
 bookingsRouter.patch('/:id/status', can('bookings.update_status'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = bookingStatusSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await bookingService.updateStatus(req.params.id, parsed.data.status, req.user!.id));
+  res.json(await bookingService.updateStatus(req.params.id, parsed.data.status, req.user!.role, req.user!.id));
+}));
+
+// PATCH /bookings/:id/close  ── clôture définitive, réservée manager/admin, uniquement depuis
+// CHECKED_OUT_PAID (voir booking.service.ts closeBooking)
+bookingsRouter.patch('/:id/close', can('bookings.close'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await bookingService.closeBooking(req.params.id));
 }));
 
 // PATCH /bookings/:id/reassign  ── remplacer la chambre et/ou les dates d'une ligne de réservation
 bookingsRouter.patch('/:id/reassign', can('bookings.reassign'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = reassignSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await bookingService.reassign(req.params.id, parsed.data));
+  res.json(await bookingService.reassign(req.params.id, parsed.data, req.user!.role));
 }));
 
 // POST /bookings/:id/rooms  ── ajouter une chambre à une réservation existante
 bookingsRouter.post('/:id/rooms', can('bookings.manage_rooms'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = addBookingRoomSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.status(201).json(await bookingService.addRoom(req.params.id, parsed.data));
+  res.status(201).json(await bookingService.addRoom(req.params.id, parsed.data, req.user!.role));
 }));
 
 // DELETE /bookings/:id/rooms/:roomId  ── retirer une chambre d'une réservation
 bookingsRouter.delete('/:id/rooms/:roomId', can('bookings.manage_rooms'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-  res.json(await bookingService.removeRoom(req.params.id, req.params.roomId));
+  res.json(await bookingService.removeRoom(req.params.id, req.params.roomId, req.user!.role));
 }));
 
 // POST /bookings/:id/rooms/:roomId/extras  ── ajouter un supplément à une chambre de la réservation
 bookingsRouter.post('/:id/rooms/:roomId/extras', can('bookings.manage_rooms'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = addBookingRoomExtraSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.status(201).json(await bookingService.addExtraToRoom(req.params.id, req.params.roomId, parsed.data));
+  res.status(201).json(await bookingService.addExtraToRoom(req.params.id, req.params.roomId, parsed.data, req.user!.role));
 }));
 
 // PATCH /bookings/:id/rooms/:roomId/extras/:extraId  ── modifier la quantité d'un supplément
 bookingsRouter.patch('/:id/rooms/:roomId/extras/:extraId', can('bookings.manage_rooms'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = updateBookingRoomExtraSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await bookingService.updateExtraQuantity(req.params.id, req.params.roomId, req.params.extraId, parsed.data));
+  res.json(await bookingService.updateExtraQuantity(req.params.id, req.params.roomId, req.params.extraId, parsed.data, req.user!.role));
 }));
 
 // DELETE /bookings/:id/rooms/:roomId/extras/:extraId  ── retirer un supplément d'une chambre
 bookingsRouter.delete('/:id/rooms/:roomId/extras/:extraId', can('bookings.manage_rooms'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-  res.json(await bookingService.removeExtraFromRoom(req.params.id, req.params.roomId, req.params.extraId));
+  res.json(await bookingService.removeExtraFromRoom(req.params.id, req.params.roomId, req.params.extraId, req.user!.role));
 }));
 
 bookingsRouter.delete('/:id', can('bookings.delete'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {

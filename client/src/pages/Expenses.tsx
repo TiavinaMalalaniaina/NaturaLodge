@@ -7,7 +7,7 @@ import { useExpenses } from '../hooks/useExpenses';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateExpenseModal } from '../components/CreateExpenseModal';
 import { ExpenseCategory } from '../api/expenses';
-import { formatDate, formatCurrency } from '../lib/format';
+import { formatDate, formatCurrency, startOfDayIso, endOfDayIso } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
 
 type CategoryFilter = 'all' | ExpenseCategory;
@@ -17,11 +17,15 @@ export const Expenses: React.FC = () => {
   const { can } = useAuth();
 
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [isCreateOpen, setCreateOpen] = useState(false);
 
   const { data, isLoading, isError } = useExpenses({
     category: categoryFilter !== 'all' ? categoryFilter : undefined,
+    dateFrom: dateFrom ? startOfDayIso(dateFrom) : undefined,
+    dateTo:   dateTo   ? endOfDayIso(dateTo)     : undefined,
     page,
     limit: 20,
   });
@@ -65,21 +69,41 @@ export const Expenses: React.FC = () => {
       </div>
 
       {/* ── Filters ── */}
-      <div className="flex gap-2 flex-wrap">
-        {CATEGORY_TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => { setCategoryFilter(tab.key); setPage(1); }}
-            className={cn(
-              'px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all',
-              categoryFilter === tab.key
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'bg-white text-on-surface-variant border-stone-200 hover:border-primary/30',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex gap-2 flex-wrap">
+          {CATEGORY_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setCategoryFilter(tab.key); setPage(1); }}
+              className={cn(
+                'px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all',
+                categoryFilter === tab.key
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-on-surface-variant border-stone-200 hover:border-primary/30',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('expenses.from')}</label>
+            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+              className="px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('expenses.to')}</label>
+            <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
+              className="px-4 py-2.5 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
+              className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 hover:text-primary transition-colors">
+              {t('common.clear')}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── List ── */}

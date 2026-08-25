@@ -33,8 +33,8 @@ export const Dashboard: React.FC = () => {
   const { data: cashAccounts } = useCashAccounts();
   const totalCashBalance = (cashAccounts ?? []).reduce((sum, a) => sum + a.balance, 0);
 
-  const { data: checkedOutPage } = useBookings({ status: 'CHECKED_OUT', limit: 50, sort: 'departure', order: 'desc' });
-  const pendingPayments = (checkedOutPage?.data ?? []).filter(b => b.paymentStatus !== 'paid').slice(0, 5);
+  const { data: unpaidPage } = useBookings({ status: 'CHECKED_OUT_UNPAID', limit: 5, sort: 'departure', order: 'desc' });
+  const pendingPayments = unpaidPage?.data ?? [];
 
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

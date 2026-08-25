@@ -3,9 +3,14 @@ import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { NotFoundError } from '../errors/AppError';
 import { RoomInput, RoomFeatureInput } from '../validation/room.schema';
+import { TERMINAL_STATUSES } from '../lib/bookingStatus';
 
+// Le client (client/src/api/rooms.ts `normalizeRoom`) réduit immédiatement `features` à un
+// tableau d'ids (`r.features.map(f => f.id)`) — `label`/`iconName` ne servent que sur le
+// catalogue séparé `GET /rooms/features` (listFeatures ci-dessous), jamais ici. Pas la peine de
+// les renvoyer sur chaque chambre, y compris sur la grille pollée toutes les 60s.
 const roomInclude = {
-  roomType: { include: { features: true } },
+  roomType: { include: { features: { select: { id: true } } } },
 } as const;
 
 type RoomWithType = Prisma.RoomGetPayload<{ include: typeof roomInclude }>;
@@ -53,7 +58,7 @@ export async function listAvailable(arrival: Date, departure: Date, excludeBooki
           arrival:  { lt: departure },
           departure: { gt: arrival },
           booking:  {
-            status: { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+            status: { notIn: TERMINAL_STATUSES },
             ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
           },
         },
@@ -88,7 +93,7 @@ export async function getById(id: string) {
   const room = await prisma.room.findUnique({
     where: { id },
     include: {
-      roomType: { include: { features: true } },
+      roomType: { include: { features: { select: { id: true } } } },
       bookings: {
         include: {
           booking: {
@@ -135,7 +140,7 @@ export async function update(id: string, data: Partial<RoomInput>) {
     const conflicts = await prisma.booking.findMany({
       where: {
         rooms:     { some: { roomId: room.id } },
-        status:    { notIn: ['CANCELLED', 'CHECKED_OUT'] },
+        status:    { notIn: TERMINAL_STATUSES },
         departure: { gte: new Date() },
       },
       select: {

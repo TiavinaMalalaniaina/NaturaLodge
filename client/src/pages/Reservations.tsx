@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Plus, Users, Calendar, Filter,
   Download, Info, Construction, RefreshCw, LayoutGrid, List,
   Search, MoreVertical, CreditCard, Clock, FileText, X,
-  LogIn, LogOut, AlertTriangle, RotateCcw, Ban, Check,
+  LogIn, LogOut, AlertTriangle, RotateCcw, Ban, Check, Lock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -13,11 +13,11 @@ import { useDebounce } from '../hooks/useDebounce';
 import { ReassignRoomModal, BookingRoomRef } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ReservationCalendar } from '../components/ReservationCalendar';
-import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
+import { useBookings, useUpdateBookingStatus, useCloseBooking } from '../hooks/useBookings';
 import { useRooms } from '../hooks/useRooms';
 import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
@@ -35,13 +35,15 @@ const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
   in_progress: 'bg-emerald-600 text-white border-emerald-500',   // Actif / En cours (Vert dynamique)
   awaiting: 'bg-amber-100 text-amber-900 border-amber-300',     // En pause / En attente (Jaune/Orange d'attention)
   overdue: 'bg-rose-100 text-rose-900 border-rose-300',       // Critique / En retard (Rouge alerte)
-  checked_out: 'bg-stone-200 text-stone-500 border-stone-300',   // Terminé / Archivé (Gris discret)
+  checked_out_unpaid: 'bg-rose-50 text-rose-500 border-rose-200',   // Terminé, impayé — reste à suivre
+  checked_out_paid: 'bg-stone-200 text-stone-500 border-stone-300', // Terminé, soldé
+  closed: 'bg-stone-100 text-stone-400 border-stone-200',           // Clôturé / Archivé
 };
 
 // ── Constants ─────────────────────────────────────────────────────
 
 const LIMIT = 20;
-const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT'];
+const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT_UNPAID', 'CHECKED_OUT_PAID', 'CLOSED'];
 const ROOM_STATUS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
 const LABEL_W = 176;  // px for room label column
@@ -79,10 +81,12 @@ export const Reservations: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<RichBooking | null>(null);
   const [reassignBooking, setReassignBooking] = useState<{ id: string; rooms: BookingRoomRef[] } | null>(null);
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
+  const [closeBookingId, setCloseBookingId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ id: string; action: StatusActionKey } | null>(null);
 
   const navigate = useNavigate();
   const updateStatus = useUpdateBookingStatus();
+  const closeBooking = useCloseBooking();
   const { addNotification } = useNotifications();
 
   const changeBookingStatus = (id: string, status: string) => {
@@ -547,7 +551,7 @@ export const Reservations: React.FC = () => {
                               )}>
                               <div className="flex items-center justify-between gap-1">
                                 <p className="text-[10px] font-bold truncate leading-tight">{b.guestName}</p>
-                                {can('bookings.reassign') && (
+                                {can('bookings.reassign') && canModifyBooking(b.effectiveStatus, can) && (
                                   <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                     <button
                                       onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
@@ -691,6 +695,7 @@ export const Reservations: React.FC = () => {
             </div>
 
             {/* Pagination */}
+            
             <div className="px-8 py-5 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">
                 {t('reservations.pageInfo', { page: meta?.page ?? 1, total: meta?.totalPages ?? 1, count: meta?.total ?? listBookings.length })}
@@ -783,7 +788,7 @@ export const Reservations: React.FC = () => {
                     <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
                   </button>
                 )}
-                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'in_progress' && (
+                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'in_progress' && canCheckOutBooking(selectedBooking.paymentStatus, can) && (
                   <button
                     onClick={() => setPendingAction({ id: selectedBooking.id, action: 'checkout' })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors">
@@ -797,7 +802,7 @@ export const Reservations: React.FC = () => {
                     <RotateCcw className="w-3.5 h-3.5" /> {t('reservations.revert')}
                   </button>
                 )}
-                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'overdue' && (
+                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'overdue' && canCheckOutBooking(selectedBooking.paymentStatus, can) && (
                   <button
                     onClick={() => setPendingAction({ id: selectedBooking.id, action: 'forceOut' })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-red-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-red-700 transition-colors">
@@ -811,10 +816,17 @@ export const Reservations: React.FC = () => {
                     <Ban className="w-3.5 h-3.5" /> {t('common.cancel')}
                   </button>
                 )}
+                {can('bookings.close') && selectedBooking.effectiveStatus === 'checked_out_paid' && (
+                  <button
+                    onClick={() => setCloseBookingId(selectedBooking.id)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-stone-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors">
+                    <Lock className="w-3.5 h-3.5" /> {t('bookingDetail.close')}
+                  </button>
+                )}
 
                 <div className="w-px h-5 bg-stone-200 mx-1" />
 
-                {can('bookings.reassign') && (
+                {can('bookings.reassign') && canModifyBooking(selectedBooking.effectiveStatus, can) && (
                   <button
                     onClick={() => { setReassignBooking({ id: selectedBooking.id, rooms: selectedBooking.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); setSelectedBooking(null); }}
                     className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 text-on-surface-variant rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-stone-200 transition-colors">
@@ -869,6 +881,24 @@ export const Reservations: React.FC = () => {
         message={t('reservations.cancelMessage')}
         confirmLabel={t('reservations.confirmCancel')}
         isPending={updateStatus.isPending}
+      />
+      <ConfirmModal
+        isOpen={!!closeBookingId}
+        onClose={() => setCloseBookingId(null)}
+        onConfirm={() => {
+          closeBooking.mutate(closeBookingId!, {
+            onError: (err) => addNotification({
+              source: 'system', title: 'Action failed',
+              subtitle: getApiErrorMessage(err), amount: '--',
+            }),
+          });
+          setCloseBookingId(null);
+          setSelectedBooking(null);
+        }}
+        title={t('bookingDetail.confirmCloseTitle')}
+        message={t('bookingDetail.confirmCloseMessage')}
+        confirmLabel={t('bookingDetail.close')}
+        isPending={closeBooking.isPending}
       />
     </div>
   );

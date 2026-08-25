@@ -1,5 +1,6 @@
 import { Prisma, RoomStatus } from '@prisma/client';
 import { prisma } from './prisma';
+import { TERMINAL_STATUSES } from './bookingStatus';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -21,7 +22,7 @@ export async function computeRoomStatuses(roomIds: string[], client: PrismaOrTx 
     where: {
       roomId:  { in: roomIds },
       arrival: { lte: now },
-      booking: { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+      booking: { status: { notIn: TERMINAL_STATUSES } },
       OR: [
         { departure: { gte: now } },
         { booking: { status: 'CHECKED_IN' } },

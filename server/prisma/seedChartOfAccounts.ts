@@ -13,6 +13,8 @@ const CHART_OF_ACCOUNTS = [
   { code: '512100',  name: 'Mobile Money — Mvola',                  type: 'ASSET',     isCashAccount: true,  allowedMethods: ['MVOLA'] },
   { code: '512200',  name: 'Mobile Money — Orange Money 0323763499', type: 'ASSET',     isCashAccount: true,  allowedMethods: ['ORANGE_MONEY'] },
   { code: '512300',  name: 'Mobile Money — Orange Money 0323762757', type: 'ASSET',     isCashAccount: true,  allowedMethods: ['ORANGE_MONEY'] },
+  { code: '512400',  name: 'Banque BMOI',                           type: 'ASSET',     isCashAccount: true,  allowedMethods: ['BANK_TRANSFER'] },
+  { code: '512500',  name: 'Banque BNI',                            type: 'ASSET',     isCashAccount: true,  allowedMethods: ['BANK_TRANSFER'] },
   { code: '606100',  name: 'Achats de fournitures',                 type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },
   { code: '606200',  name: 'Eau, électricité',                      type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },
   { code: '615000',  name: 'Entretien et réparations',              type: 'EXPENSE',   isCashAccount: false, allowedMethods: [] },

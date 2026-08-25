@@ -106,7 +106,7 @@ export const Rooms: React.FC = () => {
           >
             <Tags className="w-4 h-4" /> {t('roomTypes.title')}
           </button>
-          {can('rooms.manage_features') && (
+          {can('rooms.view') && (
             <button
               onClick={() => setIsFeatureModalOpen(true)}
               className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
@@ -114,7 +114,7 @@ export const Rooms: React.FC = () => {
               <Layers className="w-4 h-4" /> Attributes
             </button>
           )}
-          {can('extras.manage') && (
+          {can('extras.view') && (
             <button
               onClick={() => setIsExtraModalOpen(true)}
               className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"

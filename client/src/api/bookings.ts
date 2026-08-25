@@ -101,7 +101,9 @@ export type EffectiveStatus =
   | 'in_progress'
   | 'overdue'
   | 'awaiting'
-  | 'checked_out'
+  | 'checked_out_unpaid'
+  | 'checked_out_paid'
+  | 'closed'
   | 'cancelled';
 
 export type PaymentStatus =
@@ -112,21 +114,28 @@ export type PaymentStatus =
   | 'refunded'
   | 'cancelled';
 
-export type BookingStatus = 'confirmed' | 'checked-in' | 'checked-out' | 'awaiting' | 'cancelled';
+export type BookingStatus =
+  | 'confirmed' | 'checked-in' | 'awaiting' | 'cancelled'
+  | 'checked-out'         // legacy — ne devrait plus jamais être renvoyé par l'API après le backfill
+  | 'checked-out-unpaid' | 'checked-out-paid' | 'closed';
 
 const BOOKING_STATUS: Record<string, BookingStatus> = {
-  CONFIRMED: 'confirmed', CHECKED_IN: 'checked-in', CHECKED_OUT: 'checked-out',
-  AWAITING: 'awaiting', CANCELLED: 'cancelled',
+  CONFIRMED: 'confirmed', CHECKED_IN: 'checked-in', AWAITING: 'awaiting', CANCELLED: 'cancelled',
+  CHECKED_OUT: 'checked-out',
+  CHECKED_OUT_UNPAID: 'checked-out-unpaid', CHECKED_OUT_PAID: 'checked-out-paid', CLOSED: 'closed',
 };
 
 function deriveEffectiveStatus(arrival: string, departure: string, status: BookingStatus): EffectiveStatus {
   const now = new Date();
   const arr = new Date(arrival);
   const dep = new Date(departure);
-  if (status === 'cancelled')   return 'cancelled';
-  if (status === 'checked-out') return 'checked_out';
-  if (status === 'checked-in')  return now > dep ? 'overdue' : 'in_progress';
-  if (status === 'awaiting')    return 'awaiting';
+  if (status === 'cancelled')          return 'cancelled';
+  if (status === 'closed')             return 'closed';
+  if (status === 'checked-out-paid')   return 'checked_out_paid';
+  if (status === 'checked-out-unpaid') return 'checked_out_unpaid';
+  if (status === 'checked-out')        return 'checked_out_unpaid'; // legacy, défensif
+  if (status === 'checked-in')         return now > dep ? 'overdue' : 'in_progress';
+  if (status === 'awaiting')           return 'awaiting';
   if (now < arr) return arr.toDateString() === now.toDateString() ? 'due_checkin' : 'upcoming';
   if (now >= arr && now <= dep) return 'due_checkin';
   return 'overdue';
@@ -206,6 +215,11 @@ export const fetchBookings = async (params?: BookingParams): Promise<PaginatedBo
 
 export const updateBookingStatus = async (id: string, status: string): Promise<RichBooking> => {
   const { data } = await api.patch<ApiBooking>(`/bookings/${id}/status`, { status });
+  return normalizeBooking(data);
+};
+
+export const closeBooking = async (id: string): Promise<RichBooking> => {
+  const { data } = await api.patch<ApiBooking>(`/bookings/${id}/close`);
   return normalizeBooking(data);
 };
 
