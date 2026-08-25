@@ -4,8 +4,12 @@ import { applyRoomStatuses } from '../lib/roomStatus';
 import { NotFoundError } from '../errors/AppError';
 import { RoomInput, RoomFeatureInput } from '../validation/room.schema';
 
+// Le client (client/src/api/rooms.ts `normalizeRoom`) réduit immédiatement `features` à un
+// tableau d'ids (`r.features.map(f => f.id)`) — `label`/`iconName` ne servent que sur le
+// catalogue séparé `GET /rooms/features` (listFeatures ci-dessous), jamais ici. Pas la peine de
+// les renvoyer sur chaque chambre, y compris sur la grille pollée toutes les 60s.
 const roomInclude = {
-  roomType: { include: { features: true } },
+  roomType: { include: { features: { select: { id: true } } } },
 } as const;
 
 type RoomWithType = Prisma.RoomGetPayload<{ include: typeof roomInclude }>;
@@ -88,7 +92,7 @@ export async function getById(id: string) {
   const room = await prisma.room.findUnique({
     where: { id },
     include: {
-      roomType: { include: { features: true } },
+      roomType: { include: { features: { select: { id: true } } } },
       bookings: {
         include: {
           booking: {

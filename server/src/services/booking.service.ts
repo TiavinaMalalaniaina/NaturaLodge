@@ -8,31 +8,47 @@ import {
 } from '../validation/booking.schema';
 import * as invoiceService from './invoice.service';
 
-const include = {
-  guest:     { select: { id: true, name: true, email: true, avatar: true, status: true } },
-  rooms:     {
+// `avatar` et `createdBy` sont sélectionnés nulle part ci-dessous : ni le type client
+// (client/src/api/bookings.ts) ni aucune page ne les lisent — retirés des deux formes.
+const guestSelect = { id: true, name: true, email: true, status: true };
+const roomSelect  = {
+  id:           true,
+  number:       true,
+  rateOverride: true,
+  roomType:     { select: { id: true, name: true, rate: true } },
+};
+// Sélectionné dans les deux formes pour calculer `paymentStatus` côté serveur (computePaymentStatus),
+// mais jamais renvoyé tel quel au client (voir la déstructuration `{ invoices, ...rest }` dans `list`).
+const invoicesForStatus = {
+  select:  { status: true, totalAmount: true },
+  orderBy: { issuedAt: 'desc' as const },
+  take:    1,
+};
+
+// Forme détail (getById + toutes les mutations qui renvoient la réservation à jour) : profondeur
+// complète, y compris les notes et les suppléments par chambre, utilisée par BookingDetail.tsx.
+const detailInclude = {
+  guest: { select: guestSelect },
+  rooms: {
     include: {
-      room: {
-        select: {
-          id:           true,
-          number:       true,
-          rateOverride: true,
-          roomType:     { select: { id: true, name: true, rate: true } },
-        },
-      },
+      room:   { select: roomSelect },
       extras: { include: { extra: true } },
     },
   },
-  createdBy: { select: { id: true, name: true, role: true } },
-  invoices:  {
-    select:  { status: true, totalAmount: true },
-    orderBy: { issuedAt: 'desc' as const },
-    take:    1,
-  },
+  invoices:     invoicesForStatus,
   bookingNotes: {
     include: { author: { select: { id: true, name: true, role: true } } },
     orderBy: { createdAt: 'desc' as const },
   },
+};
+
+// Forme liste (GET /bookings, jusqu'à 500 lignes pour la grille planning) : ni les notes ni les
+// suppléments par chambre ne sont affichés par Reservations.tsx (vue grille ou liste) — seule
+// BookingDetail.tsx (une réservation à la fois) en a besoin, via `detailInclude`.
+const listInclude = {
+  guest:    { select: guestSelect },
+  rooms:    { include: { room: { select: roomSelect } } },
+  invoices: invoicesForStatus,
 };
 
 export type EffectiveStatus =
@@ -110,15 +126,15 @@ export async function list(params: BookingListParams) {
   };
 
   const [bookings, total] = await Promise.all([
-    prisma.booking.findMany({ where, include, orderBy: { [sort]: order }, skip, take: limit }),
+    prisma.booking.findMany({ where, include: listInclude, orderBy: { [sort]: order }, skip, take: limit }),
     prisma.booking.count({ where }),
   ]);
 
-  const enriched = bookings.map(b => ({
+  const enriched = bookings.map(({ invoices, ...b }) => ({
     ...b,
     nights: Math.max(1, Math.round((b.departure.getTime() - b.arrival.getTime()) / 86_400_000)),
     effectiveStatus: computeEffectiveStatus(b),
-    paymentStatus:   computePaymentStatus(b),
+    paymentStatus:   computePaymentStatus({ invoices }),
   }));
 
   return {
@@ -135,9 +151,10 @@ export async function list(params: BookingListParams) {
 }
 
 export async function getById(id: string) {
-  const booking = await prisma.booking.findUnique({ where: { id }, include });
+  const booking = await prisma.booking.findUnique({ where: { id }, include: detailInclude });
   if (!booking) throw new NotFoundError('Réservation');
-  return { ...booking, effectiveStatus: computeEffectiveStatus(booking), paymentStatus: computePaymentStatus(booking) };
+  const { invoices, ...rest } = booking;
+  return { ...rest, effectiveStatus: computeEffectiveStatus(booking), paymentStatus: computePaymentStatus({ invoices }) };
 }
 
 export async function create(data: BookingInput, createdById: string) {
@@ -191,7 +208,7 @@ export async function create(data: BookingInput, createdById: string) {
           })),
         },
       },
-      include,
+      include: detailInclude,
     });
 
     // Suppléments par chambre, choisis dès la création de la réservation.
@@ -221,7 +238,7 @@ export async function create(data: BookingInput, createdById: string) {
       // serveur à partir des chambres + suppléments réellement créés (même logique que
       // reassign/addRoom/removeRoom).
       await recomputeBookingAggregate(tx, booking.id);
-      booking = (await tx.booking.findUnique({ where: { id: booking.id }, include }))!;
+      booking = (await tx.booking.findUnique({ where: { id: booking.id }, include: detailInclude }))!;
     }
 
     // Recalcule immédiatement le statut des chambres concernées (ex: réservation
@@ -240,7 +257,7 @@ export async function updateStatus(id: string, status: BookingStatus, actingUser
     const booking = await tx.booking.update({
       where: { id },
       data:  { status },
-      include,
+      include: detailInclude,
     });
 
     const roomIds = booking.rooms.map(br => br.roomId);
@@ -304,7 +321,7 @@ export async function reassign(bookingId: string, data: ReassignInput) {
   // statuts des deux chambres dans une seule transaction (auparavant 4+ écritures séquentielles
   // non atomiques, avec une race possible sur la nouvelle chambre/période).
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
 
     const bookingRoom = booking.rooms.find(br => br.roomId === oldRoomId);
@@ -355,14 +372,14 @@ export async function reassign(bookingId: string, data: ReassignInput) {
       await applyRoomStatuses([newRoomId], tx);
     }
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
 export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
     if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
       throw new ConflictError('Impossible de modifier une réservation clôturée');
@@ -403,14 +420,14 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
       await applyRoomStatuses([data.roomId], tx);
     }
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
 export async function removeRoom(bookingId: string, roomId: string) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
     if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
       throw new ConflictError('Impossible de modifier une réservation clôturée');
@@ -428,14 +445,14 @@ export async function removeRoom(bookingId: string, roomId: string) {
     await recomputeBookingAggregate(tx, bookingId);
     await applyRoomStatuses([roomId], tx);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
 export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
     if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
       throw new ConflictError('Impossible de modifier une réservation clôturée');
@@ -469,14 +486,14 @@ export async function addExtraToRoom(bookingId: string, roomId: string, data: Ad
 
     await recomputeBookingAggregate(tx, bookingId);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
 export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
     if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
       throw new ConflictError('Impossible de modifier une réservation clôturée');
@@ -492,14 +509,14 @@ export async function updateExtraQuantity(bookingId: string, roomId: string, ext
 
     await recomputeBookingAggregate(tx, bookingId);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
 export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
     if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
       throw new ConflictError('Impossible de modifier une réservation clôturée');
@@ -515,7 +532,7 @@ export async function removeExtraFromRoom(bookingId: string, roomId: string, ext
 
     await recomputeBookingAggregate(tx, bookingId);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
