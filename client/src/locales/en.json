@@ -16,7 +16,8 @@
     "groupGeneral":    "General",
     "groupAccounting": "Accounting",
     "groupAdmin":      "Administration",
-    "auditLog":        "Audit Log"
+    "auditLog":        "Audit Log",
+    "permissions":     "Permissions"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
@@ -441,6 +442,11 @@
     "count":        "{{count}} action(s)",
     "resourceType": "Resource",
     "empty":        "No actions recorded in this period"
+  },
+  "permissions": {
+    "title":  "Permissions",
+    "hint":   "Who can do what, per role — editable without a redeploy.",
+    "action": "Action"
   },
   "settings": {
     "title":             "Settings",

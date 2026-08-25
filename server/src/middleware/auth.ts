@@ -26,13 +26,3 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     res.status(401).json({ error: 'Token invalide ou expiré' });
   }
 }
-
-export function authorize(...roles: Role[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Accès refusé' });
-      return;
-    }
-    next();
-  };
-}

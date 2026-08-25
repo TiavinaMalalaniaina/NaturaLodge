@@ -8,11 +8,13 @@ import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateExpenseModal } from '../components/CreateExpenseModal';
 import { ExpenseCategory } from '../api/expenses';
 import { formatDate, formatCurrency } from '../lib/format';
+import { useAuth } from '../context/AuthContext';
 
 type CategoryFilter = 'all' | ExpenseCategory;
 
 export const Expenses: React.FC = () => {
   const { t } = useTranslation();
+  const { can } = useAuth();
 
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [page, setPage] = useState(1);
@@ -51,13 +53,15 @@ export const Expenses: React.FC = () => {
             {t('expenses.count', { count: meta?.total ?? expenses.length })}
           </p>
         </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
-        >
-          <Plus className="w-4 h-4" />
-          {t('expenses.record')}
-        </button>
+        {can('expenses.create') && (
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+          >
+            <Plus className="w-4 h-4" />
+            {t('expenses.record')}
+          </button>
+        )}
       </div>
 
       {/* ── Filters ── */}

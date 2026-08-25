@@ -55,7 +55,7 @@ export const InvoiceView: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { can } = useAuth();
 
   const { data: invoice, isLoading, isError } = useInvoiceByBooking(bookingId ?? null);
   const generateInvoice = useGenerateInvoice();
@@ -127,8 +127,9 @@ export const InvoiceView: React.FC = () => {
     });
   };
 
-  const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'RECEPTIONIST';
-  const canVoid = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canGenerate = can('invoices.generate');
+  const canRecordPayment = can('invoices.record_payment');
+  const canVoid = can('invoices.void_payment');
   const noInvoice = !isLoading && (isError || !invoice);
 
   const subtotal = invoice ? invoice.totalAmount - invoice.taxAmount : 0;
@@ -194,7 +195,7 @@ export const InvoiceView: React.FC = () => {
             <p className="text-xs text-on-surface-variant/50 mt-1">{t('invoice.noInvoiceHint')}</p>
           </div>
 
-          {canManage && (
+          {canGenerate && (
             <div className="max-w-sm mx-auto space-y-4 text-left">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.taxRate')}</label>
@@ -340,7 +341,7 @@ export const InvoiceView: React.FC = () => {
           <div className="no-print space-y-6">
 
             {/* Record payment */}
-            {canReceivePayment && canManage && (
+            {canReceivePayment && canRecordPayment && (
               <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
                 <div className="p-6 border-b border-stone-100 flex justify-between items-center flex-wrap gap-3">
                   <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('invoice.recordPayment')}</h4>

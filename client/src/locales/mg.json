@@ -16,7 +16,8 @@
     "groupGeneral":    "Ankapobeny",
     "groupAccounting": "Kaonty",
     "groupAdmin":      "Fitantanana",
-    "auditLog":        "Diarin'ny asa"
+    "auditLog":        "Diarin'ny asa",
+    "permissions":     "Fahazoan-dalana"
   },
   "topbar": {
     "searchPlaceholder": "Karohy mpiasa, efitrano, vahiny…",
@@ -441,6 +442,11 @@
     "count":        "Asa {{count}}",
     "resourceType": "Loharano",
     "empty":        "Tsy misy asa voarakitra amin'ity vanim-potoana ity"
+  },
+  "permissions": {
+    "title":  "Fahazoan-dalana",
+    "hint":   "Iza no afaka manao inona, isaky ny anjara asa — azo ovaina tsy misy fanavaozana.",
+    "action": "Asa"
   },
   "settings": {
     "title":             "Fikirana",

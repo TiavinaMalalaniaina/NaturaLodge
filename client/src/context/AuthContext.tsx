@@ -10,6 +10,7 @@ export interface AuthUser {
   name: string;
   role: UserRole;
   avatar?: string;
+  permissions: string[];
 }
 
 interface AuthContextProps {
@@ -18,6 +19,7 @@ interface AuthContextProps {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  can: (permissionKey: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -49,9 +51,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   }, []);
 
+  const can = useCallback(
+    (permissionKey: string) => user?.permissions.includes(permissionKey) ?? false,
+    [user]
+  );
+
   const value = useMemo(
-    () => ({ user, isAuthenticated: !!user, isLoading, login, logout }),
-    [user, isLoading, login, logout]
+    () => ({ user, isAuthenticated: !!user, isLoading, login, logout, can }),
+    [user, isLoading, login, logout, can]
   );
 
   return (

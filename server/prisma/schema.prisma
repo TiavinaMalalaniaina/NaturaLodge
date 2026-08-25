@@ -418,3 +418,31 @@ model AuditLog {
   @@index([resourceType, resourceId])
   @@index([createdAt])
 }
+
+// ─── Permissions ─────────────────────────────────────────────────
+
+// Catalogue des actions protégées de l'API — une entrée par permission logique (parfois
+// plusieurs routes derrière une même clé quand elles ont toujours eu le même ensemble de rôles,
+// ex: "bookings.manage_rooms" couvre 5 routes d'ajout/retrait de chambre et de supplément).
+// `domain` regroupe pour un futur écran d'administration (Phase 3) — ex: "bookings", "invoices".
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  domain      String
+  description String
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+// Les 4 rôles restent l'enum Role existant (décision Phase 0 : pas de rôles personnalisés) — donc
+// pas de table Role séparée, juste la liaison Role (enum) x Permission.
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         Role
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
