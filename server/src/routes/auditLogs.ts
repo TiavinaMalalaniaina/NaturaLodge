@@ -1,12 +1,13 @@
 import { Router, Response } from 'express';
-import { authenticate, authorize, AuthRequest } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
+import { can } from '../middleware/can';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { auditLogQuerySchema } from '../validation/auditLog.schema';
 import * as auditLogService from '../services/auditLog.service';
 
 export const auditLogsRouter = Router();
 auditLogsRouter.use(authenticate);
-auditLogsRouter.use(authorize('ADMIN'));
+auditLogsRouter.use(can('auditLogs.view'));
 
 // GET /audit-logs  ──  journal de toutes les actions mutantes, réservé ADMIN
 auditLogsRouter.get('/', asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {

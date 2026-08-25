@@ -4,6 +4,7 @@ import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import { config } from 'dotenv'
 import { seedChartOfAccounts } from './seedChartOfAccounts'
+import { seedPermissions } from './seedPermissions'
 
 config()
 
@@ -228,6 +229,7 @@ const STAFF_DATA = [
 
 async function main() {
   await seedChartOfAccounts(prisma)
+  await seedPermissions(prisma)
 
   // ── Room Features (upsert by fixed id) ────────────────────────────────────
   const featureDefs = [

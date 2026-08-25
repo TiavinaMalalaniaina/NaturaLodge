@@ -16,7 +16,8 @@
     "groupGeneral":    "Général",
     "groupAccounting": "Comptabilité",
     "groupAdmin":      "Administration",
-    "auditLog":        "Journal d'audit"
+    "auditLog":        "Journal d'audit",
+    "permissions":     "Permissions"
   },
   "topbar": {
     "searchPlaceholder": "Chercher un client, une chambre…",
@@ -441,6 +442,11 @@
     "count":        "{{count}} action(s)",
     "resourceType": "Ressource",
     "empty":        "Aucune action enregistrée sur cette période"
+  },
+  "permissions": {
+    "title":  "Permissions",
+    "hint":   "Qui peut faire quoi, par rôle — modifiable sans redéploiement.",
+    "action": "Action"
   },
   "settings": {
     "title":             "Paramètres",

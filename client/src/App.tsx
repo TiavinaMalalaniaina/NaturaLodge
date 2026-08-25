@@ -27,6 +27,7 @@ const Expenses         = lazy(() => import('./pages/Expenses').then(m => ({ defa
 const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ default: m.Treasury })));
 const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 const AuditLog            = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLog })));
+const Permissions          = lazy(() => import('./pages/Permissions').then(m => ({ default: m.Permissions })));
 
 const App: React.FC = () => {
   return (
@@ -55,15 +56,21 @@ const App: React.FC = () => {
                   <Route path="invoices/:bookingId" element={<InvoiceView />} />
                   <Route path="settings" element={<Settings />} />
 
-                  <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']} />}>
+                  <Route element={<ProtectedRoute permission="staff.view" />}>
                     <Route path="staff" element={<Staff />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="expenses.view" />}>
                     <Route path="expenses" element={<Expenses />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
                     <Route path="treasury" element={<Treasury />} />
                     <Route path="reports" element={<Reports />} />
                   </Route>
-
-                  <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+                  <Route element={<ProtectedRoute permission="auditLogs.view" />}>
                     <Route path="audit-log" element={<AuditLog />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="permissions.manage" />}>
+                    <Route path="permissions" element={<Permissions />} />
                   </Route>
                 </Route>
               </Route>
