@@ -108,13 +108,16 @@ export type TransferParams = {
   fromAccountId: string;
   toAccountId:   string;
   amount:        number;
+  fee?:          number;
   memo?:         string;
   performedById?: string;
 };
 
 // Déplace de l'argent entre deux comptes de trésorerie de l'hôtel (ex: dépôt d'espèces en
-// banque) — jamais une vraie sortie, juste un changement de lieu. Toujours équilibrée par
-// construction : ce n'est pas une charge/produit, seulement deux lignes sur des comptes ASSET.
+// banque) — jamais une vraie sortie, juste un changement de lieu. Sans frais, toujours équilibrée
+// par construction (deux lignes sur des comptes ASSET). Avec frais : la source paie le montant
+// PLUS les frais (débitée de amount + fee), la destination reçoit le montant plein — les frais
+// partent en charge (627000 Frais bancaires et de transfert), pas prélevés sur ce qui arrive.
 export async function transfer(params: TransferParams) {
   if (params.fromAccountId === params.toAccountId) {
     throw new ConflictError('Le compte source et le compte destination doivent être différents.');
@@ -130,13 +133,16 @@ export async function transfer(params: TransferParams) {
     throw new ConflictError('Un virement ne peut se faire qu\'entre deux comptes de trésorerie.');
   }
 
+  const fee = params.fee ?? 0;
+
   return postEntry({
     source:     'TRANSFER',
     postedById: params.performedById,
     memo:       params.memo ?? `Virement ${from.name} vers ${to.name}`,
     lines: [
       { accountId: params.toAccountId,   debit:  params.amount },
-      { accountId: params.fromAccountId, credit: params.amount },
+      ...(fee > 0 ? [{ accountCode: '627000', debit: fee } as const] : []),
+      { accountId: params.fromAccountId, credit: params.amount + fee },
     ],
   });
 }

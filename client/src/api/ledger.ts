@@ -73,6 +73,7 @@ export interface TransferPayload {
   fromAccountId: string;
   toAccountId:   string;
   amount:        number;
+  fee?:          number;
   memo?:         string;
 }
 

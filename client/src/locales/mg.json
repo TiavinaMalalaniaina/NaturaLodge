@@ -426,6 +426,8 @@
     "fromAccount":       "Kaonty niaviana",
     "toAccount":         "Kaonty nalefana",
     "sameAccountError":  "Tsy maintsy samy hafa ny kaonty niaviana sy ny kaonty nalefana.",
+    "transferFee":       "Sarany famindrana",
+    "transferFeeHint":   "Ampiana ary alaina amin'ny kaonty niaviana — mandray ny totaliny feno ny kaonty nalefana, ny sarany dia lasa fandaniana.",
     "contribution":      "Fandraisana anjara",
     "contributionHint":  "Vola avy any ivelan'ny hotely (fandraisan'anjaran'ny tompony...) — mankany amin'ny kaontim-panjaka, tsy vola azo tamin'ny asa."
   },

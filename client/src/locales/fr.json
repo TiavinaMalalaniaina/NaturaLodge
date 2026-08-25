@@ -426,6 +426,8 @@
     "fromAccount":       "Compte source",
     "toAccount":         "Compte destination",
     "sameAccountError":  "Le compte source et le compte destination doivent être différents.",
+    "transferFee":       "Frais de transfert",
+    "transferFeeHint":   "Ajoutés au montant prélevé sur le compte source — le compte destination reçoit le montant plein, les frais partent en charge.",
     "contribution":      "Apport",
     "contributionHint":  "Argent injecté depuis l'extérieur de l'hôtel (apport du propriétaire...) — crédité au compte de capital, pas un revenu d'exploitation."
   },
