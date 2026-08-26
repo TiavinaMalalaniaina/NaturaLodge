@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError } from '../errors/AppError';
 import { GenerateInvoiceInput, InvoiceListParams, PaymentInput, UpdateInvoiceInput } from '../validation/invoice.schema';
 import * as ledgerService from './ledger.service';
-import { resyncCheckoutPaymentStatus } from './booking.service';
+import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -80,7 +80,7 @@ const invoiceListInclude = {
   },
   booking: {
     select: {
-      id: true, arrival: true, departure: true,
+      id: true, arrival: true, departure: true, status: true,
       guest: { select: { id: true, name: true, email: true } },
     },
   },
@@ -129,8 +129,13 @@ export async function list(params: InvoiceListParams) {
     prisma.invoice.count({ where }),
   ]);
 
+  const enriched = invoices.map(invoice => ({
+    ...invoice,
+    booking: { ...invoice.booking, effectiveStatus: computeEffectiveStatus(invoice.booking) },
+  }));
+
   return {
-    data: invoices,
+    data: enriched,
     meta: {
       total, page, limit,
       totalPages:  Math.ceil(total / limit),
