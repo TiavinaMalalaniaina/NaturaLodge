@@ -10,7 +10,7 @@ interface ApiStaff {
 
 const ROLE_MAP: Record<string, StaffRole> = {
   ADMIN: 'admin', MANAGER: 'manager',
-  RECEPTIONIST: 'receptionist', HOUSEKEEPING: 'housekeeping',
+  GERANT: 'gerant', HOUSEKEEPING: 'housekeeping',
 };
 
 const STATUS_MAP: Record<string, StaffMember['status']> = {
@@ -26,7 +26,7 @@ export function normalizeStaff(s: ApiStaff): StaffMember {
     name: s.name,
     username: s.username,
     email: s.email ?? '',
-    role: ROLE_MAP[s.role] ?? 'receptionist',
+    role: ROLE_MAP[s.role] ?? 'gerant',
     status: STATUS_MAP[s.status] ?? 'active',
     avatar: s.avatar,
     joinedDate: new Date(s.joinedDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
@@ -41,7 +41,7 @@ export const fetchStaff = async (): Promise<StaffMember[]> => {
 
 const ROLE_TO_API: Record<StaffRole, string> = {
   admin: 'ADMIN', manager: 'MANAGER',
-  receptionist: 'RECEPTIONIST', housekeeping: 'HOUSEKEEPING',
+  gerant: 'GERANT', housekeeping: 'HOUSEKEEPING',
 };
 
 export interface CreateStaffPayload {

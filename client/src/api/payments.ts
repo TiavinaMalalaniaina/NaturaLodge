@@ -3,6 +3,7 @@ import { PaymentMethod, PaymentStatus } from './invoices';
 
 const PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
   CASH: 'cash', CARD: 'card', BANK_TRANSFER: 'bank_transfer', ONLINE: 'online',
+  MVOLA: 'mvola', ORANGE_MONEY: 'orange_money',
 };
 
 const PAYMENT_STATUS_MAP: Record<string, PaymentStatus> = {
@@ -66,6 +67,7 @@ export interface PaymentsList {
 
 const PAYMENT_METHOD_TO_API: Record<PaymentMethod, string> = {
   cash: 'CASH', card: 'CARD', bank_transfer: 'BANK_TRANSFER', online: 'ONLINE',
+  mvola: 'MVOLA', orange_money: 'ORANGE_MONEY',
 };
 const PAYMENT_STATUS_TO_API: Record<PaymentStatus, string> = {
   completed: 'COMPLETED', pending: 'PENDING', failed: 'FAILED', refunded: 'REFUNDED',

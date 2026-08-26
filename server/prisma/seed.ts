@@ -3,6 +3,8 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import { config } from 'dotenv'
+import { seedChartOfAccounts } from './seedChartOfAccounts'
+import { seedPermissions } from './seedPermissions'
 
 config()
 
@@ -210,12 +212,12 @@ const STAFF_DATA = [
   { email: 'marc.d@naturalodge.mg',    name: 'Marc Delacroix',   role: 'MANAGER',      status: 'ACTIVE'   },
   { email: 'ines.f@naturalodge.mg',    name: 'Inès Fontaine',    role: 'MANAGER',      status: 'ACTIVE'   },
   { email: 'thomas.r@naturalodge.mg',  name: 'Thomas Renard',    role: 'MANAGER',      status: 'ON_LEAVE' },
-  { email: 'sarah.l@naturalodge.mg',   name: 'Sarah Laurent',    role: 'RECEPTIONIST', status: 'ACTIVE'   },
-  { email: 'camille.b@naturalodge.mg', name: 'Camille Bernard',  role: 'RECEPTIONIST', status: 'ACTIVE'   },
-  { email: 'leo.m@naturalodge.mg',     name: 'Léo Martin',       role: 'RECEPTIONIST', status: 'ACTIVE'   },
-  { email: 'nina.s@naturalodge.mg',    name: 'Nina Silva',       role: 'RECEPTIONIST', status: 'ACTIVE'   },
-  { email: 'theo.k@naturalodge.mg',    name: 'Théo Kovac',       role: 'RECEPTIONIST', status: 'ACTIVE'   },
-  { email: 'alice.n@naturalodge.mg',   name: 'Alice Nguyen',     role: 'RECEPTIONIST', status: 'ON_LEAVE' },
+  { email: 'sarah.l@naturalodge.mg',   name: 'Sarah Laurent',    role: 'GERANT', status: 'ACTIVE'   },
+  { email: 'camille.b@naturalodge.mg', name: 'Camille Bernard',  role: 'GERANT', status: 'ACTIVE'   },
+  { email: 'leo.m@naturalodge.mg',     name: 'Léo Martin',       role: 'GERANT', status: 'ACTIVE'   },
+  { email: 'nina.s@naturalodge.mg',    name: 'Nina Silva',       role: 'GERANT', status: 'ACTIVE'   },
+  { email: 'theo.k@naturalodge.mg',    name: 'Théo Kovac',       role: 'GERANT', status: 'ACTIVE'   },
+  { email: 'alice.n@naturalodge.mg',   name: 'Alice Nguyen',     role: 'GERANT', status: 'ON_LEAVE' },
   { email: 'jean.p@naturalodge.mg',    name: 'Jean Petit',       role: 'HOUSEKEEPING', status: 'ACTIVE'   },
   { email: 'fatou.d@naturalodge.mg',   name: 'Fatou Diallo',     role: 'HOUSEKEEPING', status: 'ACTIVE'   },
   { email: 'carlos.m@naturalodge.mg',  name: 'Carlos Morales',   role: 'HOUSEKEEPING', status: 'ACTIVE'   },
@@ -226,6 +228,8 @@ const STAFF_DATA = [
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  await seedChartOfAccounts(prisma)
+  await seedPermissions(prisma)
 
   // ── Room Features (upsert by fixed id) ────────────────────────────────────
   const featureDefs = [
@@ -353,7 +357,7 @@ async function main() {
     createdById: string
     arrival:     Date
     departure:   Date
-    status:      'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED'
+    status:      'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT_UNPAID' | 'CANCELLED'
     totalAmount: number
     notes:       string | null
     roomId:      string
@@ -375,7 +379,7 @@ async function main() {
           createdById: pick(staff).id,
           arrival:     new Date(c),
           departure:   new Date(dep),
-          status:      'CHECKED_OUT',
+          status:      'CHECKED_OUT_UNPAID',
           totalAmount: rate * dur,
           notes:       null,
           roomId,
@@ -430,7 +434,7 @@ async function main() {
         createdById: pick(staff).id,
         arrival:     new Date(cursor),
         departure:   new Date(dep),
-        status:      isCancelled ? 'CANCELLED' : 'CHECKED_OUT',
+        status:      isCancelled ? 'CANCELLED' : 'CHECKED_OUT_UNPAID',
         totalAmount: rate * dur,
         notes:       Math.random() < 0.25 ? pick(BOOKING_NOTES) : null,
         roomId,
@@ -526,7 +530,7 @@ async function main() {
   )
 
   console.log(`\n✅ ${allBookings.length} bookings total`)
-  console.log(`   CHECKED_OUT: ${counts.CHECKED_OUT ?? 0}`)
+  console.log(`   CHECKED_OUT_UNPAID: ${counts.CHECKED_OUT_UNPAID ?? 0}`)
   console.log(`   CHECKED_IN:  ${counts.CHECKED_IN  ?? 0}  (today: in progress)`)
   console.log(`   CONFIRMED:   ${counts.CONFIRMED   ?? 0}  (incl. 7 arriving today)`)
   console.log(`   CANCELLED:   ${counts.CANCELLED   ?? 0}`)
@@ -535,7 +539,7 @@ async function main() {
   console.log('─────────────────────────────────────────────────────')
   console.log('  ADMIN       admin@naturalodge.mg   / Admin@1234')
   console.log('  MANAGER     marc.d@naturalodge.mg  / Staff@1234')
-  console.log('  RECEPTIONIST sarah.l@naturalodge.mg / Staff@1234')
+  console.log('  GERANT sarah.l@naturalodge.mg / Staff@1234')
   console.log('─────────────────────────────────────────────────────')
   console.log('  Rooms arriving TODAY: 101 102 201 202 301 302 401')
   console.log('  Rooms CHECKED_IN    : 103 104 203 204 205 303 304 305 402 403')

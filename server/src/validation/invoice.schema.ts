@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { InvoiceStatus, PaymentMethod } from '@prisma/client';
+import { PaymentMethod } from '@prisma/client';
 
 export const invoiceListQuerySchema = z.object({
   bookingId: z.string().optional(),
@@ -16,16 +16,19 @@ export const generateInvoiceSchema = z.object({
   dueAt:     z.string().datetime().optional(),
 });
 
+// `status` n'est pas modifiable ici : PAID/PARTIALLY_PAID/PENDING sont recalculés automatiquement
+// par syncInvoiceStatus() à partir des paiements, et CANCELLED passe par cancelInvoice() — seul
+// chemin qui extourne la créance et le produit non encaissés dans le grand livre.
 export const updateInvoiceSchema = z.object({
   notes:      z.string().optional(),
   dueAt:      z.string().datetime().nullable().optional(),
   taxAmount:  z.number().int().min(0).optional(),
-  status:     z.nativeEnum(InvoiceStatus).optional(),
 });
 
 export const paymentSchema = z.object({
   amount:    z.number().int().positive(),
   method:    z.nativeEnum(PaymentMethod),
+  accountId: z.string().min(1),
   reference: z.string().optional(),
   notes:     z.string().optional(),
 });

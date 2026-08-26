@@ -11,6 +11,7 @@ import { AddGuestModal } from '../components/AddGuestModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAuth } from '../context/AuthContext';
 
 const LIMIT = 20;
 
@@ -28,6 +29,7 @@ function GuestAvatar({ name, className }: { name: string; className?: string }) 
 export const Guests: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { can } = useAuth();
   const [search, setSearch]           = useState('');
   const [page, setPage]               = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -57,10 +59,12 @@ export const Guests: React.FC = () => {
             {meta ? t('guests.profiles', { count: meta.total.toLocaleString() }) : t('common.loading')}
           </p>
         </div>
-        <button onClick={() => setIsAddModalOpen(true)}
-          className="w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10">
-          <Plus className="w-4 h-4" /> {t('guests.newProfile')}
-        </button>
+        {can('guests.create') && (
+          <button onClick={() => setIsAddModalOpen(true)}
+            className="w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10">
+            <Plus className="w-4 h-4" /> {t('guests.newProfile')}
+          </button>
+        )}
       </div>
 
       {/* ── Search bar ── */}

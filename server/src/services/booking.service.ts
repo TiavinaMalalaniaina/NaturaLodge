@@ -1,38 +1,56 @@
-import { BookingStatus, InvoiceStatus, Prisma } from '@prisma/client';
+import { BookingStatus, Role, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
-import { NotFoundError, ConflictError } from '../errors/AppError';
+import { TERMINAL_STATUSES } from '../lib/bookingStatus';
+import { roleHasPermission } from '../lib/permissions';
+import { NotFoundError, ConflictError, ForbiddenError } from '../errors/AppError';
 import {
   AddBookingRoomExtraInput, AddBookingRoomInput, BookingInput, BookingListParams,
   ReassignInput, UpdateBookingRoomExtraInput,
 } from '../validation/booking.schema';
 import * as invoiceService from './invoice.service';
 
-const include = {
-  guest:     { select: { id: true, name: true, email: true, avatar: true, status: true } },
-  rooms:     {
+// `avatar` et `createdBy` sont sélectionnés nulle part ci-dessous : ni le type client
+// (client/src/api/bookings.ts) ni aucune page ne les lisent — retirés des deux formes.
+const guestSelect = { id: true, name: true, email: true, status: true };
+const roomSelect  = {
+  id:           true,
+  number:       true,
+  rateOverride: true,
+  roomType:     { select: { id: true, name: true, rate: true } },
+};
+// Sélectionné dans les deux formes pour calculer `paymentStatus` côté serveur (computePaymentStatus),
+// mais jamais renvoyé tel quel au client (voir la déstructuration `{ invoices, ...rest }` dans `list`).
+const invoicesForStatus = {
+  select:  { status: true, totalAmount: true },
+  orderBy: { issuedAt: 'desc' as const },
+  take:    1,
+};
+
+// Forme détail (getById + toutes les mutations qui renvoient la réservation à jour) : profondeur
+// complète, y compris les notes et les suppléments par chambre, utilisée par BookingDetail.tsx.
+const detailInclude = {
+  guest: { select: guestSelect },
+  rooms: {
     include: {
-      room: {
-        select: {
-          id:           true,
-          number:       true,
-          rateOverride: true,
-          roomType:     { select: { id: true, name: true, rate: true } },
-        },
-      },
+      room:   { select: roomSelect },
       extras: { include: { extra: true } },
     },
   },
-  createdBy: { select: { id: true, name: true, role: true } },
-  invoices:  {
-    select:  { status: true, totalAmount: true },
-    orderBy: { issuedAt: 'desc' as const },
-    take:    1,
-  },
+  invoices:     invoicesForStatus,
   bookingNotes: {
     include: { author: { select: { id: true, name: true, role: true } } },
     orderBy: { createdAt: 'desc' as const },
   },
+};
+
+// Forme liste (GET /bookings, jusqu'à 500 lignes pour la grille planning) : ni les notes ni les
+// suppléments par chambre ne sont affichés par Reservations.tsx (vue grille ou liste) — seule
+// BookingDetail.tsx (une réservation à la fois) en a besoin, via `detailInclude`.
+const listInclude = {
+  guest:    { select: guestSelect },
+  rooms:    { include: { room: { select: roomSelect } } },
+  invoices: invoicesForStatus,
 };
 
 export type EffectiveStatus =
@@ -41,7 +59,9 @@ export type EffectiveStatus =
   | 'in_progress'
   | 'overdue'
   | 'awaiting'
-  | 'checked_out'
+  | 'checked_out_unpaid'
+  | 'checked_out_paid'
+  | 'closed'
   | 'cancelled';
 
 export type PaymentStatus =
@@ -54,8 +74,11 @@ export type PaymentStatus =
 
 export function computeEffectiveStatus(b: { arrival: Date; departure: Date; status: BookingStatus }): EffectiveStatus {
   const now = new Date();
-  if (b.status === 'CANCELLED')   return 'cancelled';
-  if (b.status === 'CHECKED_OUT') return 'checked_out';
+  if (b.status === 'CANCELLED')          return 'cancelled';
+  if (b.status === 'CLOSED')             return 'closed';
+  if (b.status === 'CHECKED_OUT_PAID')   return 'checked_out_paid';
+  if (b.status === 'CHECKED_OUT_UNPAID') return 'checked_out_unpaid';
+  if (b.status === 'CHECKED_OUT')        return 'checked_out_unpaid'; // legacy — défensif, ne devrait plus survenir après le backfill
   if (b.status === 'CHECKED_IN') {
     return now > b.departure ? 'overdue' : 'in_progress';
   }
@@ -82,15 +105,12 @@ export async function list(params: BookingListParams) {
 
   const where = {
     // Par défaut (pas de statut/date/recherche) : cacher les réservations clôturées pour que la
-    // liste priorise les séjours en cours/en retard puis à venir — sauf celles check-outées dont
-    // la facture n'est pas encore soldée (pas de facture, ou facture pending/partiellement payée),
-    // qui restent visibles tant qu'il reste un paiement à suivre. Dès qu'un filtre explicite est
-    // posé (statut, date ou recherche), on montre tout ce qui matche.
+    // liste priorise les séjours en cours/en retard puis à venir — sauf CHECKED_OUT_UNPAID, qui
+    // reste visible tant qu'il reste un paiement à suivre (l'état de paiement est désormais
+    // directement porté par le statut, plus besoin de sous-requête sur les factures). Dès qu'un
+    // filtre explicite est posé (statut, date ou recherche), on montre tout ce qui matche.
     ...(status ? { status } : (search || startDate || endDate || date) ? {} : {
-      OR: [
-        { status: { notIn: ['CANCELLED'] as BookingStatus[] } },
-        { status: 'CHECKED_OUT' as BookingStatus, invoices: { none: { status: { in: ['PAID', 'REFUNDED', 'CANCELLED'] as InvoiceStatus[] } } } },
-      ],
+      status: { notIn: ['CANCELLED', 'CHECKED_OUT', 'CHECKED_OUT_PAID', 'CLOSED'] as BookingStatus[] },
     }),
     ...(startDate || endDate ? {
       // Chevauchement : une réservation matche si son séjour croise la fenêtre donnée.
@@ -110,15 +130,15 @@ export async function list(params: BookingListParams) {
   };
 
   const [bookings, total] = await Promise.all([
-    prisma.booking.findMany({ where, include, orderBy: { [sort]: order }, skip, take: limit }),
+    prisma.booking.findMany({ where, include: listInclude, orderBy: { [sort]: order }, skip, take: limit }),
     prisma.booking.count({ where }),
   ]);
 
-  const enriched = bookings.map(b => ({
+  const enriched = bookings.map(({ invoices, ...b }) => ({
     ...b,
     nights: Math.max(1, Math.round((b.departure.getTime() - b.arrival.getTime()) / 86_400_000)),
     effectiveStatus: computeEffectiveStatus(b),
-    paymentStatus:   computePaymentStatus(b),
+    paymentStatus:   computePaymentStatus({ invoices }),
   }));
 
   return {
@@ -135,9 +155,10 @@ export async function list(params: BookingListParams) {
 }
 
 export async function getById(id: string) {
-  const booking = await prisma.booking.findUnique({ where: { id }, include });
+  const booking = await prisma.booking.findUnique({ where: { id }, include: detailInclude });
   if (!booking) throw new NotFoundError('Réservation');
-  return { ...booking, effectiveStatus: computeEffectiveStatus(booking), paymentStatus: computePaymentStatus(booking) };
+  const { invoices, ...rest } = booking;
+  return { ...rest, effectiveStatus: computeEffectiveStatus(booking), paymentStatus: computePaymentStatus({ invoices }) };
 }
 
 export async function create(data: BookingInput, createdById: string) {
@@ -167,7 +188,7 @@ export async function create(data: BookingInput, createdById: string) {
           roomId:   entry.roomId,
           arrival:  { lt: roomDeparture },
           departure: { gt: roomArrival },
-          booking:  { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+          booking:  { status: { notIn: TERMINAL_STATUSES } },
         },
       });
       if (conflict) throw new ConflictError('La chambre est déjà réservée sur cette période');
@@ -191,7 +212,7 @@ export async function create(data: BookingInput, createdById: string) {
           })),
         },
       },
-      include,
+      include: detailInclude,
     });
 
     // Suppléments par chambre, choisis dès la création de la réservation.
@@ -221,7 +242,7 @@ export async function create(data: BookingInput, createdById: string) {
       // serveur à partir des chambres + suppléments réellement créés (même logique que
       // reassign/addRoom/removeRoom).
       await recomputeBookingAggregate(tx, booking.id);
-      booking = (await tx.booking.findUnique({ where: { id: booking.id }, include }))!;
+      booking = (await tx.booking.findUnique({ where: { id: booking.id }, include: detailInclude }))!;
     }
 
     // Recalcule immédiatement le statut des chambres concernées (ex: réservation
@@ -232,37 +253,98 @@ export async function create(data: BookingInput, createdById: string) {
   });
 }
 
-export async function updateStatus(id: string, status: BookingStatus) {
-  const booking = await prisma.booking.update({
-    where: { id },
-    data:  { status },
-    include,
+// Statuts qu'un appelant peut demander via PATCH /:id/status. 'CHECKED_OUT' est une action, pas un
+// état persisté : le check-out se résout toujours vers CHECKED_OUT_UNPAID/CHECKED_OUT_PAID selon le
+// paiement au moment du geste (voir updateStatus ci-dessous). CHECKED_OUT_UNPAID/CHECKED_OUT_PAID/
+// CLOSED ne sont donc jamais acceptés ici — CLOSED passe uniquement par `closeBooking` (réservé
+// manager/admin, voir routes/bookings.ts can('bookings.close')).
+export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | 'CANCELLED' | 'CHECKED_OUT';
+
+// Transactionnelle : le passage en CANCELLED annule aussi la facture de la réservation s'il y en
+// a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
+// ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
+export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: Role, actingUserId?: string) {
+  return prisma.$transaction(async (tx) => {
+    let status: BookingStatus = requestedStatus;
+    if (requestedStatus === 'CHECKED_OUT') {
+      const current = await tx.booking.findUnique({ where: { id }, include: { invoices: invoicesForStatus } });
+      if (!current) throw new NotFoundError('Réservation');
+      const isPaid = computePaymentStatus(current) === 'paid';
+      // Check-outer une réservation encore impayée/partiellement payée requiert la permission
+      // `bookings.checkout_unpaid` (ADMIN/MANAGER par défaut, configurable via l'écran Permissions)
+      // — pas un contrôle de rôle codé en dur.
+      if (!isPaid && !(await roleHasPermission(actingUserRole, 'bookings.checkout_unpaid'))) {
+        throw new ForbiddenError('Seuls un manager ou un administrateur peuvent check-outer une réservation impayée ou partiellement payée');
+      }
+      status = isPaid ? 'CHECKED_OUT_PAID' : 'CHECKED_OUT_UNPAID';
+    }
+
+    const booking = await tx.booking.update({
+      where: { id },
+      data:  { status },
+      include: detailInclude,
+    });
+
+    const roomIds = booking.rooms.map(br => br.roomId);
+    const isCheckout = status === 'CHECKED_OUT_UNPAID' || status === 'CHECKED_OUT_PAID';
+
+    if (status === 'CHECKED_IN') {
+      // Check-in direct → OCCUPIED immédiat
+      await tx.room.updateMany({
+        where: { id: { in: roomIds }, status: { not: 'MAINTENANCE' } },
+        data:  { status: 'OCCUPIED' },
+      });
+    } else if (isCheckout || status === 'CANCELLED') {
+      // Recalculer : une autre réservation active peut déjà couvrir aujourd'hui
+      await applyRoomStatuses(roomIds, tx);
+    }
+
+    if (isCheckout) {
+      // Ne crédite plus lifetimeValue ici : ce montant coté n'a aucune garantie de correspondre à ce
+      // qui est réellement facturé/payé. lifetimeValue est désormais crédité au moment du paiement
+      // réel (voir invoice.service.ts: addPayment/voidPayment), pas au check-out.
+      await tx.guest.update({
+        where: { id: booking.guestId },
+        data:  { totalStays: { increment: 1 } },
+      });
+    }
+
+    if (status === 'CANCELLED') {
+      await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx);
+    }
+
+    return { ...booking, paymentStatus: computePaymentStatus(booking) };
   });
+}
 
-  const roomIds = booking.rooms.map(br => br.roomId);
-
-  if (status === 'CHECKED_IN') {
-    // Check-in direct → OCCUPIED immédiat
-    await prisma.room.updateMany({
-      where: { id: { in: roomIds }, status: { not: 'MAINTENANCE' } },
-      data:  { status: 'OCCUPIED' },
-    });
-  } else if (status === 'CHECKED_OUT' || status === 'CANCELLED') {
-    // Recalculer : une autre réservation active peut déjà couvrir aujourd'hui
-    await applyRoomStatuses(roomIds);
+// Dernière étape, manuelle et réservée manager/admin (can('bookings.close')) : archive
+// définitivement une réservation déjà terminée ET soldée. Refuse tout autre point de départ —
+// notamment CHECKED_OUT_UNPAID, qu'il faut d'abord solder (le paiement rebascule automatiquement
+// vers CHECKED_OUT_PAID, voir `resyncCheckoutPaymentStatus`).
+export async function closeBooking(id: string) {
+  const booking = await prisma.booking.findUnique({ where: { id }, include: detailInclude });
+  if (!booking) throw new NotFoundError('Réservation');
+  if (booking.status !== 'CHECKED_OUT_PAID') {
+    throw new ConflictError('La réservation doit être « Terminée et payée » avant de pouvoir être clôturée');
   }
 
-  if (status === 'CHECKED_OUT') {
-    // Ne crédite plus lifetimeValue ici : ce montant coté n'a aucune garantie de correspondre à ce
-    // qui est réellement facturé/payé. lifetimeValue est désormais crédité au moment du paiement
-    // réel (voir invoice.service.ts: addPayment/voidPayment), pas au check-out.
-    await prisma.guest.update({
-      where: { id: booking.guestId },
-      data:  { totalStays: { increment: 1 } },
-    });
-  }
+  const updated = await prisma.booking.update({ where: { id }, data: { status: 'CLOSED' }, include: detailInclude });
+  return { ...updated, effectiveStatus: computeEffectiveStatus(updated), paymentStatus: computePaymentStatus(updated) };
+}
 
-  return { ...booking, paymentStatus: computePaymentStatus(booking) };
+// Appelé après tout enregistrement/annulation de paiement (invoice.service.ts addPayment/voidPayment)
+// pour garder le statut de réservation synchronisé avec l'état de paiement réel — sans ce resync,
+// une réservation check-outée impayée resterait bloquée sur CHECKED_OUT_UNPAID même une fois soldée.
+// Ne touche jamais CLOSED (étape finale) ni les réservations encore actives (rien à resynchroniser).
+export async function resyncCheckoutPaymentStatus(bookingId: string, tx: Prisma.TransactionClient): Promise<void> {
+  const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: { invoices: invoicesForStatus } });
+  if (!booking) return;
+  if (booking.status !== 'CHECKED_OUT_UNPAID' && booking.status !== 'CHECKED_OUT_PAID') return;
+
+  const resolved = computePaymentStatus(booking) === 'paid' ? 'CHECKED_OUT_PAID' : 'CHECKED_OUT_UNPAID';
+  if (resolved !== booking.status) {
+    await tx.booking.update({ where: { id: bookingId }, data: { status: resolved } });
+  }
 }
 
 // Recalcule le montant total et l'enveloppe (arrival/departure) globale de la réservation à
@@ -288,15 +370,31 @@ async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId
   await invoiceService.syncInvoiceWithBooking(tx, bookingId);
 }
 
-export async function reassign(bookingId: string, data: ReassignInput) {
+// CANCELLED/CLOSED restent bloqués pour tout le monde, sans exception. Une réservation
+// check-outée mais pas encore clôturée reste modifiable par qui a la permission
+// `bookings.modify_after_checkout` (ADMIN/MANAGER par défaut, configurable via l'écran
+// Permissions) — pas un contrôle de rôle codé en dur, comme le reste du système d'autorisation.
+const CHECKED_OUT_NOT_CLOSED: BookingStatus[] = ['CHECKED_OUT', 'CHECKED_OUT_UNPAID', 'CHECKED_OUT_PAID'];
+
+async function assertBookingModifiable(status: BookingStatus, actingUserRole: Role): Promise<void> {
+  if (status === 'CANCELLED' || status === 'CLOSED') {
+    throw new ConflictError('Impossible de modifier une réservation clôturée');
+  }
+  if (CHECKED_OUT_NOT_CLOSED.includes(status) && !(await roleHasPermission(actingUserRole, 'bookings.modify_after_checkout'))) {
+    throw new ForbiddenError('Seuls un manager ou un administrateur peuvent modifier une réservation déjà check-outée');
+  }
+}
+
+export async function reassign(bookingId: string, data: ReassignInput, actingUserRole: Role) {
   const { oldRoomId, newRoomId } = data;
 
   // Vérification de conflit + mise à jour de la ligne + recalcul du total/dates + recalcul des
   // statuts des deux chambres dans une seule transaction (auparavant 4+ écritures séquentielles
   // non atomiques, avec une race possible sur la nouvelle chambre/période).
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === oldRoomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -322,7 +420,7 @@ export async function reassign(bookingId: string, data: ReassignInput) {
         id:        { not: bookingRoom.id },
         arrival:   { lt: newDeparture },
         departure: { gt: newArrival },
-        booking:   { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] }, id: { not: bookingId } },
+        booking:   { status: { notIn: TERMINAL_STATUSES }, id: { not: bookingId } },
       },
     });
     if (conflict) throw new ConflictError('La chambre cible est déjà réservée sur cette période');
@@ -346,18 +444,16 @@ export async function reassign(bookingId: string, data: ReassignInput) {
       await applyRoomStatuses([newRoomId], tx);
     }
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
-export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
+export async function addRoom(bookingId: string, data: AddBookingRoomInput, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const arrival   = data.arrival   ? new Date(data.arrival)   : booking.arrival;
     const departure = data.departure ? new Date(data.departure) : booking.departure;
@@ -375,7 +471,7 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
         roomId:   data.roomId,
         arrival:  { lt: departure },
         departure: { gt: arrival },
-        booking:  { status: { notIn: ['CANCELLED', 'CHECKED_OUT'] } },
+        booking:  { status: { notIn: TERMINAL_STATUSES } },
       },
     });
     if (conflict) throw new ConflictError('La chambre est déjà réservée sur cette période');
@@ -394,18 +490,16 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput) {
       await applyRoomStatuses([data.roomId], tx);
     }
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
-export async function removeRoom(bookingId: string, roomId: string) {
+export async function removeRoom(bookingId: string, roomId: string, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -419,18 +513,16 @@ export async function removeRoom(bookingId: string, roomId: string) {
     await recomputeBookingAggregate(tx, bookingId);
     await applyRoomStatuses([roomId], tx);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
-export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput) {
+export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -460,18 +552,16 @@ export async function addExtraToRoom(bookingId: string, roomId: string, data: Ad
 
     await recomputeBookingAggregate(tx, bookingId);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
-export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput) {
+export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -483,18 +573,16 @@ export async function updateExtraQuantity(bookingId: string, roomId: string, ext
 
     await recomputeBookingAggregate(tx, bookingId);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
 
-export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string) {
+export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string, actingUserRole: Role) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
-    if (booking.status === 'CANCELLED' || booking.status === 'CHECKED_OUT') {
-      throw new ConflictError('Impossible de modifier une réservation clôturée');
-    }
+    await assertBookingModifiable(booking.status, actingUserRole);
 
     const bookingRoom = booking.rooms.find(br => br.roomId === roomId);
     if (!bookingRoom) throw new NotFoundError('Chambre dans cette réservation');
@@ -506,7 +594,7 @@ export async function removeExtraFromRoom(bookingId: string, roomId: string, ext
 
     await recomputeBookingAggregate(tx, bookingId);
 
-    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include });
+    const updated = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     return { ...updated!, effectiveStatus: computeEffectiveStatus(updated!), paymentStatus: computePaymentStatus(updated!) };
   });
 }
@@ -514,6 +602,9 @@ export async function removeExtraFromRoom(bookingId: string, roomId: string, ext
 export async function remove(id: string): Promise<void> {
   const booking = await prisma.booking.findUnique({ where: { id }, include: { rooms: true } });
   if (!booking) throw new NotFoundError('Réservation');
+  if (TERMINAL_STATUSES.includes(booking.status)) {
+    throw new ConflictError('Impossible de modifier une réservation clôturée');
+  }
 
   await prisma.booking.delete({ where: { id } });
 

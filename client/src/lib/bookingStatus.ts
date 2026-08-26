@@ -1,31 +1,70 @@
-import { EffectiveStatus } from '../api/bookings';
+import { EffectiveStatus, PaymentStatus } from '../api/bookings';
+
+type CanFn = (permissionKey: string) => boolean;
 
 export const EFFECTIVE_STATUS_LABEL: Record<EffectiveStatus, string> = {
-  upcoming:    'Upcoming',
-  due_checkin: 'Due Check-in',
-  in_progress: 'In Progress',
-  overdue:     'Overdue',
-  awaiting:    'Awaiting',
-  checked_out: 'Checked Out',
-  cancelled:   'Cancelled',
+  upcoming:           'Upcoming',
+  due_checkin:        'Due Check-in',
+  in_progress:        'In Progress',
+  overdue:            'Overdue',
+  awaiting:           'Awaiting',
+  checked_out_unpaid: 'Checked Out — Unpaid',
+  checked_out_paid:   'Checked Out — Paid',
+  closed:             'Closed',
+  cancelled:          'Cancelled',
 };
 
 export const EFFECTIVE_STATUS_I18N_KEY: Record<EffectiveStatus, string> = {
-  upcoming:    'status.upcoming',
-  due_checkin: 'status.dueCheckin',
-  in_progress: 'status.inProgress',
-  overdue:     'status.overdue',
-  awaiting:    'status.awaiting',
-  checked_out: 'status.checkedOut',
-  cancelled:   'status.cancelled',
+  upcoming:           'status.upcoming',
+  due_checkin:        'status.dueCheckin',
+  in_progress:        'status.inProgress',
+  overdue:            'status.overdue',
+  awaiting:           'status.awaiting',
+  checked_out_unpaid: 'status.checkedOutUnpaid',
+  checked_out_paid:   'status.checkedOutPaid',
+  closed:             'status.closed',
+  cancelled:          'status.cancelled',
 };
 
 export const EFFECTIVE_STATUS_CLASS: Record<EffectiveStatus, string> = {
-  upcoming:    'bg-teal-50  text-teal-600  border-teal-100',
-  due_checkin: 'bg-amber-50 text-amber-600 border-amber-100',
-  in_progress: 'bg-zinc-900 text-white     border-zinc-900',
-  overdue:     'bg-red-50   text-red-600   border-red-100',
-  awaiting:    'bg-amber-50 text-amber-600 border-amber-100',
-  checked_out: 'bg-stone-50 text-stone-400 border-stone-200',
-  cancelled:   'bg-stone-50 text-stone-400 border-stone-200',
+  upcoming:           'bg-teal-50  text-teal-600  border-teal-100',
+  due_checkin:        'bg-amber-50 text-amber-600 border-amber-100',
+  in_progress:        'bg-zinc-900 text-white     border-zinc-900',
+  overdue:            'bg-red-50   text-red-600   border-red-100',
+  awaiting:           'bg-amber-50 text-amber-600 border-amber-100',
+  checked_out_unpaid: 'bg-rose-50  text-rose-500  border-rose-100',
+  checked_out_paid:   'bg-teal-50  text-teal-600  border-teal-100',
+  closed:             'bg-stone-50 text-stone-400 border-stone-200',
+  cancelled:          'bg-stone-50 text-stone-400 border-stone-200',
+};
+
+// Miroir de `assertBookingModifiable` (server/src/services/booking.service.ts) : CANCELLED/CLOSED
+// bloqués pour tout le monde ; check-outée mais pas encore clôturée → réservé à qui a la
+// permission `bookings.modify_after_checkout` (ADMIN/MANAGER par défaut, configurable via
+// l'écran Permissions — pas un rôle codé en dur).
+export function canModifyBooking(es: EffectiveStatus, can: CanFn): boolean {
+  if (es === 'cancelled' || es === 'closed') return false;
+  if (es === 'checked_out_unpaid' || es === 'checked_out_paid') return can('bookings.modify_after_checkout');
+  return true;
+}
+
+// Miroir de `updateStatus` (server/src/services/booking.service.ts) : le check-out (normal ou
+// forcé) d'une réservation impayée/partiellement payée requiert la permission
+// `bookings.checkout_unpaid`.
+export function canCheckOutBooking(paymentStatus: PaymentStatus, can: CanFn): boolean {
+  if (paymentStatus === 'paid') return true;
+  return can('bookings.checkout_unpaid');
+}
+
+export type StatusActionKey = 'confirm' | 'checkin' | 'checkout' | 'forceOut' | 'revert' | 'revertCancel';
+
+// Confirmation copy shared by every screen that changes a booking's DB status
+// (Reservations grid, BookingDetail, Dashboard quick check-in) so the wording stays consistent.
+export const STATUS_ACTIONS: Record<StatusActionKey, { status: string; titleKey: string; messageKey: string; variant: 'danger' | 'warning' }> = {
+  confirm:      { status: 'CONFIRMED',   titleKey: 'reservations.confirmBooking',             messageKey: 'reservations.confirmBookingMessage',        variant: 'warning' },
+  checkin:      { status: 'CHECKED_IN',  titleKey: 'bookingDetail.confirmCheckinTitle',       messageKey: 'bookingDetail.confirmCheckinMessage',       variant: 'warning' },
+  checkout:     { status: 'CHECKED_OUT', titleKey: 'bookingDetail.confirmCheckoutTitle',      messageKey: 'bookingDetail.confirmCheckoutMessage',      variant: 'warning' },
+  forceOut:     { status: 'CHECKED_OUT', titleKey: 'bookingDetail.confirmForceOutTitle',      messageKey: 'bookingDetail.confirmForceOutMessage',      variant: 'danger' },
+  revert:       { status: 'CONFIRMED',   titleKey: 'bookingDetail.confirmRevertTitle',        messageKey: 'bookingDetail.confirmRevertMessage',        variant: 'warning' },
+  revertCancel: { status: 'AWAITING',    titleKey: 'bookingDetail.confirmRevertCancelTitle',  messageKey: 'bookingDetail.confirmRevertCancelMessage',  variant: 'warning' },
 };

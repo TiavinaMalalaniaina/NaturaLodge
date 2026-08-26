@@ -158,7 +158,7 @@ src/
 └── lib/          # prisma.ts, roomStatus.ts, scheduler.ts
 ```
 
-Toutes les routes sont protégées par `authenticate`. Certaines nécessitent `authorize(roles)`.
+Toutes les routes sont protégées par `authenticate`. La plupart nécessitent en plus `can(permissionKey)`.
 
 ```
 /api/auth        # POST /login, GET /me
@@ -174,7 +174,7 @@ Toutes les routes sont protégées par `authenticate`. Certaines nécessitent `a
 
 ### Middleware auth
 - `authenticate` — vérifie le token JWT Bearer, injecte `req.user`
-- `authorize(...roles)` — restreint aux rôles spécifiés (`ADMIN`, `MANAGER`, `RECEPTIONIST`, `HOUSEKEEPING`)
+- `can(permissionKey)` — vérifie que le rôle de `req.user` a la permission demandée, via la matrice `Permission`/`RolePermission` en base (cache mémoire, voir `lib/permissions.ts`) — remplace l'ancien `authorize(...roles)` codé en dur, configurable sans redéploiement depuis l'écran `/permissions` (ADMIN uniquement)
 
 ### Gestion des erreurs (`errors/`, `middleware/asyncHandler.ts`, `middleware/errorHandler.ts`)
 Chaque handler de route est enveloppé dans `asyncHandler(...)`, qui capture les rejets de promesses et les transmet à `errorHandler` (monté en dernier dans `server.ts`) — **Express 4 ne rattrape pas nativement les rejets async**, sans ce wrapper une seule requête invalide plante tout le process. Les services lèvent des `AppError` (`NotFoundError`, `ConflictError`, `ForbiddenError`, `UnauthorizedError`) que `errorHandler` traduit en réponse JSON avec le bon code HTTP ; les erreurs Prisma connues (P2025/P2002/P2003) sont aussi mappées en filet de sécurité. Un `process.on('unhandledRejection', ...)` couvre le code hors cycle de requête (ex. `lib/scheduler.ts`).
@@ -195,7 +195,7 @@ res.json(await xxxService.someMethod(parsed.data));
 ## Schéma Prisma
 
 Modèles principaux :
-- `User` — staff (rôles : ADMIN, MANAGER, RECEPTIONIST, HOUSEKEEPING)
+- `User` — staff (rôles : ADMIN, MANAGER, GERANT, HOUSEKEEPING)
 - `Guest` — clients hôtel
 - `GuestNote` — notes sur un client
 - `RoomType` + `Room` + `RoomFeature` — catalogue chambres
@@ -217,17 +217,22 @@ npm run db:studio     # interface visuelle Prisma Studio
 ## Logique métier importante
 
 ### Statuts de réservation
-Les bookings ont un `status` DB (`CONFIRMED`, `CHECKED_IN`, `AWAITING`, `CANCELLED`, `CHECKED_OUT`) et un `effectiveStatus` calculé côté client :
+Les bookings ont un `status` DB (`CONFIRMED`, `CHECKED_IN`, `AWAITING`, `CANCELLED`, `CHECKED_OUT_UNPAID`, `CHECKED_OUT_PAID`, `CLOSED`, + `CHECKED_OUT` legacy conservé pour les lignes historiques mais plus jamais écrit) et un `effectiveStatus` calculé côté serveur (`booking.service.ts: computeEffectiveStatus`) :
 - `upcoming` — confirmé, arrivée future
 - `due_checkin` — arrivée aujourd'hui, pas encore checké
-- `in_progress` / `checked_in` — actuellement en séjour
-- `overdue` — départ dépassé sans checkout
-- `checked_out` / `cancelled`
+- `in_progress` / `overdue` — actuellement en séjour / départ dépassé sans checkout
+- `checked_out_unpaid` / `checked_out_paid` — terminé, selon que la facture est soldée ou non au moment du check-out
+- `closed` — clôturé définitivement (voir ci-dessous)
+- `cancelled`
 
-Mapping dans `src/lib/bookingStatus.ts`.
+Mapping dans `client/src/lib/bookingStatus.ts`.
+
+Le check-out (`PATCH /:id/status` avec `status: 'CHECKED_OUT'`, `can('bookings.update_status')`, FRONT_DESK) ne persiste jamais `CHECKED_OUT` littéralement : le service résout vers `CHECKED_OUT_UNPAID` ou `CHECKED_OUT_PAID` selon la facture au moment du geste. Un paiement enregistré ou annulé après coup (`invoice.service.ts: addPayment`/`voidPayment`) resynchronise automatiquement ce statut via `resyncCheckoutPaymentStatus` — jamais `CLOSED`, qui est final. La clôture (`PATCH /:id/close`, `can('bookings.close')`, ADMIN/MANAGER uniquement) n'est possible que depuis `CHECKED_OUT_PAID` (409 sinon).
+
+`server/src/lib/bookingStatus.ts` centralise `TERMINAL_STATUSES` (tous les statuts où une chambre n'est plus occupée) — à réutiliser plutôt que de recopier la liste dans une nouvelle vérification de conflit.
 
 ### Liste des réservations — filtre par défaut
-`GET /api/bookings` (`server/src/routes/bookings.ts`) exclut par défaut les réservations `CHECKED_OUT`/`CANCELLED` — sauf si un `status` explicite ou une `search` est fourni. Combiné au tri par défaut (`arrival asc`), ça fait remonter en premier les séjours en cours/en retard puis à venir, sans jamais montrer les anciennes réservations clôturées tant qu'on ne cherche pas explicitement. Ne pas retirer cette exclusion sans réintroduire un tri custom, sinon les vieilles réservations (les plus anciennes en date d'arrivée) redominent la première page.
+`GET /api/bookings` (`server/src/routes/bookings.ts`) exclut par défaut `CANCELLED`/`CHECKED_OUT_PAID`/`CLOSED` — sauf si un `status` explicite ou une `search` est fourni. `CHECKED_OUT_UNPAID` reste visible tant qu'il reste un paiement à suivre. Combiné au tri par défaut (`arrival asc`), ça fait remonter en premier les séjours en cours/en retard puis à venir, sans jamais montrer les anciennes réservations clôturées ou soldées tant qu'on ne cherche pas explicitement. Ne pas retirer cette exclusion sans réintroduire un tri custom, sinon les vieilles réservations (les plus anciennes en date d'arrivée) redominent la première page.
 
 ### Facturation
 - TVA configurée globalement via `HotelConfig.taxRate` (GET/PATCH `/api/settings`)
@@ -257,7 +262,7 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 ## Branches Git
 
 - `main` — branche de production stable
-- `feature/reservation-calendar-and-implementation` — branche courante
+- `develop` — branche d'intégration ; les branches `feature/*` et `bugfix/*` sont mergées ici via PR avant d'être portées sur `main`
 
 ---
 
@@ -270,5 +275,3 @@ cd client && npx tsc --noEmit
 # Vérification TypeScript serveur
 cd server && npx tsc --noEmit
 ```
-
-Erreurs pré-existantes, hors scope (à ne pas essayer de corriger sans qu'on le demande) : `src/mockData.ts`, `AddGuestModal.tsx` (notification `amount` manquant), `Reservations.tsx` (`BLOCK_CLS.checked_in` — clé absente du type `EffectiveStatus`).

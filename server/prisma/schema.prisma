@@ -14,7 +14,7 @@ model User {
   email             String?       @unique
   password          String
   name              String
-  role              Role          @default(RECEPTIONIST)
+  role              Role          @default(GERANT)
   status            UserStatus    @default(ACTIVE)
   avatar            String?
   joinedDate        DateTime      @default(now())
@@ -26,12 +26,15 @@ model User {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   bookingNotes      BookingNote[]
+  journalEntries    JournalEntry[]
+  approvedExpenses  Expense[]
+  auditLogs         AuditLog[]
 }
 
 enum Role {
   ADMIN
   MANAGER
-  RECEPTIONIST
+  GERANT
   HOUSEKEEPING
 }
 
@@ -175,7 +178,10 @@ enum BookingStatus {
   CHECKED_IN
   AWAITING
   CANCELLED
-  CHECKED_OUT
+  CHECKED_OUT        // legacy — plus jamais écrit par le code, conservé pour les lignes historiques
+  CHECKED_OUT_UNPAID
+  CHECKED_OUT_PAID
+  CLOSED
 }
 
 // ─── Suppléments facturables (lit d'appoint, chauffage, etc.) ────
@@ -268,6 +274,11 @@ model Payment {
   amount        Int
   method        PaymentMethod
   status        PaymentStatus @default(COMPLETED)
+  // Compte de trésorerie réel qui a reçu l'argent (caisse, Mvola, Orange Money N°x...) — distinct
+  // de `method` qui reste le canal de paiement affiché au client (une même méthode Orange Money
+  // peut atterrir sur l'un ou l'autre des 2 numéros).
+  account       LedgerAccount @relation(fields: [accountId], references: [id])
+  accountId     String
   reference     String?
   paidAt        DateTime      @default(now())
   notes         String?
@@ -287,4 +298,154 @@ enum PaymentStatus {
   PENDING
   FAILED
   REFUNDED
+}
+
+// ─── Comptabilité (partie double) ───────────────────────────────
+
+model LedgerAccount {
+  id            String            @id @default(cuid())
+  code          String            @unique
+  name          String
+  type          LedgerAccountType
+  // Comptes qui représentent un lieu physique d'argent (caisse, banque, mobile money) — ce sont
+  // eux qui alimentent le tableau de bord "où est l'argent", par opposition aux comptes de
+  // charges/produits/tiers qui n'ont pas de solde en espèces.
+  isCashAccount Boolean           @default(false)
+  // Méthodes de paiement que ce compte peut recevoir (ex: Caisse -> [CASH]) — filtre le
+  // sélecteur de compte du formulaire de paiement selon la méthode choisie. Vide pour les
+  // méthodes sans compte dédié pour l'instant (CARD/BANK_TRANSFER/ONLINE, pas de banque encore).
+  allowedMethods PaymentMethod[]  @default([])
+  parent        LedgerAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
+  parentId      String?
+  children      LedgerAccount[]   @relation("AccountHierarchy")
+  isActive      Boolean           @default(true)
+  lines         JournalLine[]
+  payments      Payment[]
+  expenses      Expense[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+enum LedgerAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model JournalEntry {
+  id               String        @id @default(cuid())
+  number           String        @unique
+  date             DateTime      @default(now())
+  memo             String?
+  source           JournalSource
+  relatedPaymentId String?
+  relatedInvoiceId String?
+  relatedExpenseId String?
+  postedBy         User?         @relation(fields: [postedById], references: [id])
+  postedById       String?
+  lines            JournalLine[]
+  createdAt        DateTime      @default(now())
+}
+
+enum JournalSource {
+  INVOICE
+  INVOICE_CANCEL
+  PAYMENT
+  PAYMENT_VOID
+  EXPENSE
+  TRANSFER
+  CONTRIBUTION
+  MANUAL
+}
+
+model JournalLine {
+  id          String        @id @default(cuid())
+  entry       JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId     String
+  account     LedgerAccount @relation(fields: [accountId], references: [id])
+  accountId   String
+  debit       Int           @default(0)
+  credit      Int           @default(0)
+  description String?
+
+  @@index([accountId])
+  @@index([entryId])
+}
+
+model Expense {
+  id           String          @id @default(cuid())
+  category     ExpenseCategory
+  amount       Int
+  description  String
+  paidFrom     LedgerAccount   @relation(fields: [paidFromId], references: [id])
+  paidFromId   String
+  approvedBy   User?           @relation(fields: [approvedById], references: [id])
+  approvedById String?
+  incurredAt   DateTime        @default(now())
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+enum ExpenseCategory {
+  SUPPLIES
+  UTILITIES
+  MAINTENANCE
+  MARKETING
+  SALARIES
+  OTHER
+}
+
+// ─── Audit ───────────────────────────────────────────────────────
+
+// Capture générique de toute requête mutante (POST/PATCH/PUT/DELETE) authentifiée, posée par un
+// middleware global plutôt qu'appelée à la main dans chaque service — sinon "toutes les actions"
+// suppose de retoucher chaque route existante et d'y penser pour chaque future. En contrepartie,
+// pas de texte métier lisible par écriture (ex: "Jean a confirmé la réservation X") : juste la
+// requête brute (méthode, chemin, corps assaini, code retour), ce qui reste exploitable pour
+// répondre à "qui a fait quoi, quand" sans devoir maintenir une liste de messages à jour.
+model AuditLog {
+  id           String   @id @default(cuid())
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId       String?
+  method       String
+  path         String
+  resourceType String?
+  resourceId   String?
+  statusCode   Int
+  body         Json?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+}
+
+// ─── Permissions ─────────────────────────────────────────────────
+
+// Catalogue des actions protégées de l'API — une entrée par permission logique (parfois
+// plusieurs routes derrière une même clé quand elles ont toujours eu le même ensemble de rôles,
+// ex: "bookings.manage_rooms" couvre 5 routes d'ajout/retrait de chambre et de supplément).
+// `domain` regroupe pour un futur écran d'administration (Phase 3) — ex: "bookings", "invoices".
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  domain      String
+  description String
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+// Les 4 rôles restent l'enum Role existant (décision Phase 0 : pas de rôles personnalisés) — donc
+// pas de table Role séparée, juste la liaison Role (enum) x Permission.
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         Role
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+  createdAt    DateTime   @default(now())
+
+  @@unique([role, permissionId])
+  @@index([role])
 }

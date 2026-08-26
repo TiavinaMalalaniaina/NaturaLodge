@@ -11,7 +11,7 @@ export const staffFormSchema = z
     email:           z.string().email('Adresse email invalide').optional().or(z.literal('')),
     password:        z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
     confirmPassword: z.string(),
-    role:            z.enum(['admin', 'manager', 'receptionist', 'housekeeping']),
+    role:            z.enum(['admin', 'manager', 'gerant', 'housekeeping']),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas',

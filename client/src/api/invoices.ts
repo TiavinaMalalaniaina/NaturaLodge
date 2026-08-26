@@ -1,4 +1,5 @@
 import { api } from './client';
+import { EffectiveStatus } from './bookings';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ export interface InvoicePayment {
   notes:       string | null;
   paidAt:      string;
   processedBy: { id: string; name: string; role: string };
+  account:     { id: string; code: string; name: string };
 }
 
 export interface Invoice {
@@ -44,7 +46,9 @@ export interface Invoice {
     arrival:   string;
     departure: string;
     guest:     { id: string; name: string; email: string };
-    rooms: {
+    // Présents sur la liste (GET /invoices) — absents sur le détail (booking.rooms y est, pas ça).
+    effectiveStatus?: EffectiveStatus;
+    rooms?: {
       room:     { id: string; number: string; rateOverride: number | null; roomType: { name: string } };
       roomRate: number;
       arrival:  string;
@@ -121,6 +125,7 @@ export const generateInvoice = async (payload: GeneratePayload): Promise<Invoice
 export interface PaymentPayload {
   amount:    number;
   method:    string;
+  accountId: string;
   reference?: string;
   notes?:    string;
 }

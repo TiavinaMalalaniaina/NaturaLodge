@@ -6,10 +6,18 @@
     "guests":        "Guests",
     "amenities":     "Amenities",
     "invoices":      "Invoices",
+    "expenses":      "Expenses",
+    "treasury":      "Treasury",
+    "reports":       "Reports",
     "staff":         "Staff Cabinet",
     "settings":      "Settings",
     "logout":        "Sign out",
-    "portal":        "Management Portal"
+    "portal":        "Management Portal",
+    "groupGeneral":    "General",
+    "groupAccounting": "Accounting",
+    "groupAdmin":      "Administration",
+    "auditLog":        "Audit Log",
+    "permissions":     "Permissions"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
@@ -61,6 +69,9 @@
     "confirmed":    "Confirmed",
     "checkedIn":    "Checked In",
     "checkedOut":   "Checked Out",
+    "checkedOutUnpaid": "Checked Out — Unpaid",
+    "checkedOutPaid":   "Checked Out — Paid",
+    "closed":       "Closed",
     "cancelled":    "Cancelled",
     "awaiting":     "Pending confirmation",
     "upcoming":     "Upcoming",
@@ -102,7 +113,8 @@
     "notifyTeam":        "Notify Team",
     "teamNotified":      "Team Notified",
     "pendingPayments":   "Pending Payments",
-    "noPendingPayments": "No pending payments"
+    "noPendingPayments": "No pending payments",
+    "viewTreasury":      "View all"
   },
   "reservations": {
     "title":                   "Reservations",
@@ -146,6 +158,8 @@
     "cannotRemoveLastRoom":    "Cannot remove the last room",
     "removeRoomTitle":         "Remove this room?",
     "removeRoomMessage":       "The room will be removed from the booking. This action cannot be undone.",
+    "confirmReassignTitle":    "Confirm changes?",
+    "confirmReassignMessage":  "This will update the room, dates and/or rate for this booking.",
     "newStay":                 "New Stay",
     "reservationEntry":        "Reservation Entry",
     "selectGuest":             "Select Guest Profile",
@@ -211,7 +225,9 @@
     "noDescription":       "No description provided.",
     "maintenanceConflicts":     "{{count}} active booking(s) on this room",
     "maintenanceConflictsNote": "These bookings must be reassigned or cancelled.",
-    "roomInMaintenance":        "This room is under maintenance and cannot be booked."
+    "roomInMaintenance":        "This room is under maintenance and cannot be booked.",
+    "confirmMaintenanceTitle":   "Flag for maintenance?",
+    "confirmMaintenanceMessage": "This room won't be bookable while under maintenance."
   },
   "roomTypes": {
     "title":               "Room Types",
@@ -270,6 +286,7 @@
     "backToReservations":   "Back to Reservations",
     "revertCheckIn":        "Revert Check-in",
     "forceOut":             "Force Out",
+    "close":                "Close",
     "reassign":             "Reassign",
     "revertCancelling":     "Revert Cancelling",
     "guest":                "Guest",
@@ -282,7 +299,19 @@
     "addExtra":             "Add an extra",
     "chooseExtra":          "Choose an extra…",
     "extraQuantity":        "Qty",
-    "removeExtra":          "Remove this extra"
+    "removeExtra":          "Remove this extra",
+    "confirmCheckinTitle":       "Confirm check-in?",
+    "confirmCheckinMessage":     "The guest will be checked in and the room marked occupied.",
+    "confirmCheckoutTitle":      "Confirm check-out?",
+    "confirmCheckoutMessage":    "The room will be freed and become available again.",
+    "confirmForceOutTitle":      "Force check-out?",
+    "confirmForceOutMessage":    "This stay is overdue. This will immediately close the stay and free the room.",
+    "confirmCloseTitle":         "Close this booking?",
+    "confirmCloseMessage":       "The booking will be permanently archived. This action cannot be undone.",
+    "confirmRevertTitle":        "Revert check-in?",
+    "confirmRevertMessage":      "The stay will go back to confirmed, as before check-in.",
+    "confirmRevertCancelTitle":  "Revert cancellation?",
+    "confirmRevertCancelMessage":"The booking will go back to pending confirmation."
   },
   "extras": {
     "title":            "Extras",
@@ -327,6 +356,7 @@
     "noPayments":            "No payments recorded",
     "amount":                "Amount",
     "method":                "Method",
+    "account":               "Received into",
     "reference":             "Reference",
     "voidPayment":           "Void",
     "taxRate":               "VAT Rate (%)",
@@ -363,6 +393,70 @@
     "status_pending":     "Unpaid",
     "status_failed":      "Failed",
     "status_refunded":    "Refunded"
+  },
+  "expenses": {
+    "title":              "Expenses",
+    "count":              "{{count}} expense(s)",
+    "record":             "Record an expense",
+    "category":           "Category",
+    "description":        "Description",
+    "date":               "Date",
+    "from":               "From",
+    "to":                 "To",
+    "empty":              "No expenses recorded",
+    "category_supplies":    "Supplies",
+    "category_utilities":   "Utilities",
+    "category_maintenance": "Maintenance",
+    "category_marketing":   "Marketing",
+    "category_salaries":    "Salaries",
+    "category_other":       "Other"
+  },
+  "treasury": {
+    "title":             "Treasury",
+    "totalBalance":      "Total balance",
+    "from":              "From",
+    "to":                "To",
+    "revenueInvoiced":   "Revenue invoiced",
+    "revenueCollected":  "Revenue collected",
+    "totalExpenses":     "Expenses",
+    "netCashFlow":       "Net result",
+    "statement":         "Statement",
+    "noEntries":         "No movement in this period",
+    "transfer":          "Transfer",
+    "fromAccount":       "From account",
+    "toAccount":         "To account",
+    "sameAccountError":  "Source and destination accounts must be different.",
+    "transferFee":       "Transfer fee",
+    "transferFeeHint":   "Added on top and charged to the source account — the destination account receives the full amount, the fee is booked as an expense.",
+    "contribution":      "Contribution",
+    "contributionHint":  "Money injected from outside the hotel (owner contribution...) — credited to the capital account, not operating revenue."
+  },
+  "reports": {
+    "title":                 "Reports",
+    "exportCsv":             "Export ledger (CSV)",
+    "balanceSheet":          "Balance sheet",
+    "asOf":                  "As of",
+    "assets":                "Assets",
+    "liabilitiesAndEquity":  "Liabilities & Equity",
+    "netIncomeToDate":       "Retained earnings (unclosed)",
+    "total":                 "Total",
+    "noData":                "No data",
+    "unbalanced":            "The balance sheet doesn't balance — report this, it shouldn't happen.",
+    "incomeStatement":       "Income statement",
+    "revenue":               "Revenue",
+    "expenses":              "Expenses",
+    "netIncome":             "Net income"
+  },
+  "auditLog": {
+    "title":        "Audit Log",
+    "count":        "{{count}} action(s)",
+    "resourceType": "Resource",
+    "empty":        "No actions recorded in this period"
+  },
+  "permissions": {
+    "title":  "Permissions",
+    "hint":   "Who can do what, per role — editable without a redeploy.",
+    "action": "Action"
   },
   "settings": {
     "title":             "Settings",

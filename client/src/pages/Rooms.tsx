@@ -17,12 +17,15 @@ import { ROOM_STATUS_BORDER_CLASS, ROOM_STATUS_BADGE_CLASS } from '../lib/status
 import { FilterChip } from '../components/FilterChip';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
 
 type StatusTab = 'all' | 'available' | 'occupied' | 'maintenance';
 
 export const Rooms: React.FC = () => {
   const navigate  = useNavigate();
   const { t }     = useTranslation();
+  const { can }   = useAuth();
   const { data: apiRooms, isLoading, isError } = useRooms(undefined, { refetchInterval: 60_000 });
   const { data: roomTypes = [] } = useRoomTypes();
 
@@ -34,6 +37,7 @@ export const Rooms: React.FC = () => {
   const [isExtraModalOpen, setIsExtraModalOpen]             = useState(false);
   const [activeDropdown, setActiveDropdown]                 = useState<string | null>(null);
   const [conflictsInfo, setConflictsInfo]                   = useState<{ roomNumber: string; list: ConflictBooking[] } | null>(null);
+  const [maintenanceTarget, setMaintenanceTarget]           = useState<Room | null>(null);
 
   const [statusTab,       setStatusTab]       = useState<StatusTab>('all');
   const [roomTypeFilter,  setRoomTypeFilter]  = useState('ALL');
@@ -102,24 +106,30 @@ export const Rooms: React.FC = () => {
           >
             <Tags className="w-4 h-4" /> {t('roomTypes.title')}
           </button>
-          <button
-            onClick={() => setIsFeatureModalOpen(true)}
-            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Layers className="w-4 h-4" /> Attributes
-          </button>
-          <button
-            onClick={() => setIsExtraModalOpen(true)}
-            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Sparkles className="w-4 h-4" /> Suppléments
-          </button>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> {t('rooms.addRoom')}
-          </button>
+          {can('rooms.view') && (
+            <button
+              onClick={() => setIsFeatureModalOpen(true)}
+              className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Layers className="w-4 h-4" /> Attributes
+            </button>
+          )}
+          {can('extras.view') && (
+            <button
+              onClick={() => setIsExtraModalOpen(true)}
+              className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" /> Suppléments
+            </button>
+          )}
+          {can('rooms.create') && (
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> {t('rooms.addRoom')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -253,17 +263,25 @@ export const Rooms: React.FC = () => {
                       transition={{ duration: 0.1 }}
                       className="absolute right-0 top-7 z-20 w-48 bg-white border border-stone-200 rounded-2xl shadow-xl overflow-hidden"
                     >
-                      <button
-                        onClick={() => { handleMaintenanceToggle(room); setActiveDropdown(null); }}
-                        disabled={updateStatus.isPending}
-                        className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 transition-colors disabled:opacity-40"
-                      >
-                        {room.status === 'maintenance'
-                          ? <><CheckCircle className="w-3.5 h-3.5 text-teal-500" /> {t('rooms.readyForService')}</>
-                          : <><Construction className="w-3.5 h-3.5 text-amber-500" /> {t('rooms.flagForMaintenance')}</>
-                        }
-                      </button>
-                      <div className="h-px bg-stone-100" />
+                      {can('rooms.update') && (
+                        <>
+                          <button
+                            onClick={() => {
+                              if (room.status === 'maintenance') handleMaintenanceToggle(room);
+                              else setMaintenanceTarget(room);
+                              setActiveDropdown(null);
+                            }}
+                            disabled={updateStatus.isPending}
+                            className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 transition-colors disabled:opacity-40"
+                          >
+                            {room.status === 'maintenance'
+                              ? <><CheckCircle className="w-3.5 h-3.5 text-teal-500" /> {t('rooms.readyForService')}</>
+                              : <><Construction className="w-3.5 h-3.5 text-amber-500" /> {t('rooms.flagForMaintenance')}</>
+                            }
+                          </button>
+                          <div className="h-px bg-stone-100" />
+                        </>
+                      )}
                       <button
                         onClick={() => { navigate(`/rooms/${room.id}`); setActiveDropdown(null); }}
                         className="w-full flex items-center gap-2.5 px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 transition-colors text-on-surface-variant"
@@ -293,7 +311,7 @@ export const Rooms: React.FC = () => {
                   {formatCurrency(room.rate)}
                   {room.rateOverride && <span className="text-[10px] text-on-surface-variant/40 font-sans ml-1">(spécifique)</span>}
                 </p>
-                {room.status === 'available' && (
+                {room.status === 'available' && can('bookings.create') && (
                   <button
                     onClick={e => { e.stopPropagation(); navigate(`/reservations/new?roomId=${room.id}&arrival=${todayLocalStr()}`); }}
                     className="p-2 bg-teal-50 text-status-available rounded-lg hover:bg-teal-600 hover:text-white transition-all border border-teal-100 cursor-pointer"
@@ -331,16 +349,18 @@ export const Rooms: React.FC = () => {
         )}
 
         {/* Add card */}
-        <motion.div
-          whileHover={{ scale: 0.98 }}
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-stone-50 rounded-3xl border-2 border-dashed border-stone-200 flex flex-col items-center justify-center p-12 group cursor-pointer hover:border-primary/40 transition-all opacity-60 hover:opacity-100"
-        >
-          <div className="w-16 h-16 rounded-full bg-white border border-stone-200 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-            <Plus className="w-8 h-8" />
-          </div>
-          <p className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('rooms.addRoom')}</p>
-        </motion.div>
+        {can('rooms.create') && (
+          <motion.div
+            whileHover={{ scale: 0.98 }}
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-stone-50 rounded-3xl border-2 border-dashed border-stone-200 flex flex-col items-center justify-center p-12 group cursor-pointer hover:border-primary/40 transition-all opacity-60 hover:opacity-100"
+          >
+            <div className="w-16 h-16 rounded-full bg-white border border-stone-200 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+              <Plus className="w-8 h-8" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('rooms.addRoom')}</p>
+          </motion.div>
+        )}
       </div>
 
       {/* ── Modal conflits maintenance ── */}
@@ -397,6 +417,18 @@ export const Rooms: React.FC = () => {
         )}
       </AnimatePresence>
 
+      <ConfirmModal
+        isOpen={!!maintenanceTarget}
+        onClose={() => setMaintenanceTarget(null)}
+        onConfirm={() => {
+          if (maintenanceTarget) handleMaintenanceToggle(maintenanceTarget);
+          setMaintenanceTarget(null);
+        }}
+        title={t('rooms.confirmMaintenanceTitle')}
+        message={t('rooms.confirmMaintenanceMessage')}
+        variant="warning"
+        isPending={updateStatus.isPending}
+      />
       <AddRoomModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}

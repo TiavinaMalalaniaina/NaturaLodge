@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 import { ConflictBooking } from '../api/rooms';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Wifi,
@@ -25,6 +27,7 @@ export const RoomDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { can } = useAuth();
   const { data: roomData, isLoading, isError } = useRoom(id!);
   const { data: allFeatures = [] } = useRoomFeatures();
   const updateStatus = useUpdateRoomStatus();
@@ -33,6 +36,7 @@ export const RoomDetail: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
   const [roomState, setRoomState]                 = useState<Room | undefined>(undefined);
   const [conflicts, setConflicts]                 = useState<ConflictBooking[]>([]);
+  const [confirmMaintenanceOpen, setConfirmMaintenanceOpen] = useState(false);
 
   const room = roomState ?? roomData;
 
@@ -77,22 +81,26 @@ export const RoomDetail: React.FC = () => {
                   room.status === 'maintenance' ? "text-status-maintenance" : "text-status-available"
                 )}>{t(`status.${room.status}`, room.status)}</span>
               </p>
-              <div className="h-3 w-[1px] bg-stone-200" />
-              <button
-                onClick={handleMaintenanceToggle}
-                disabled={updateStatus.isPending}
-                className={cn(
-                  "flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40",
-                  room.status === 'maintenance' ? "text-teal-600" : "text-status-maintenance hover:underline"
-                )}
-              >
-                {room.status === 'maintenance' ? t('rooms.readyForService') : t('rooms.flagForMaintenance')}
-              </button>
+              {can('rooms.update') && (
+                <>
+                  <div className="h-3 w-[1px] bg-stone-200" />
+                  <button
+                    onClick={() => room.status === 'maintenance' ? handleMaintenanceToggle() : setConfirmMaintenanceOpen(true)}
+                    disabled={updateStatus.isPending}
+                    className={cn(
+                      "flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest transition-all cursor-pointer disabled:opacity-40",
+                      room.status === 'maintenance' ? "text-teal-600" : "text-status-maintenance hover:underline"
+                    )}
+                  >
+                    {room.status === 'maintenance' ? t('rooms.readyForService') : t('rooms.flagForMaintenance')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
-          {room.status === 'available' && (
+          {room.status === 'available' && can('bookings.create') && (
             <button
               onClick={() => {
                 const now = new Date();
@@ -104,12 +112,14 @@ export const RoomDetail: React.FC = () => {
               <Zap className="w-3.5 h-3.5 fill-current" /> {t('rooms.instantBook')}
             </button>
           )}
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-primary-container shadow-lg shadow-primary/10 transition-all cursor-pointer"
-          >
-            <Edit className="w-3.5 h-3.5" /> {t('rooms.modifyInventory')}
-          </button>
+          {can('rooms.update') && (
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-primary-container shadow-lg shadow-primary/10 transition-all cursor-pointer"
+            >
+              <Edit className="w-3.5 h-3.5" /> {t('rooms.modifyInventory')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -260,6 +270,15 @@ export const RoomDetail: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         room={room}
         onUpdate={(updated) => setRoomState(updated)}
+      />
+      <ConfirmModal
+        isOpen={confirmMaintenanceOpen}
+        onClose={() => setConfirmMaintenanceOpen(false)}
+        onConfirm={() => { handleMaintenanceToggle(); setConfirmMaintenanceOpen(false); }}
+        title={t('rooms.confirmMaintenanceTitle')}
+        message={t('rooms.confirmMaintenanceMessage')}
+        variant="warning"
+        isPending={updateStatus.isPending}
       />
     </motion.div>
   );

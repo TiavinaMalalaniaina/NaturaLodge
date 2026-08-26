@@ -4,6 +4,7 @@ import { UserPlus, Search, Shield, MoreVertical, Mail, Clock, Users, UserCheck, 
 import { cn } from '../lib/utils';
 import { useStaff, useUpdateStaff } from '../hooks/useStaff';
 import { AddStaffModal } from '../components/AddStaffModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { STAFF_ROLE_CLASS, STAFF_STATUS_DOT_CLASS } from '../lib/statusColors';
 import { FilterChip } from '../components/FilterChip';
@@ -11,18 +12,20 @@ import { useAuth } from '../context/AuthContext';
 import { getApiErrorMessage } from '../lib/apiError';
 import { StaffRole } from '../types';
 
-const ROLES: Array<'ALL' | StaffRole> = ['ALL', 'admin', 'manager', 'receptionist', 'housekeeping'];
+const ROLES: Array<'ALL' | StaffRole> = ['ALL', 'admin', 'manager', 'gerant', 'housekeeping'];
 
 export const Staff: React.FC = () => {
   const { data: staffList = [], isLoading, isError } = useStaff();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const updateStaff = useUpdateStaff();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | StaffRole>('ALL');
   const [apiError, setApiError] = useState('');
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; name: string; role: StaffRole } | null>(null);
 
   const canManageRoles = user?.role === 'ADMIN';
+  const canCreateStaff = can('staff.create');
 
   const filteredStaff = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -52,12 +55,14 @@ export const Staff: React.FC = () => {
           <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-1 leading-none">Internal Cabinet</h2>
           <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/40">Manage staff access & roles</p>
         </div>
-        <button
-           onClick={() => setIsAddModalOpen(true)}
-           className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
-        >
-          <UserPlus className="w-4 h-4" /> Grant Access
-        </button>
+        {canCreateStaff && (
+          <button
+             onClick={() => setIsAddModalOpen(true)}
+             className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
+          >
+            <UserPlus className="w-4 h-4" /> Grant Access
+          </button>
+        )}
       </div>
 
       {/* Stats Grid */}
@@ -146,7 +151,7 @@ export const Staff: React.FC = () => {
                       <select
                         value={member.role}
                         disabled={updateStaff.isPending}
-                        onChange={e => handleRoleChange(member.id, e.target.value as StaffRole)}
+                        onChange={e => setPendingRoleChange({ id: member.id, name: member.name, role: e.target.value as StaffRole })}
                         className={cn(
                           "text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border outline-none cursor-pointer disabled:opacity-40",
                           STAFF_ROLE_CLASS[member.role] ?? "bg-stone-50 text-stone-500 border-stone-200"
@@ -192,6 +197,21 @@ export const Staff: React.FC = () => {
         </div>
       </div>
       <AddStaffModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+      <ConfirmModal
+        isOpen={!!pendingRoleChange}
+        onClose={() => setPendingRoleChange(null)}
+        onConfirm={() => {
+          if (pendingRoleChange) handleRoleChange(pendingRoleChange.id, pendingRoleChange.role);
+          setPendingRoleChange(null);
+        }}
+        title="Change role?"
+        message={pendingRoleChange
+          ? `${pendingRoleChange.name} will be granted "${pendingRoleChange.role === 'admin' ? 'Superuser' : pendingRoleChange.role}" access.`
+          : ''}
+        confirmLabel="Confirm"
+        variant="warning"
+        isPending={updateStaff.isPending}
+      />
     </div>
   );
 };

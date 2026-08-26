@@ -6,10 +6,18 @@
     "guests":        "Vahiny",
     "amenities":     "Fitaovana",
     "invoices":      "Faktiora",
+    "expenses":      "Fandaniana",
+    "treasury":      "Volam-bola",
+    "reports":       "Tatitra",
     "staff":         "Mpiasa",
     "settings":      "Fikirana",
     "logout":        "Hivoaka",
-    "portal":        "Valan-toerana fitantanana"
+    "portal":        "Valan-toerana fitantanana",
+    "groupGeneral":    "Ankapobeny",
+    "groupAccounting": "Kaonty",
+    "groupAdmin":      "Fitantanana",
+    "auditLog":        "Diarin'ny asa",
+    "permissions":     "Fahazoan-dalana"
   },
   "topbar": {
     "searchPlaceholder": "Karohy mpiasa, efitrano, vahiny…",
@@ -61,6 +69,9 @@
     "confirmed":    "Voamafy",
     "checkedIn":    "Niditra",
     "checkedOut":   "Nivoaka",
+    "checkedOutUnpaid": "Nivoaka — Tsy naloa",
+    "checkedOutPaid":   "Nivoaka — Naloa",
+    "closed":       "Voarindra",
     "cancelled":    "Foana",
     "awaiting":     "Miandry fanamafisana",
     "upcoming":     "Ho avy",
@@ -102,7 +113,8 @@
     "notifyTeam":        "Mampandre ny ekipa",
     "teamNotified":      "Ekipa nampandrenesana",
     "pendingPayments":   "Fandoavana miandry",
-    "noPendingPayments": "Tsy misy fandoavana miandry"
+    "noPendingPayments": "Tsy misy fandoavana miandry",
+    "viewTreasury":      "Hijery ny rehetra"
   },
   "reservations": {
     "title":                   "Firesevana",
@@ -146,6 +158,8 @@
     "cannotRemoveLastRoom":    "Tsy azo esorina ny efitrano farany",
     "removeRoomTitle":         "Esorina ve ity efitrano ity?",
     "removeRoomMessage":       "Hesorina amin'ny fanjifana ny efitrano. Tsy azo averina ity ezaka ity.",
+    "confirmReassignTitle":    "Hanamafy ny fanovana?",
+    "confirmReassignMessage":  "Hovaovaina ny efitrano, ny daty ary/na ny vidiny amin'ity firesevana ity.",
     "newStay":                 "Fiatoana vaovao",
     "reservationEntry":        "Fanoratana firesevana",
     "selectGuest":             "Misafidy mombamomba",
@@ -211,7 +225,9 @@
     "noDescription":       "Tsy misy famaritana.",
     "maintenanceConflicts":     "{{count}} firesevana mavitrika amin'ity efitrano ity",
     "maintenanceConflictsNote": "Ireto firesevana ireto dia tsy maintsy hovaliana na hofoanana.",
-    "roomInMaintenance":        "Ity efitrano ity dia amin'ny fikarakara ary tsy azo atao firesevana."
+    "roomInMaintenance":        "Ity efitrano ity dia amin'ny fikarakara ary tsy azo atao firesevana.",
+    "confirmMaintenanceTitle":   "Hametraka amin'ny fikarakara?",
+    "confirmMaintenanceMessage": "Tsy azo atao firesevana ity efitrano ity raha mbola amin'ny fikarakara."
   },
   "roomTypes": {
     "title":               "Karazana efitrano",
@@ -270,6 +286,7 @@
     "backToReservations":   "Hiverina amin'ny firesevana",
     "revertCheckIn":        "Manafoana ny fidirana",
     "forceOut":             "Anery hivoaka",
+    "close":                "Hamarana",
     "reassign":             "Hanova efitrano",
     "revertCancelling":     "Haverina",
     "guest":                "Vahiny",
@@ -282,7 +299,19 @@
     "addExtra":             "Hampiditra fanampiny",
     "chooseExtra":          "Misafidiana fanampiny…",
     "extraQuantity":        "Isa",
-    "removeExtra":          "Hanaisotra ity fanampiny ity"
+    "removeExtra":          "Hanaisotra ity fanampiny ity",
+    "confirmCheckinTitle":       "Hanamafy ny fidirana?",
+    "confirmCheckinMessage":     "Ho voarakitra ny vahiny ary ho feno ny efitrano.",
+    "confirmCheckoutTitle":      "Hanamafy ny fivoahana?",
+    "confirmCheckoutMessage":    "Hafahana ny efitrano ary ho afaka indray.",
+    "confirmForceOutTitle":      "Anery hivoaka?",
+    "confirmForceOutMessage":    "Tapitra ny fotoana. Hamarana ny fitoerana ary hafahana avy hatrany ny efitrano.",
+    "confirmCloseTitle":         "Hamarana ity firesevana ity?",
+    "confirmCloseMessage":       "Ho voarindra maharitra ny firesevana. Tsy azo averina intsony ity hetsika ity.",
+    "confirmRevertTitle":        "Manafoana ny fidirana?",
+    "confirmRevertMessage":      "Hiverina ho voamafy ny fitoerana.",
+    "confirmRevertCancelTitle":  "Foana ny fanafoanana?",
+    "confirmRevertCancelMessage":"Hiverina ho miandry fanamafisana ny firesevana."
   },
   "extras": {
     "title":            "Fanampiny",
@@ -327,6 +356,7 @@
     "noPayments":            "Tsy misy fandoavana voarakitra",
     "amount":                "Vola",
     "method":                "Fomba",
+    "account":               "Kaonty nandraisana",
     "reference":             "Laharana",
     "voidPayment":           "Foana",
     "taxRate":               "Tahan'ny hetra (%)",
@@ -363,6 +393,70 @@
     "status_pending":     "Tsy naloa",
     "status_failed":      "Tsy nety",
     "status_refunded":    "Naverina"
+  },
+  "expenses": {
+    "title":              "Fandaniana",
+    "count":              "Fandaniana {{count}}",
+    "record":             "Hisoratra fandaniana",
+    "category":           "Sokajy",
+    "description":        "Famaritana",
+    "date":               "Daty",
+    "from":               "Manomboka",
+    "to":                 "Hatramin'ny",
+    "empty":              "Tsy misy fandaniana voasoratra",
+    "category_supplies":    "Fitaovana",
+    "category_utilities":   "Rano, jiro",
+    "category_maintenance": "Fikojakojana",
+    "category_marketing":   "Marketing",
+    "category_salaries":    "Karama",
+    "category_other":       "Hafa"
+  },
+  "treasury": {
+    "title":             "Volam-bola",
+    "totalBalance":      "Totalin'ny vola",
+    "from":              "Manomboka",
+    "to":                "Hatramin'ny",
+    "revenueInvoiced":   "Vola voafaktiora",
+    "revenueCollected":  "Vola voaray",
+    "totalExpenses":     "Fandaniana",
+    "netCashFlow":       "Vokatra farany",
+    "statement":         "Tatitra",
+    "noEntries":         "Tsy misy fihetsiketsehana amin'ity vanim-potoana ity",
+    "transfer":          "Famindrana",
+    "fromAccount":       "Kaonty niaviana",
+    "toAccount":         "Kaonty nalefana",
+    "sameAccountError":  "Tsy maintsy samy hafa ny kaonty niaviana sy ny kaonty nalefana.",
+    "transferFee":       "Sarany famindrana",
+    "transferFeeHint":   "Ampiana ary alaina amin'ny kaonty niaviana — mandray ny totaliny feno ny kaonty nalefana, ny sarany dia lasa fandaniana.",
+    "contribution":      "Fandraisana anjara",
+    "contributionHint":  "Vola avy any ivelan'ny hotely (fandraisan'anjaran'ny tompony...) — mankany amin'ny kaontim-panjaka, tsy vola azo tamin'ny asa."
+  },
+  "reports": {
+    "title":                 "Tatitra",
+    "exportCsv":             "Hanondrana ny boky (CSV)",
+    "balanceSheet":          "Bilan",
+    "asOf":                  "Amin'ny daty",
+    "assets":                "Fananana",
+    "liabilitiesAndEquity":  "Trosa & Renivola",
+    "netIncomeToDate":       "Vokatra tsy voakajy hatramin'izao",
+    "total":                 "Totaly",
+    "noData":                "Tsy misy angona",
+    "unbalanced":            "Tsy mifanandrify ny bilan — ambara izany, tsy tokony hitranga.",
+    "incomeStatement":       "Fitanana ny vokatra",
+    "revenue":               "Vola miditra",
+    "expenses":              "Fandaniana",
+    "netIncome":             "Vokatra madio"
+  },
+  "auditLog": {
+    "title":        "Diarin'ny asa",
+    "count":        "Asa {{count}}",
+    "resourceType": "Loharano",
+    "empty":        "Tsy misy asa voarakitra amin'ity vanim-potoana ity"
+  },
+  "permissions": {
+    "title":  "Fahazoan-dalana",
+    "hint":   "Iza no afaka manao inona, isaky ny anjara asa — azo ovaina tsy misy fanavaozana.",
+    "action": "Asa"
   },
   "settings": {
     "title":             "Fikirana",

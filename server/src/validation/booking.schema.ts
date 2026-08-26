@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { BookingStatus } from '@prisma/client';
 
+// Statuts qu'un appelant peut demander explicitement. CHECKED_OUT_UNPAID/CHECKED_OUT_PAID/CLOSED
+// ne sont jamais acceptés en entrée — 'CHECKED_OUT' est résolu côté service vers l'un des deux
+// selon le paiement, et CLOSED passe uniquement par PATCH /:id/close (voir booking.service.ts).
+const requestedBookingStatusSchema = z.enum(['CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED', 'CHECKED_OUT']);
+
 export const roomEntryExtraSchema = z.object({
   extraId:  z.string().min(1),
   quantity: z.number().int().positive().default(1),
@@ -19,7 +24,7 @@ export const bookingSchema = z.object({
   arrival:     z.string().datetime(),
   departure:   z.string().datetime(),
   rooms:       z.array(roomEntrySchema).min(1),
-  status:      z.nativeEnum(BookingStatus).optional(),
+  status:      requestedBookingStatusSchema.optional(),
   totalAmount: z.number().int().positive(),
   notes:       z.string().optional(),
 });
@@ -36,7 +41,7 @@ export const bookingListSchema = z.object({
   order:     z.enum(['asc', 'desc']).default('asc'),
 });
 
-export const bookingStatusSchema = z.object({ status: z.nativeEnum(BookingStatus) });
+export const bookingStatusSchema = z.object({ status: requestedBookingStatusSchema });
 
 export const reassignSchema = z.object({
   oldRoomId: z.string().min(1),

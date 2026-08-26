@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { extraFormSchema, ExtraFormValues } from '../lib/schemas/extra.schema';
 import { Modal } from './Modal';
+import { useAuth } from '../context/AuthContext';
 
 interface ExtraManagerModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ const DEFAULT_VALUES: ExtraFormValues = { name: '', price: 0, pricing: 'one_time
 
 export const ExtraManagerModal: React.FC<ExtraManagerModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
+  const { can } = useAuth();
+  const canManage = can('extras.manage');
   const { data: extras = [], isLoading } = useExtras();
   const createExtra = useCreateExtra();
   const updateExtra  = useUpdateExtra();
@@ -101,7 +104,7 @@ export const ExtraManagerModal: React.FC<ExtraManagerModalProps> = ({ isOpen, on
 
       <div className="p-8 grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* Catalog list */}
-        <div className="md:col-span-3 space-y-3 max-h-[55vh] overflow-y-auto no-scrollbar pr-1">
+        <div className={cn('space-y-3 max-h-[55vh] overflow-y-auto no-scrollbar pr-1', canManage ? 'md:col-span-3' : 'md:col-span-5')}>
           {apiError && !isFormOpen && (
             <div className="flex items-center gap-2 text-red-500 text-xs">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />{apiError}
@@ -133,25 +136,28 @@ export const ExtraManagerModal: React.FC<ExtraManagerModalProps> = ({ isOpen, on
                     {formatCurrency(extra.price)} · {PRICING_LABEL[extra.pricing]}
                   </p>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEditForm(extra)} disabled={isToggling}
-                    className="p-2 text-on-surface-variant/40 hover:text-primary transition-colors disabled:cursor-not-allowed"
-                    title={t('common.edit')}>
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleToggleActive(extra)} disabled={isToggling}
-                    className={cn('p-2 transition-colors disabled:cursor-not-allowed',
-                      extra.isActive ? 'text-on-surface-variant/40 hover:text-red-500' : 'text-on-surface-variant/40 hover:text-emerald-600')}
-                    title={extra.isActive ? t('extras.deactivate') : t('extras.reactivate')}>
-                    {extra.isActive ? <Power className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
-                  </button>
-                </div>
+                {canManage && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => openEditForm(extra)} disabled={isToggling}
+                      className="p-2 text-on-surface-variant/40 hover:text-primary transition-colors disabled:cursor-not-allowed"
+                      title={t('common.edit')}>
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleToggleActive(extra)} disabled={isToggling}
+                      className={cn('p-2 transition-colors disabled:cursor-not-allowed',
+                        extra.isActive ? 'text-on-surface-variant/40 hover:text-red-500' : 'text-on-surface-variant/40 hover:text-emerald-600')}
+                      title={extra.isActive ? t('extras.deactivate') : t('extras.reactivate')}>
+                      {extra.isActive ? <Power className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
         {/* Add / edit panel */}
+        {canManage && (
         <div className="md:col-span-2">
           <div className="md:sticky md:top-0">
             {isFormOpen ? (
@@ -209,6 +215,7 @@ export const ExtraManagerModal: React.FC<ExtraManagerModalProps> = ({ isOpen, on
             )}
           </div>
         </div>
+        )}
       </div>
 
       <div className="p-8 pt-0">

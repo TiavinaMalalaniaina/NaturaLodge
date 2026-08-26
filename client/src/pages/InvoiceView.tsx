@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment } from '../hooks/useInvoices';
+import { useCashAccounts } from '../hooks/useLedger';
 import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader } from '../components/QueryLoader';
@@ -54,7 +55,7 @@ export const InvoiceView: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { can } = useAuth();
 
   const { data: invoice, isLoading, isError } = useInvoiceByBooking(bookingId ?? null);
   const generateInvoice = useGenerateInvoice();
@@ -65,14 +66,24 @@ export const InvoiceView: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [dueAt] = useState(() => todayLocalStr());
 
+  const { data: cashAccounts } = useCashAccounts();
+
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash');
+  const [payAccountId, setPayAccountId] = useState('');
   const [payReference, setPayReference] = useState('');
   const [payNotes, setPayNotes] = useState('');
   const [showPayForm, setShowPayForm] = useState(false);
   const [apiError, setApiError] = useState('');
   const [isConfirmRefundModalOpen, setConfirmRefundModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+
+  // Filtre le sélecteur de compte selon la méthode choisie (ex: Mvola -> seul le compte Mvola) —
+  // repli sur tous les comptes si aucun n'est associé à cette méthode (ex: carte/virement, pas
+  // encore de banque configurée) pour ne jamais bloquer l'enregistrement d'un paiement.
+  const accountsForMethod = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
+  const availableAccounts = accountsForMethod.length > 0 ? accountsForMethod : (cashAccounts ?? []);
+  const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
 
   const handleGenerate = () => {
     if (!bookingId) return;
@@ -90,13 +101,14 @@ export const InvoiceView: React.FC = () => {
   const handleRecordPayment = () => {
     if (!invoice) return;
     const amount = parseInt(payAmount, 10);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || !selectedAccountId) return;
     setApiError('');
     recordPayment.mutate(
-      { invoiceId: invoice.id, amount, method: payMethod, reference: payReference || undefined, notes: payNotes || undefined },
+      { invoiceId: invoice.id, amount, method: payMethod, accountId: selectedAccountId, reference: payReference || undefined, notes: payNotes || undefined },
       {
         onSuccess: () => {
           setPayAmount('');
+          setPayAccountId('');
           setPayReference('');
           setPayNotes('');
           setShowPayForm(false);
@@ -115,8 +127,9 @@ export const InvoiceView: React.FC = () => {
     });
   };
 
-  const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'RECEPTIONIST';
-  const canVoid = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canGenerate = can('invoices.generate');
+  const canRecordPayment = can('invoices.record_payment');
+  const canVoid = can('invoices.void_payment');
   const noInvoice = !isLoading && (isError || !invoice);
 
   const subtotal = invoice ? invoice.totalAmount - invoice.taxAmount : 0;
@@ -182,7 +195,7 @@ export const InvoiceView: React.FC = () => {
             <p className="text-xs text-on-surface-variant/50 mt-1">{t('invoice.noInvoiceHint')}</p>
           </div>
 
-          {canManage && (
+          {canGenerate && (
             <div className="max-w-sm mx-auto space-y-4 text-left">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.taxRate')}</label>
@@ -328,7 +341,7 @@ export const InvoiceView: React.FC = () => {
           <div className="no-print space-y-6">
 
             {/* Record payment */}
-            {canReceivePayment && canManage && (
+            {canReceivePayment && canRecordPayment && (
               <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
                 <div className="p-6 border-b border-stone-100 flex justify-between items-center flex-wrap gap-3">
                   <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('invoice.recordPayment')}</h4>
@@ -358,11 +371,23 @@ export const InvoiceView: React.FC = () => {
                       <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.method')}</label>
                       <select
                         value={payMethod}
-                        onChange={e => setPayMethod(e.target.value as PaymentMethod)}
+                        onChange={e => { setPayMethod(e.target.value as PaymentMethod); setPayAccountId(''); }}
                         className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
-                        {(['cash', 'card', 'bank_transfer', 'online', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
+                        {(['cash', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
                           <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.account')}</label>
+                      <select
+                        value={selectedAccountId}
+                        onChange={e => setPayAccountId(e.target.value)}
+                        className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                      >
+                        {availableAccounts.map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
                         ))}
                       </select>
                     </div>
@@ -393,7 +418,7 @@ export const InvoiceView: React.FC = () => {
                       </button>
                       <button
                         onClick={handleRecordPayment}
-                        disabled={!payAmount || recordPayment.isPending}
+                        disabled={!payAmount || !selectedAccountId || recordPayment.isPending}
                         className="px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
                       >
                         {recordPayment.isPending ? t('common.saving') : t('common.confirm')}
@@ -434,6 +459,8 @@ export const InvoiceView: React.FC = () => {
                           {/* Utilisation de flex-wrap pour éviter la troncature sur les petits écrans */}
                           <div className="flex items-center gap-1.5 text-[11px] text-stone-500 flex-wrap leading-relaxed">
                             <span className="font-medium text-stone-700">{t(`invoice.method_${p.method}`)}</span>
+                            <span className="text-stone-300">•</span>
+                            <span>{p.account.name}</span>
                             <span className="text-stone-300">•</span>
                             <span>{fmtDate(p.paidAt)}</span>
                             <span className="text-stone-300">•</span>

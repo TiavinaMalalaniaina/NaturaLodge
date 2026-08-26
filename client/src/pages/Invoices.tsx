@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useInvoices } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { InvoiceStatus } from '../api/invoices';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
 
 type StatusFilter = 'all' | InvoiceStatus;
 
@@ -153,6 +154,11 @@ export const Invoices: React.FC = () => {
                       <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', STATUS_CLASS[inv.status])}>
                         {t(`invoice.status_${inv.status}`)}
                       </span>
+                      {inv.booking.effectiveStatus && (
+                        <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[inv.booking.effectiveStatus])}>
+                          {t(EFFECTIVE_STATUS_I18N_KEY[inv.booking.effectiveStatus])}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-on-surface-variant/50 mt-0.5 truncate">
                       {inv.booking.guest.name} · {fmtDate(inv.issuedAt)}
