@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError } from '../errors/AppError';
 import { GenerateInvoiceInput, InvoiceListParams, PaymentInput, UpdateInvoiceInput } from '../validation/invoice.schema';
 import * as ledgerService from './ledger.service';
+import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -68,6 +69,23 @@ const invoiceInclude = {
   },
 };
 
+// Forme liste (GET /invoices, paginée) : Invoices.tsx n'affiche que le nom du client et un total
+// payé/restant dérivé des paiements — ni les lignes de facture (`items`) ni les chambres de la
+// réservation (`booking.rooms`) ni les détails de traitement d'un paiement (`processedBy`,
+// `account`) n'y sont lus. Ces champs restent dans `invoiceInclude` (détail, InvoiceView.tsx).
+const invoiceListInclude = {
+  payments: {
+    select:  { id: true, amount: true, method: true, status: true, paidAt: true, reference: true, notes: true },
+    orderBy: { paidAt: 'asc' as const },
+  },
+  booking: {
+    select: {
+      id: true, arrival: true, departure: true, status: true,
+      guest: { select: { id: true, name: true, email: true } },
+    },
+  },
+};
+
 async function generateInvoiceNumber(client: PrismaOrTx): Promise<string> {
   const year  = new Date().getFullYear();
   const count = await client.invoice.count();
@@ -107,12 +125,17 @@ export async function list(params: InvoiceListParams) {
   };
 
   const [invoices, total] = await Promise.all([
-    prisma.invoice.findMany({ where, include: invoiceInclude, orderBy: { issuedAt: 'desc' }, skip, take: limit }),
+    prisma.invoice.findMany({ where, include: invoiceListInclude, orderBy: { issuedAt: 'desc' }, skip, take: limit }),
     prisma.invoice.count({ where }),
   ]);
 
+  const enriched = invoices.map(invoice => ({
+    ...invoice,
+    booking: { ...invoice.booking, effectiveStatus: computeEffectiveStatus(invoice.booking) },
+  }));
+
   return {
-    data: invoices,
+    data: enriched,
     meta: {
       total, page, limit,
       totalPages:  Math.ceil(total / limit),
@@ -401,6 +424,7 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
     });
 
     await syncInvoiceStatus(invoiceId, tx);
+    await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
   });
@@ -438,6 +462,7 @@ export async function voidPayment(invoiceId: string, paymentId: string, voidedBy
     });
 
     await syncInvoiceStatus(invoiceId, tx);
+    await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
   });

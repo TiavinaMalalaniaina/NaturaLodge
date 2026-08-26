@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '../lib/apiError';
 import { formatCurrency } from '../lib/format';
 import { RoomImagePicker, PRESET_PHOTOS } from './RoomImagePicker';
 import { Modal } from './Modal';
+import { useAuth } from '../context/AuthContext';
 
 const BED_TYPES  = ['King Size', 'Super King', 'Twin Signature', 'Double'];
 const VIEWS      = ['Garden View', 'Ocean View', 'Valley View', 'Pool View', 'Mountain View', 'Courtyard'];
@@ -22,6 +23,7 @@ interface AddRoomModalProps {
 
 export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onRoomAdded }) => {
   const { t } = useTranslation();
+  const { can } = useAuth();
   const { data: roomTypes = [] } = useRoomTypes();
   const { data: features  = [] } = useRoomFeatures();
   const createRoom     = useCreateRoom();
@@ -157,12 +159,14 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                           </button>
                         ))}
                         {/* Créer un nouveau type */}
-                        <button type="button"
-                          onClick={() => { setCreatingNew(true); setSelectedType(null); }}
-                          className="p-4 rounded-2xl border-2 border-dashed border-stone-200 flex items-center gap-3 hover:border-primary/40 transition-all text-on-surface-variant/50 hover:text-primary">
-                          <Plus className="w-5 h-5" />
-                          <span className="text-[10px] font-bold uppercase tracking-widest">Nouveau type</span>
-                        </button>
+                        {can('roomTypes.manage') && (
+                          <button type="button"
+                            onClick={() => { setCreatingNew(true); setSelectedType(null); }}
+                            className="p-4 rounded-2xl border-2 border-dashed border-stone-200 flex items-center gap-3 hover:border-primary/40 transition-all text-on-surface-variant/50 hover:text-primary">
+                            <Plus className="w-5 h-5" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Nouveau type</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

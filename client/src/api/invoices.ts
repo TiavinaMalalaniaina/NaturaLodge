@@ -1,4 +1,5 @@
 import { api } from './client';
+import { EffectiveStatus } from './bookings';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -45,7 +46,9 @@ export interface Invoice {
     arrival:   string;
     departure: string;
     guest:     { id: string; name: string; email: string };
-    rooms: {
+    // Présents sur la liste (GET /invoices) — absents sur le détail (booking.rooms y est, pas ça).
+    effectiveStatus?: EffectiveStatus;
+    rooms?: {
       room:     { id: string; number: string; rateOverride: number | null; roomType: { name: string } };
       roomRate: number;
       arrival:  string;

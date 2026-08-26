@@ -1,13 +1,13 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth, UserRole } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
-  allowedRoles?: UserRole[];
+  permission?: string;
 }
 
-export const ProtectedRoute: React.FC<Props> = ({ allowedRoles }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+export const ProtectedRoute: React.FC<Props> = ({ permission }) => {
+  const { isAuthenticated, isLoading, can } = useAuth();
 
   if (isLoading) {
     return (
@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<Props> = ({ allowedRoles }) => {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+  if (permission && !can(permission)) {
     return <Navigate to="/dashboard" replace />;
   }
 

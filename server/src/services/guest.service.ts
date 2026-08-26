@@ -23,8 +23,11 @@ export async function list(params: GuestPaginationParams) {
     ...(status ? { status } : {}),
   };
 
+  // Pas de `notesInclude` ici : Guests.tsx (liste paginée) n'affiche que nom/ville/pays/ancienneté
+  // — l'historique de notes (potentiellement long, avec auteur imbriqué) n'est utile que sur
+  // GuestProfile.tsx (une fiche à la fois), voir `getById` ci-dessous.
   const [guests, total] = await Promise.all([
-    prisma.guest.findMany({ where, include: notesInclude, orderBy: { name: 'asc' }, skip, take: limit }),
+    prisma.guest.findMany({ where, orderBy: { name: 'asc' }, skip, take: limit }),
     prisma.guest.count({ where }),
   ]);
 

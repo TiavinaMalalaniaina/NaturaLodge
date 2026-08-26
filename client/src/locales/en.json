@@ -16,7 +16,8 @@
     "groupGeneral":    "General",
     "groupAccounting": "Accounting",
     "groupAdmin":      "Administration",
-    "auditLog":        "Audit Log"
+    "auditLog":        "Audit Log",
+    "permissions":     "Permissions"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
@@ -68,6 +69,9 @@
     "confirmed":    "Confirmed",
     "checkedIn":    "Checked In",
     "checkedOut":   "Checked Out",
+    "checkedOutUnpaid": "Checked Out — Unpaid",
+    "checkedOutPaid":   "Checked Out — Paid",
+    "closed":       "Closed",
     "cancelled":    "Cancelled",
     "awaiting":     "Pending confirmation",
     "upcoming":     "Upcoming",
@@ -282,6 +286,7 @@
     "backToReservations":   "Back to Reservations",
     "revertCheckIn":        "Revert Check-in",
     "forceOut":             "Force Out",
+    "close":                "Close",
     "reassign":             "Reassign",
     "revertCancelling":     "Revert Cancelling",
     "guest":                "Guest",
@@ -301,6 +306,8 @@
     "confirmCheckoutMessage":    "The room will be freed and become available again.",
     "confirmForceOutTitle":      "Force check-out?",
     "confirmForceOutMessage":    "This stay is overdue. This will immediately close the stay and free the room.",
+    "confirmCloseTitle":         "Close this booking?",
+    "confirmCloseMessage":       "The booking will be permanently archived. This action cannot be undone.",
     "confirmRevertTitle":        "Revert check-in?",
     "confirmRevertMessage":      "The stay will go back to confirmed, as before check-in.",
     "confirmRevertCancelTitle":  "Revert cancellation?",
@@ -394,6 +401,8 @@
     "category":           "Category",
     "description":        "Description",
     "date":               "Date",
+    "from":               "From",
+    "to":                 "To",
     "empty":              "No expenses recorded",
     "category_supplies":    "Supplies",
     "category_utilities":   "Utilities",
@@ -417,6 +426,8 @@
     "fromAccount":       "From account",
     "toAccount":         "To account",
     "sameAccountError":  "Source and destination accounts must be different.",
+    "transferFee":       "Transfer fee",
+    "transferFeeHint":   "Added on top and charged to the source account — the destination account receives the full amount, the fee is booked as an expense.",
     "contribution":      "Contribution",
     "contributionHint":  "Money injected from outside the hotel (owner contribution...) — credited to the capital account, not operating revenue."
   },
@@ -441,6 +452,11 @@
     "count":        "{{count}} action(s)",
     "resourceType": "Resource",
     "empty":        "No actions recorded in this period"
+  },
+  "permissions": {
+    "title":  "Permissions",
+    "hint":   "Who can do what, per role — editable without a redeploy.",
+    "action": "Action"
   },
   "settings": {
     "title":             "Settings",

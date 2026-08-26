@@ -12,6 +12,7 @@ import { Modal } from './Modal';
 import { CompareRow } from './CompareRow';
 import { Delta } from './DeltaBadge';
 import { ConfirmModal } from './ConfirmModal';
+import { useAuth } from '../context/AuthContext';
 
 export interface BookingRoomRef {
   roomId:    string;
@@ -36,6 +37,8 @@ function numDelta(oldN: number, newN: number): Delta {
 
 export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, onClose, bookingId, rooms }) => {
   const { t } = useTranslation();
+  const { can } = useAuth();
+  const canManageRooms = can('bookings.manage_rooms');
 
   // 'pick'  : choisir quelle chambre de la réservation réassigner, ou ajouter une nouvelle chambre
   // 'form'  : recherche + sélection d'une chambre (réassignation si activeRoom, ajout sinon)
@@ -207,21 +210,25 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                     <p className="text-[10px] text-on-surface-variant/50 mt-0.5">{t('reservations.reassignHint')}</p>
                   </div>
                 </button>
-                <button
-                  onClick={() => setRemoveTarget(room)}
-                  disabled={rooms.length <= 1}
-                  title={rooms.length <= 1 ? t('reservations.cannotRemoveLastRoom') : undefined}
-                  className="p-2 text-on-surface-variant/40 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-on-surface-variant/40 shrink-0 ml-2">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canManageRooms && (
+                  <button
+                    onClick={() => setRemoveTarget(room)}
+                    disabled={rooms.length <= 1}
+                    title={rooms.length <= 1 ? t('reservations.cannotRemoveLastRoom') : undefined}
+                    className="p-2 text-on-surface-variant/40 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-on-surface-variant/40 shrink-0 ml-2">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
 
-            <button onClick={startAdd}
-              className="w-full py-4 border-2 border-dashed border-stone-200 rounded-2xl flex items-center justify-center gap-3 text-on-surface-variant/60 hover:border-primary/40 hover:text-primary transition-all group">
-              <Plus className="w-4 h-4 group-hover:scale-125 transition-transform" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">{t('reservations.addRoomToBooking')}</span>
-            </button>
+            {canManageRooms && (
+              <button onClick={startAdd}
+                className="w-full py-4 border-2 border-dashed border-stone-200 rounded-2xl flex items-center justify-center gap-3 text-on-surface-variant/60 hover:border-primary/40 hover:text-primary transition-all group">
+                <Plus className="w-4 h-4 group-hover:scale-125 transition-transform" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">{t('reservations.addRoomToBooking')}</span>
+              </button>
+            )}
           </div>
         </>
       )}
