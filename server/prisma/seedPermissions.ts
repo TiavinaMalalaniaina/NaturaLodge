@@ -8,14 +8,14 @@ import { PrismaClient, Role } from '@prisma/client'
 // SAUF pour HOUSEKEEPING, dont le périmètre est explicitement resserré à la lecture seule
 // (décision Phase 0) : ferme au passage deux routes d'écriture qui n'avaient jusqu'ici aucun
 // contrôle de rôle (`POST guests/:id/notes`, `POST bookings/:id/notes`, ouvertes à tout rôle
-// authentifié) en les alignant sur ADMIN/MANAGER/RECEPTIONIST, comme les autres actions du même
+// authentifié) en les alignant sur ADMIN/MANAGER/GERANT, comme les autres actions du même
 // domaine.
 //
 // `auth.ts` (login, /me) n'a volontairement aucune permission : login est public,
 // /me est un accès à ses propres infos, pas une action à autoriser par rôle.
-const ALL_STAFF: Role[]    = ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'HOUSEKEEPING']
+const ALL_STAFF: Role[]    = ['ADMIN', 'MANAGER', 'GERANT', 'HOUSEKEEPING']
 const ADMIN_MANAGER: Role[] = ['ADMIN', 'MANAGER']
-const FRONT_DESK: Role[]    = ['ADMIN', 'MANAGER', 'RECEPTIONIST']
+const FRONT_DESK: Role[]    = ['ADMIN', 'MANAGER', 'GERANT']
 const ADMIN_ONLY: Role[]    = ['ADMIN']
 
 type PermissionSeed = { key: string; domain: string; description: string; roles: Role[] }

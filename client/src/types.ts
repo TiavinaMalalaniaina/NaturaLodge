@@ -30,7 +30,7 @@ export interface BookingNote {
   createdAt: string;
 }
 
-export type StaffRole = 'admin' | 'manager' | 'receptionist' | 'housekeeping';
+export type StaffRole = 'admin' | 'manager' | 'gerant' | 'housekeeping';
 
 export interface StaffMember {
   id: string;

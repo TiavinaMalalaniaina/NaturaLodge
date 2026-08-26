@@ -158,7 +158,7 @@ src/
 └── lib/          # prisma.ts, roomStatus.ts, scheduler.ts
 ```
 
-Toutes les routes sont protégées par `authenticate`. Certaines nécessitent `authorize(roles)`.
+Toutes les routes sont protégées par `authenticate`. La plupart nécessitent en plus `can(permissionKey)`.
 
 ```
 /api/auth        # POST /login, GET /me
@@ -174,7 +174,7 @@ Toutes les routes sont protégées par `authenticate`. Certaines nécessitent `a
 
 ### Middleware auth
 - `authenticate` — vérifie le token JWT Bearer, injecte `req.user`
-- `authorize(...roles)` — restreint aux rôles spécifiés (`ADMIN`, `MANAGER`, `RECEPTIONIST`, `HOUSEKEEPING`)
+- `can(permissionKey)` — vérifie que le rôle de `req.user` a la permission demandée, via la matrice `Permission`/`RolePermission` en base (cache mémoire, voir `lib/permissions.ts`) — remplace l'ancien `authorize(...roles)` codé en dur, configurable sans redéploiement depuis l'écran `/permissions` (ADMIN uniquement)
 
 ### Gestion des erreurs (`errors/`, `middleware/asyncHandler.ts`, `middleware/errorHandler.ts`)
 Chaque handler de route est enveloppé dans `asyncHandler(...)`, qui capture les rejets de promesses et les transmet à `errorHandler` (monté en dernier dans `server.ts`) — **Express 4 ne rattrape pas nativement les rejets async**, sans ce wrapper une seule requête invalide plante tout le process. Les services lèvent des `AppError` (`NotFoundError`, `ConflictError`, `ForbiddenError`, `UnauthorizedError`) que `errorHandler` traduit en réponse JSON avec le bon code HTTP ; les erreurs Prisma connues (P2025/P2002/P2003) sont aussi mappées en filet de sécurité. Un `process.on('unhandledRejection', ...)` couvre le code hors cycle de requête (ex. `lib/scheduler.ts`).
@@ -195,7 +195,7 @@ res.json(await xxxService.someMethod(parsed.data));
 ## Schéma Prisma
 
 Modèles principaux :
-- `User` — staff (rôles : ADMIN, MANAGER, RECEPTIONIST, HOUSEKEEPING)
+- `User` — staff (rôles : ADMIN, MANAGER, GERANT, HOUSEKEEPING)
 - `Guest` — clients hôtel
 - `GuestNote` — notes sur un client
 - `RoomType` + `Room` + `RoomFeature` — catalogue chambres

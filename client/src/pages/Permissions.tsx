@@ -8,7 +8,7 @@ import { getApiErrorMessage } from '../lib/apiError';
 import { UserRole } from '../context/AuthContext';
 import { PermissionEntry } from '../api/permissions';
 
-const ROLES: UserRole[] = ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'HOUSEKEEPING'];
+const ROLES: UserRole[] = ['ADMIN', 'MANAGER', 'GERANT', 'HOUSEKEEPING'];
 
 export const Permissions: React.FC = () => {
   const { t } = useTranslation();
