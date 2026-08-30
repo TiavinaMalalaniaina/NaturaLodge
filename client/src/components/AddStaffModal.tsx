@@ -17,11 +17,11 @@ interface AddStaffModalProps {
 const ROLES: { value: StaffRole; label: string; desc: string }[] = [
   { value: 'admin', label: 'Administrator', desc: 'Full system access & financial controls' },
   { value: 'manager', label: 'Operations Manager', desc: 'Manage inventory, guests & staff' },
-  { value: 'receptionist', label: 'Front Desk', desc: 'Check-ins, bookings & guest services' },
+  { value: 'gerant', label: 'Gérant', desc: 'Check-ins, bookings & guest services' },
   { value: 'housekeeping', label: 'Housekeeping', desc: 'Unit status & maintenance tasks' },
 ];
 
-const DEFAULT_VALUES: StaffFormValues = { name: '', username: '', email: '', password: '', confirmPassword: '', role: 'receptionist' };
+const DEFAULT_VALUES: StaffFormValues = { name: '', username: '', email: '', password: '', confirmPassword: '', role: 'gerant' };
 
 export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose }) => {
   const createStaff = useCreateStaff();

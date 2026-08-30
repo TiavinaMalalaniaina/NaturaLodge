@@ -12,7 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { getApiErrorMessage } from '../lib/apiError';
 import { StaffRole } from '../types';
 
-const ROLES: Array<'ALL' | StaffRole> = ['ALL', 'admin', 'manager', 'receptionist', 'housekeeping'];
+const ROLES: Array<'ALL' | StaffRole> = ['ALL', 'admin', 'manager', 'gerant', 'housekeeping'];
 
 export const Staff: React.FC = () => {
   const { data: staffList = [], isLoading, isError } = useStaff();

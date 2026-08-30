@@ -14,7 +14,7 @@ model User {
   email             String?       @unique
   password          String
   name              String
-  role              Role          @default(RECEPTIONIST)
+  role              Role          @default(GERANT)
   status            UserStatus    @default(ACTIVE)
   avatar            String?
   joinedDate        DateTime      @default(now())
@@ -34,7 +34,7 @@ model User {
 enum Role {
   ADMIN
   MANAGER
-  RECEPTIONIST
+  GERANT
   HOUSEKEEPING
 }
 

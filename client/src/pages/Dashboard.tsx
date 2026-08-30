@@ -7,7 +7,6 @@ import { NewBookingsFeed } from '../components/NewBookingsFeed';
 import { useNotifications } from '../context/NotificationContext';
 import { useRooms } from '../hooks/useRooms';
 import { useBookings, useUpdateBookingStatus } from '../hooks/useBookings';
-import { useCashAccounts } from '../hooks/useLedger';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
@@ -30,8 +29,6 @@ export const Dashboard: React.FC = () => {
   const bookings = bookingsPage?.data ?? [];
   const updateStatus = useUpdateBookingStatus();
   const canViewTreasury = can('ledger.view_reports');
-  const { data: cashAccounts } = useCashAccounts();
-  const totalCashBalance = (cashAccounts ?? []).reduce((sum, a) => sum + a.balance, 0);
 
   const { data: unpaidPage } = useBookings({ status: 'CHECKED_OUT_UNPAID', limit: 5, sort: 'departure', order: 'desc' });
   const pendingPayments = unpaidPage?.data ?? [];
@@ -216,14 +213,12 @@ export const Dashboard: React.FC = () => {
           {canViewTreasury && (
             <button onClick={() => navigate('/treasury')}
               className="w-full text-left bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow hover:border-primary/30 transition-all">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between">
                 <div className="p-2 rounded-lg bg-stone-50 text-primary">
                   <Wallet className="w-4 h-4" />
                 </div>
                 <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t('dashboard.viewTreasury')}</span>
               </div>
-              <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{t('treasury.totalBalance')}</p>
-              <p className="font-mono text-2xl font-bold text-on-surface">{formatCurrency(totalCashBalance)}</p>
             </button>
           )}
 
