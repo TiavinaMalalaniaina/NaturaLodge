@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 // Catalogue des permissions — une entrée par action logique de l'API, parfois plusieurs routes
 // derrière une même clé quand elles partagent toujours le même ensemble de rôles (ex:
@@ -13,12 +13,15 @@ import { PrismaClient, Role } from '@prisma/client'
 //
 // `auth.ts` (login, /me) n'a volontairement aucune permission : login est public,
 // /me est un accès à ses propres infos, pas une action à autoriser par rôle.
-const ALL_STAFF: Role[]    = ['ADMIN', 'MANAGER', 'GERANT', 'HOUSEKEEPING']
-const ADMIN_MANAGER: Role[] = ['ADMIN', 'MANAGER']
-const FRONT_DESK: Role[]    = ['ADMIN', 'MANAGER', 'GERANT']
-const ADMIN_ONLY: Role[]    = ['ADMIN']
+// Noms de rôle (pas l'enum Prisma — Role est désormais une table configurable, voir seedRoles.ts).
+// Ces constantes ne servent qu'à amorcer les 4 rôles historiques ; un rôle custom créé plus tard
+// via l'écran Permissions démarre sans aucune association et n'a pas besoin d'être connu ici.
+const ALL_STAFF: string[]    = ['ADMIN', 'MANAGER', 'GERANT', 'HOUSEKEEPING']
+const ADMIN_MANAGER: string[] = ['ADMIN', 'MANAGER']
+const FRONT_DESK: string[]    = ['ADMIN', 'MANAGER', 'GERANT']
+const ADMIN_ONLY: string[]    = ['ADMIN']
 
-type PermissionSeed = { key: string; domain: string; description: string; roles: Role[] }
+type PermissionSeed = { key: string; domain: string; description: string; roles: string[] }
 
 const PERMISSIONS: PermissionSeed[] = [
   // ── rooms ──
@@ -66,6 +69,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'staff.create',           domain: 'staff', description: 'Créer un compte staff',                                                roles: ADMIN_ONLY },
   { key: 'staff.update',           domain: 'staff', description: 'Modifier un compte staff',                                             roles: ADMIN_MANAGER },
   { key: 'staff.manage_password',  domain: 'staff', description: 'Réinitialiser le mot de passe d\'un membre du personnel',               roles: ADMIN_ONLY },
+  { key: 'staff.assign_role',      domain: 'staff', description: 'Modifier le rôle ou le statut d\'un membre du personnel',                roles: ADMIN_ONLY },
   { key: 'staff.delete',           domain: 'staff', description: 'Supprimer un compte staff',                                            roles: ADMIN_ONLY },
 
   // ── extras ──
@@ -80,10 +84,12 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'ledger.view_reports',       domain: 'ledger', description: 'Consulter relevés, résumé, bilan, compte de résultat, export CSV', roles: ADMIN_MANAGER },
   { key: 'ledger.transfer',           domain: 'ledger', description: 'Effectuer un virement entre comptes de trésorerie',                roles: ADMIN_MANAGER },
   { key: 'ledger.contribute',         domain: 'ledger', description: 'Enregistrer un apport externe (capital propriétaire...)',          roles: ADMIN_MANAGER },
+  { key: 'ledger.manage_accounts',    domain: 'ledger', description: 'Créer, modifier ou désactiver un compte du plan comptable',         roles: ADMIN_ONLY },
 
   // ── expenses ──
   { key: 'expenses.view',   domain: 'expenses', description: 'Consulter les dépenses',                                                   roles: ALL_STAFF },
   { key: 'expenses.create', domain: 'expenses', description: 'Enregistrer une dépense',                                                  roles: ADMIN_MANAGER },
+  { key: 'expenses.manage_categories', domain: 'expenses', description: 'Créer, modifier ou désactiver une catégorie de dépense',        roles: ADMIN_ONLY },
 
   // ── audit ──
   { key: 'auditLogs.view', domain: 'auditLogs', description: 'Consulter le journal d\'audit',                                            roles: ADMIN_ONLY },
@@ -97,6 +103,10 @@ const PERMISSIONS: PermissionSeed[] = [
 // customisation faite plus tard via un futur écran d'administration (Phase 3) doit survivre à un
 // reseed — même leçon que seedChartOfAccounts.ts avec la dérive des noms de comptes.
 export async function seedPermissions(prisma: PrismaClient) {
+  // Doit tourner après seedRoles() : résout chaque nom de rôle littéral ci-dessus vers son id réel.
+  const roles = await prisma.role.findMany({ select: { id: true, name: true } })
+  const roleIdByName = new Map(roles.map(r => [r.name, r.id]))
+
   let linkCount = 0
   for (const p of PERMISSIONS) {
     const permission = await prisma.permission.upsert({
@@ -104,9 +114,10 @@ export async function seedPermissions(prisma: PrismaClient) {
       update: { domain: p.domain, description: p.description },
       create: { key: p.key, domain: p.domain, description: p.description },
     })
-    if (p.roles.length > 0) {
+    const roleIds = p.roles.map(name => roleIdByName.get(name)).filter((id): id is string => !!id)
+    if (roleIds.length > 0) {
       const result = await prisma.rolePermission.createMany({
-        data: p.roles.map(role => ({ role, permissionId: permission.id })),
+        data: roleIds.map(roleId => ({ roleId, permissionId: permission.id })),
         skipDuplicates: true,
       })
       linkCount += result.count

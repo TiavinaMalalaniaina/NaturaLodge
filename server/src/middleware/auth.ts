@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { Role } from '@prisma/client';
 
 export interface AuthRequest extends Request {
-  user?: { id: string; username: string; role: Role };
+  user?: { id: string; username: string; role: string };
 }
 
 export function authenticate(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -18,7 +17,7 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
       id: string;
       username: string;
-      role: Role;
+      role: string;
     };
     req.user = payload;
     next();

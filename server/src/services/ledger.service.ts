@@ -1,4 +1,4 @@
-import { JournalSource, LedgerAccountType, Prisma } from '@prisma/client';
+import { JournalSource, LedgerAccountType, PaymentMethod, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ConflictError, NotFoundError } from '../errors/AppError';
 
@@ -195,6 +195,43 @@ export async function getCashAccountsBalances() {
   });
 }
 
+// Plan comptable complet (actif + inactif), pour l'écran d'administration — contrairement à
+// getCashAccountsBalances(), pas filtré aux seuls comptes de trésorerie actifs.
+export async function listAccounts() {
+  return prisma.ledgerAccount.findMany({ orderBy: { code: 'asc' } });
+}
+
+export type CreateAccountParams = {
+  code: string;
+  name: string;
+  type: LedgerAccountType;
+  isCashAccount: boolean;
+  allowedMethods: PaymentMethod[];
+};
+
+export async function createAccount(params: CreateAccountParams) {
+  const existing = await prisma.ledgerAccount.findUnique({ where: { code: params.code } });
+  if (existing) throw new ConflictError(`Un compte avec le code "${params.code}" existe déjà.`);
+  return prisma.ledgerAccount.create({ data: params as Prisma.LedgerAccountCreateInput });
+}
+
+export type UpdateAccountParams = {
+  name?: string;
+  isCashAccount?: boolean;
+  allowedMethods?: PaymentMethod[];
+  isActive?: boolean;
+};
+
+// Le code et le type ne sont jamais modifiables une fois le compte créé : le code est référencé
+// en dur (accountCode: '411000', '706000'...) dans invoice.service.ts/expense.service.ts, et le
+// type détermine le sens normal du solde (normalBalance ci-dessus) — les changer casserait
+// silencieusement la comptabilité déjà posée sur ce compte.
+export async function updateAccount(id: string, params: UpdateAccountParams) {
+  const account = await prisma.ledgerAccount.findUnique({ where: { id } });
+  if (!account) throw new NotFoundError('Compte comptable');
+  return prisma.ledgerAccount.update({ where: { id }, data: params as Prisma.LedgerAccountUpdateInput });
+}
+
 export type AccountEntriesParams = {
   accountId: string;
   dateFrom?: string;
@@ -272,11 +309,19 @@ export async function getSummary(params: SummaryParams) {
   const revenueCollected = paymentLines.reduce((s, l) => s + l.debit - l.credit, 0);
 
   const expenseTotals = await prisma.expense.groupBy({
-    by:    ['category'],
+    by:    ['categoryId'],
     where: hasDateFilter ? { incurredAt: dateFilter } : {},
     _sum:  { amount: true },
   });
-  const expensesByCategory = expenseTotals.map(e => ({ category: e.category, total: e._sum.amount ?? 0 }));
+  const categories = await prisma.expenseCategory.findMany({
+    where: { id: { in: expenseTotals.map(e => e.categoryId) } },
+  });
+  const categoryNameById = new Map(categories.map(c => [c.id, c.name]));
+  const expensesByCategory = expenseTotals.map(e => ({
+    categoryId:   e.categoryId,
+    categoryName: categoryNameById.get(e.categoryId) ?? '—',
+    total:        e._sum.amount ?? 0,
+  }));
   const totalExpenses = expensesByCategory.reduce((s, e) => s + e.total, 0);
 
   return {

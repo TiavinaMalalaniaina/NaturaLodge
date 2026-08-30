@@ -1,10 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchCashAccounts, fetchLedgerEntries, fetchLedgerSummary, createTransfer, createContribution,
-  fetchBalanceSheet, fetchIncomeStatement,
+  fetchBalanceSheet, fetchIncomeStatement, fetchAllAccounts, createAccount, updateAccount,
+  UpdateAccountPayload,
 } from '../api/ledger';
 
 export const CASH_ACCOUNTS_KEY = ['ledger', 'cash-accounts'] as const;
+export const ALL_ACCOUNTS_KEY = ['ledger', 'accounts'] as const;
 export const LEDGER_ENTRIES_KEY = ['ledger', 'entries'] as const;
 export const LEDGER_SUMMARY_KEY = ['ledger', 'summary'] as const;
 export const BALANCE_SHEET_KEY = ['ledger', 'balance-sheet'] as const;
@@ -48,6 +50,35 @@ export function useIncomeStatement(params?: Parameters<typeof fetchIncomeStateme
     queryKey: [...INCOME_STATEMENT_KEY, params],
     queryFn:  () => fetchIncomeStatement(params),
     placeholderData: (prev) => prev,
+  });
+}
+
+export function useAllAccounts() {
+  return useQuery({
+    queryKey: ALL_ACCOUNTS_KEY,
+    queryFn:  fetchAllAccounts,
+  });
+}
+
+export function useCreateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createAccount,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ALL_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+    },
+  });
+}
+
+export function useUpdateAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateAccountPayload }) => updateAccount(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ALL_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+    },
   });
 }
 

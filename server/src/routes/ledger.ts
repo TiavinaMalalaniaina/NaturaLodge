@@ -4,7 +4,7 @@ import { can } from '../middleware/can';
 import { asyncHandler } from '../middleware/asyncHandler';
 import {
   ledgerEntriesQuerySchema, ledgerSummaryQuerySchema, transferSchema, contributionSchema,
-  balanceSheetQuerySchema, exportQuerySchema,
+  balanceSheetQuerySchema, exportQuerySchema, createAccountSchema, updateAccountSchema,
 } from '../validation/ledger.schema';
 import * as ledgerService from '../services/ledger.service';
 
@@ -15,6 +15,25 @@ ledgerRouter.use(authenticate);
 // moment d'un paiement, tableau de bord "où est l'argent")
 ledgerRouter.get('/cash-accounts', can('ledger.view_cash_accounts'), asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
   res.json(await ledgerService.getCashAccountsBalances());
+}));
+
+// GET /ledger/accounts  ──  plan comptable complet (actif + inactif), pour l'écran d'admin
+ledgerRouter.get('/accounts', can('ledger.manage_accounts'), asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await ledgerService.listAccounts());
+}));
+
+// POST /ledger/accounts  ──  créer un compte (ex: nouvelle banque, petite caisse...)
+ledgerRouter.post('/accounts', can('ledger.manage_accounts'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = createAccountSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await ledgerService.createAccount(parsed.data));
+}));
+
+// PATCH /ledger/accounts/:id  ──  renommer / activer / désactiver / changer les moyens de paiement
+ledgerRouter.patch('/accounts/:id', can('ledger.manage_accounts'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = updateAccountSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.json(await ledgerService.updateAccount(req.params.id, parsed.data));
 }));
 
 // GET /ledger/entries  ──  relevé d'un compte (façon relevé bancaire)

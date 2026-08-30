@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wallet, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, PiggyBank } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, PiggyBank, Settings2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
@@ -7,13 +7,9 @@ import { useCashAccounts, useLedgerEntries, useLedgerSummary } from '../hooks/us
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateTransferModal } from '../components/CreateTransferModal';
 import { CreateContributionModal } from '../components/CreateContributionModal';
+import { AccountManagerModal } from '../components/AccountManagerModal';
 import { formatDate, formatCurrency, dateToLocalStr, todayLocalStr, startOfDayIso, endOfDayIso } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
-
-const CATEGORY_KEY: Record<string, string> = {
-  SUPPLIES: 'supplies', UTILITIES: 'utilities', MAINTENANCE: 'maintenance',
-  MARKETING: 'marketing', SALARIES: 'salaries', OTHER: 'other',
-};
 
 const firstOfMonth = () => {
   const now = new Date();
@@ -30,6 +26,7 @@ export const Treasury: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isTransferOpen, setTransferOpen] = useState(false);
   const [isContributionOpen, setContributionOpen] = useState(false);
+  const [isAccountsOpen, setAccountsOpen] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useCashAccounts();
   const { data: summary } = useLedgerSummary({
@@ -62,6 +59,15 @@ export const Treasury: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {can('ledger.manage_accounts') && (
+            <button
+              onClick={() => setAccountsOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
+            >
+              <Settings2 className="w-4 h-4" />
+              {t('accounts.title')}
+            </button>
+          )}
           {can('ledger.contribute') && (
             <button
               onClick={() => setContributionOpen(true)}
@@ -142,8 +148,8 @@ export const Treasury: React.FC = () => {
             <p className="font-mono text-2xl font-bold text-on-surface">{formatCurrency(summary.totalExpenses)}</p>
             <div className="mt-2 space-y-0.5">
               {summary.expensesByCategory.map(c => (
-                <p key={c.category} className="text-[10px] text-on-surface-variant/40">
-                  {t(`expenses.category_${CATEGORY_KEY[c.category] ?? 'other'}`)}: {formatCurrency(c.total)}
+                <p key={c.categoryId} className="text-[10px] text-on-surface-variant/40">
+                  {c.categoryName}: {formatCurrency(c.total)}
                 </p>
               ))}
             </div>
@@ -215,6 +221,7 @@ export const Treasury: React.FC = () => {
 
       <CreateTransferModal isOpen={isTransferOpen} onClose={() => setTransferOpen(false)} />
       <CreateContributionModal isOpen={isContributionOpen} onClose={() => setContributionOpen(false)} />
+      <AccountManagerModal isOpen={isAccountsOpen} onClose={() => setAccountsOpen(false)} />
     </div>
   );
 };

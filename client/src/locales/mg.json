@@ -333,6 +333,32 @@
     "createError":      "Nisy olana teo am-pamoronana.",
     "updateError":      "Nisy olana teo am-panovana."
   },
+  "accounts": {
+    "title":            "Kaonty",
+    "subtitle":         "Drafitry ny kaonty",
+    "empty":            "Mbola tsy misy kaonty voafaritra.",
+    "new":              "Kaonty vaovao",
+    "code":             "Kaody",
+    "codeImmutable":    "Tsy azo ovaina intsony ny kaody rehefa voaforona ny kaonty.",
+    "name":             "Anarana",
+    "namePlaceholder":  "oh. Banky MCB",
+    "type":             "Karazana",
+    "type_asset":       "Fananana",
+    "type_liability":   "Trosa",
+    "type_equity":      "Renivola",
+    "type_revenue":     "Vola miditra",
+    "type_expense":     "Fandaniana",
+    "isCashAccount":    "Kaonty ara-bola",
+    "allowedMethods":   "Fomba fandoavam-bola ekena",
+    "footerNote":       "Voafaritra tsy azo ovaina intsony ny kaody sy ny karazan'ny kaonty iray rehefa voaforona — ampiasain'ny kaonty efa misy izy ireo. Ny kaonty iray dia tsy fafana mihitsy, fa atsahatra fotsiny.",
+    "inactive":         "Tsy mavitrika",
+    "reactivate":       "Hamerina ho mavitrika",
+    "deactivate":       "Hanaisotra tsy ho mavitrika",
+    "deactivateError":  "Nisy olana teo am-panaisorana tsy ho mavitrika.",
+    "reactivateError":  "Nisy olana teo am-pamerenana ho mavitrika.",
+    "createError":      "Nisy olana teo am-pamoronana.",
+    "updateError":      "Nisy olana teo am-panovana."
+  },
   "invoice": {
     "title":                 "Faktiora",
     "number":                "Laharana",
@@ -404,12 +430,25 @@
     "from":               "Manomboka",
     "to":                 "Hatramin'ny",
     "empty":              "Tsy misy fandaniana voasoratra",
-    "category_supplies":    "Fitaovana",
-    "category_utilities":   "Rano, jiro",
-    "category_maintenance": "Fikojakojana",
-    "category_marketing":   "Marketing",
-    "category_salaries":    "Karama",
-    "category_other":       "Hafa"
+    "manageCategories":   "Sokajy"
+  },
+  "expenseCategories": {
+    "title":            "Sokajin'ny fandaniana",
+    "subtitle":         "Kaonty fandaniana iray no adikan'ny sokajy iray avy",
+    "empty":            "Mbola tsy misy sokajy voafaritra.",
+    "new":              "Sokajy vaovao",
+    "name":             "Anarana",
+    "namePlaceholder":  "oh. Fitaovana fanadiovana",
+    "account":          "Kaonty fandaniana",
+    "noExpenseAccount": "Mbola tsy misy kaonty karazana Fandaniana azo ampiasaina — mamorona iray ao amin'ny « Kaonty ».",
+    "footerNote":       "Ny kaonty mifandray no mamaritra izay isoratan'ny fandaniana. Ny sokajy iray dia tsy fafana mihitsy, fa atsahatra fotsiny.",
+    "inactive":         "Tsy mavitrika",
+    "reactivate":       "Hamerina ho mavitrika",
+    "deactivate":       "Hanaisotra tsy ho mavitrika",
+    "deactivateError":  "Nisy olana teo am-panaisorana tsy ho mavitrika.",
+    "reactivateError":  "Nisy olana teo am-pamerenana ho mavitrika.",
+    "createError":      "Nisy olana teo am-pamoronana.",
+    "updateError":      "Nisy olana teo am-panovana."
   },
   "treasury": {
     "title":             "Volam-bola",
@@ -456,7 +495,9 @@
   "permissions": {
     "title":  "Fahazoan-dalana",
     "hint":   "Iza no afaka manao inona, isaky ny anjara asa — azo ovaina tsy misy fanavaozana.",
-    "action": "Asa"
+    "action": "Asa",
+    "newRole":            "Anjara asa vaovao",
+    "newRolePlaceholder": "Anaran'ny anjara asa"
   },
   "settings": {
     "title":             "Fikirana",

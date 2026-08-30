@@ -7,7 +7,7 @@ import { getPermissionsForRole } from '../lib/permissions';
 
 export async function login(data: LoginInput) {
   const { username, password } = data;
-  const user = await prisma.user.findUnique({ where: { username } });
+  const user = await prisma.user.findUnique({ where: { username }, include: { role: true } });
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     throw new UnauthorizedError("Nom d'utilisateur ou mot de passe incorrect");
@@ -20,7 +20,7 @@ export async function login(data: LoginInput) {
   await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
 
   const token = jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user.id, username: user.username, role: user.role.name },
     process.env.JWT_SECRET!,
     { expiresIn: process.env.JWT_EXPIRES_IN ?? '7d' } as jwt.SignOptions
   );
@@ -32,9 +32,9 @@ export async function login(data: LoginInput) {
       username:    user.username,
       email:       user.email,
       name:        user.name,
-      role:        user.role,
+      role:        user.role.name,
       avatar:      user.avatar,
-      permissions: await getPermissionsForRole(user.role),
+      permissions: await getPermissionsForRole(user.role.name),
     },
   };
 }
@@ -42,8 +42,8 @@ export async function login(data: LoginInput) {
 export async function getMe(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, username: true, email: true, name: true, role: true, avatar: true, status: true },
+    select: { id: true, username: true, email: true, name: true, role: { select: { name: true } }, avatar: true, status: true },
   });
   if (!user) throw new NotFoundError('Utilisateur');
-  return { ...user, permissions: await getPermissionsForRole(user.role) };
+  return { ...user, role: user.role.name, permissions: await getPermissionsForRole(user.role.name) };
 }

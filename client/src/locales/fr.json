@@ -333,6 +333,32 @@
     "createError":      "Erreur lors de la création.",
     "updateError":      "Erreur lors de la modification."
   },
+  "accounts": {
+    "title":            "Comptes",
+    "subtitle":         "Plan comptable",
+    "empty":            "Aucun compte défini.",
+    "new":              "Nouveau compte",
+    "code":             "Code",
+    "codeImmutable":    "Le code ne peut plus être modifié après création.",
+    "name":             "Nom",
+    "namePlaceholder":  "ex. Banque MCB",
+    "type":             "Type",
+    "type_asset":       "Actif",
+    "type_liability":   "Passif",
+    "type_equity":      "Capitaux propres",
+    "type_revenue":     "Produit",
+    "type_expense":     "Charge",
+    "isCashAccount":    "Compte de trésorerie",
+    "allowedMethods":   "Moyens de paiement acceptés",
+    "footerNote":       "Le code et le type d'un compte sont fixés à la création — ils sont référencés par la comptabilité existante et ne peuvent plus changer ensuite. Un compte n'est jamais supprimé, seulement désactivé.",
+    "inactive":         "Désactivé",
+    "reactivate":       "Réactiver",
+    "deactivate":       "Désactiver",
+    "deactivateError":  "Erreur lors de la désactivation.",
+    "reactivateError":  "Erreur lors de la réactivation.",
+    "createError":      "Erreur lors de la création.",
+    "updateError":      "Erreur lors de la modification."
+  },
   "invoice": {
     "title":                 "Facture",
     "number":                "Numéro",
@@ -404,12 +430,25 @@
     "from":               "Du",
     "to":                 "Au",
     "empty":              "Aucune dépense enregistrée",
-    "category_supplies":    "Fournitures",
-    "category_utilities":   "Eau, électricité",
-    "category_maintenance": "Entretien",
-    "category_marketing":   "Marketing",
-    "category_salaries":    "Salaires",
-    "category_other":       "Autres"
+    "manageCategories":   "Catégories"
+  },
+  "expenseCategories": {
+    "title":            "Catégories de dépense",
+    "subtitle":         "Chaque catégorie débite un compte de charge précis",
+    "empty":            "Aucune catégorie définie.",
+    "new":              "Nouvelle catégorie",
+    "name":             "Nom",
+    "namePlaceholder":  "ex. Fournitures de ménage",
+    "account":          "Compte de charge",
+    "noExpenseAccount": "Aucun compte de type Charge disponible — crée-en un dans « Comptes ».",
+    "footerNote":       "Le compte lié détermine où la dépense est comptabilisée. Une catégorie n'est jamais supprimée, seulement désactivée.",
+    "inactive":         "Désactivée",
+    "reactivate":       "Réactiver",
+    "deactivate":       "Désactiver",
+    "deactivateError":  "Erreur lors de la désactivation.",
+    "reactivateError":  "Erreur lors de la réactivation.",
+    "createError":      "Erreur lors de la création.",
+    "updateError":      "Erreur lors de la modification."
   },
   "treasury": {
     "title":             "Trésorerie",
@@ -456,7 +495,9 @@
   "permissions": {
     "title":  "Permissions",
     "hint":   "Qui peut faire quoi, par rôle — modifiable sans redéploiement.",
-    "action": "Action"
+    "action": "Action",
+    "newRole":            "Nouveau rôle",
+    "newRolePlaceholder": "Nom du rôle"
   },
   "settings": {
     "title":             "Paramètres",

@@ -13,6 +13,48 @@ export const fetchCashAccounts = async (): Promise<CashAccount[]> => {
   return data.map(a => ({ ...a, allowedMethods: (a.allowedMethods ?? []).map((m: string) => m.toLowerCase()) }));
 };
 
+export type LedgerAccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+
+export interface LedgerAccountFull {
+  id:             string;
+  code:           string;
+  name:           string;
+  type:           LedgerAccountType;
+  isCashAccount:  boolean;
+  allowedMethods: string[];
+  isActive:       boolean;
+}
+
+export const fetchAllAccounts = async (): Promise<LedgerAccountFull[]> => {
+  const { data } = await api.get<LedgerAccountFull[]>('/ledger/accounts');
+  return data;
+};
+
+export interface CreateAccountPayload {
+  code:           string;
+  name:           string;
+  type:           LedgerAccountType;
+  isCashAccount:  boolean;
+  allowedMethods: string[];
+}
+
+export const createAccount = async (payload: CreateAccountPayload): Promise<LedgerAccountFull> => {
+  const { data } = await api.post<LedgerAccountFull>('/ledger/accounts', payload);
+  return data;
+};
+
+export interface UpdateAccountPayload {
+  name?:           string;
+  isCashAccount?:  boolean;
+  allowedMethods?: string[];
+  isActive?:       boolean;
+}
+
+export const updateAccount = async (id: string, payload: UpdateAccountPayload): Promise<LedgerAccountFull> => {
+  const { data } = await api.patch<LedgerAccountFull>(`/ledger/accounts/${id}`, payload);
+  return data;
+};
+
 export interface LedgerEntry {
   id:          string;
   debit:       number;
@@ -54,7 +96,7 @@ export const fetchLedgerEntries = async (params: LedgerEntriesParams): Promise<L
 export interface LedgerSummary {
   revenueInvoiced:  number;
   revenueCollected: number;
-  expensesByCategory: { category: string; total: number }[];
+  expensesByCategory: { categoryId: string; categoryName: string; total: number }[];
   totalExpenses:    number;
   netCashFlow:      number;
 }

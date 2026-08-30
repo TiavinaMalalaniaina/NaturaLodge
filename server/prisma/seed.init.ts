@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs'
 import crypto from 'node:crypto'
 import { config } from 'dotenv'
 import { seedChartOfAccounts } from './seedChartOfAccounts'
+import { seedExpenseCategories } from './seedExpenseCategories'
+import { seedRoles } from './seedRoles'
 import { seedPermissions } from './seedPermissions'
 
 config()
@@ -29,6 +31,8 @@ function generatePassword(length = 16): string {
 
 async function main() {
   await seedChartOfAccounts(prisma)
+  await seedExpenseCategories(prisma)
+  await seedRoles(prisma)
   await seedPermissions(prisma)
 
   const username = process.env.INIT_ADMIN_USERNAME ?? 'admin'
@@ -37,6 +41,7 @@ async function main() {
 
   const existing = await prisma.user.findUnique({ where: { username } })
   const hashed = await bcrypt.hash(password, 12)
+  const adminRole = await prisma.role.findUniqueOrThrow({ where: { name: 'ADMIN' } })
 
   await prisma.user.upsert({
     where:  { username },
@@ -45,7 +50,7 @@ async function main() {
       username,
       email:    email ?? null,
       name:     'Administrateur',
-      role:     'ADMIN',
+      roleId:   adminRole.id,
       status:   'ACTIVE',
       password: hashed,
     },
