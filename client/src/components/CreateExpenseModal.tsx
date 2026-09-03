@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
-import { useCreateExpense } from '../hooks/useExpenses';
+import { useCreateExpense, useExpenseCategories } from '../hooks/useExpenses';
 import { useCashAccounts } from '../hooks/useLedger';
-import { ExpenseCategory } from '../api/expenses';
 import { getApiErrorMessage } from '../lib/apiError';
 import { todayLocalStr } from '../lib/format';
 import { Modal } from './Modal';
@@ -14,24 +13,25 @@ interface CreateExpenseModalProps {
   onClose: () => void;
 }
 
-const CATEGORIES: ExpenseCategory[] = ['supplies', 'utilities', 'maintenance', 'marketing', 'salaries', 'other'];
-
 export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
   const createExpense = useCreateExpense();
   const { data: cashAccounts } = useCashAccounts();
+  const { data: categories } = useExpenseCategories();
+  const activeCategories = (categories ?? []).filter(c => c.isActive);
 
-  const [category,    setCategory]    = useState<ExpenseCategory>('supplies');
+  const [categoryId,   setCategoryId]   = useState('');
   const [amount,       setAmount]       = useState('');
   const [description,  setDescription]  = useState('');
   const [paidFromId,   setPaidFromId]   = useState('');
   const [incurredAt,   setIncurredAt]   = useState(() => todayLocalStr());
   const [apiError,     setApiError]     = useState('');
 
-  const selectedAccountId = paidFromId || cashAccounts?.[0]?.id || '';
+  const selectedAccountId  = paidFromId || cashAccounts?.[0]?.id || '';
+  const selectedCategoryId = categoryId || activeCategories[0]?.id || '';
 
   const reset = () => {
-    setCategory('supplies');
+    setCategoryId('');
     setAmount('');
     setDescription('');
     setPaidFromId('');
@@ -46,11 +46,11 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseInt(amount, 10);
-    if (!parsedAmount || parsedAmount <= 0 || !selectedAccountId || !description) return;
+    if (!parsedAmount || parsedAmount <= 0 || !selectedAccountId || !selectedCategoryId || !description) return;
     setApiError('');
     createExpense.mutate(
       {
-        category,
+        categoryId:  selectedCategoryId,
         amount:      parsedAmount,
         description,
         paidFromId:  selectedAccountId,
@@ -85,15 +85,15 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('expenses.category')}</label>
             <div className="grid grid-cols-3 gap-2">
-              {CATEGORIES.map(c => (
-                <button key={c} type="button" onClick={() => setCategory(c)}
+              {activeCategories.map(c => (
+                <button key={c.id} type="button" onClick={() => setCategoryId(c.id)}
                   className={cn(
                     'py-2.5 rounded-xl border font-bold text-[9px] tracking-widest uppercase transition-all',
-                    category === c
+                    selectedCategoryId === c.id
                       ? 'bg-zinc-900 text-white border-zinc-900'
                       : 'bg-white text-on-surface-variant border-stone-200 hover:border-stone-400',
                   )}>
-                  {t(`expenses.category_${c}`)}
+                  {c.name}
                 </button>
               ))}
             </div>
@@ -144,7 +144,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
               className="px-6 py-3 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
               {t('common.cancel')}
             </button>
-            <button type="submit" disabled={createExpense.isPending || !amount || !selectedAccountId || !description}
+            <button type="submit" disabled={createExpense.isPending || !amount || !selectedAccountId || !selectedCategoryId || !description}
               className="flex-1 py-3 bg-zinc-900 text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-black transition-all shadow-xl shadow-black/20 disabled:opacity-50">
               {createExpense.isPending ? t('common.saving') : t('common.confirm')}
             </button>

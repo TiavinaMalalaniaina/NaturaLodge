@@ -1,8 +1,7 @@
 import { z } from 'zod';
 
-// Schéma Zod côté client, volontairement distinct de server/src/validation/staff.schema.ts :
-// le client normalise les enums en minuscules (cf. convention CLAUDE.md), donc pas de partage
-// littéral possible avec le schéma serveur (qui valide des enums Prisma en MAJUSCULES).
+// Schéma Zod côté client, volontairement distinct de server/src/validation/staff.schema.ts (le
+// serveur valide directement le body JSON, pas de littéraux partagés nécessaires ici).
 export const staffFormSchema = z
   .object({
     name:            z.string().min(1, 'Le nom est requis'),
@@ -11,7 +10,7 @@ export const staffFormSchema = z
     email:           z.string().email('Adresse email invalide').optional().or(z.literal('')),
     password:        z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
     confirmPassword: z.string(),
-    role:            z.enum(['admin', 'manager', 'receptionist', 'housekeeping']),
+    roleId:          z.string().min(1, 'Le rôle est requis'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas',

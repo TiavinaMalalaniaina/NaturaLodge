@@ -1,11 +1,10 @@
-import { Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError } from '../errors/AppError';
 import { invalidatePermissionCache } from '../lib/permissions';
 
 export async function list() {
   const permissions = await prisma.permission.findMany({
-    include: { roles: { select: { role: true } } },
+    include: { roles: { select: { roleId: true } } },
     orderBy: [{ domain: 'asc' }, { key: 'asc' }],
   });
 
@@ -14,11 +13,11 @@ export async function list() {
     key:         p.key,
     domain:      p.domain,
     description: p.description,
-    roles:       p.roles.map(r => r.role),
+    roleIds:     p.roles.map(r => r.roleId),
   }));
 }
 
-export async function setRolePermission(permissionId: string, role: Role, granted: boolean) {
+export async function setRolePermission(permissionId: string, roleId: string, granted: boolean) {
   const permission = await prisma.permission.findUnique({ where: { id: permissionId } });
   if (!permission) throw new NotFoundError('Permission');
 
@@ -35,15 +34,15 @@ export async function setRolePermission(permissionId: string, role: Role, grante
 
   if (granted) {
     await prisma.rolePermission.upsert({
-      where:  { role_permissionId: { role, permissionId } },
+      where:  { roleId_permissionId: { roleId, permissionId } },
       update: {},
-      create: { role, permissionId },
+      create: { roleId, permissionId },
     });
   } else {
-    await prisma.rolePermission.deleteMany({ where: { role, permissionId } });
+    await prisma.rolePermission.deleteMany({ where: { roleId, permissionId } });
   }
 
   invalidatePermissionCache();
 
-  return { permissionId, role, granted };
+  return { permissionId, roleId, granted };
 }

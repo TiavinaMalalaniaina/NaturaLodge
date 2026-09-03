@@ -1,11 +1,13 @@
 import bcrypt from 'bcryptjs';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError, ForbiddenError } from '../errors/AppError';
+import { roleHasPermission } from '../lib/permissions';
 import { StaffInput, StaffUpdateInput } from '../validation/staff.schema';
 
 const select = {
-  id: true, username: true, email: true, name: true, role: true,
+  id: true, username: true, email: true, name: true,
+  role: { select: { id: true, name: true } },
   status: true, avatar: true, joinedDate: true, lastLogin: true,
 };
 
@@ -42,10 +44,15 @@ export async function create(data: StaffInput) {
   }
 }
 
-export function update(id: string, data: StaffUpdateInput, requestingUserRole: Role) {
-  // Seul un ADMIN peut modifier le rôle ou le statut d'un compte (empêche un MANAGER de s'auto-promouvoir ADMIN).
-  if ((data.role !== undefined || data.status !== undefined) && requestingUserRole !== 'ADMIN') {
-    throw new ForbiddenError('Seul un administrateur peut modifier le rôle ou le statut');
+export async function update(id: string, data: StaffUpdateInput, requestingUserRole: string) {
+  // Seul un rôle habilité (staff.assign_role, ADMIN par défaut) peut modifier le rôle ou le statut
+  // d'un compte — empêche par exemple un MANAGER de s'auto-promouvoir. Vérifié via le système de
+  // permissions plutôt qu'un `requestingUserRole !== 'ADMIN'` en dur : un rôle est renommable, un
+  // littéral figé casserait silencieusement dès qu'"ADMIN" change de nom.
+  if (data.roleId !== undefined || data.status !== undefined) {
+    if (!(await roleHasPermission(requestingUserRole, 'staff.assign_role'))) {
+      throw new ForbiddenError('Vous n\'avez pas le droit de modifier le rôle ou le statut d\'un membre du personnel');
+    }
   }
   return prisma.user.update({ where: { id }, data, select });
 }

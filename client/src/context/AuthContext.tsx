@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../api/client';
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'RECEPTIONIST' | 'HOUSEKEEPING';
+// Rôles configurables (table dynamique côté serveur) — plus un enum figé, voir hooks/useRoles.ts.
+export type UserRole = string;
 
 export interface AuthUser {
   id: string;

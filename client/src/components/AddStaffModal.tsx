@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Shield, Mail, User, AtSign, Lock, AlertCircle, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { StaffRole } from '../types';
 import { useCreateStaff } from '../hooks/useStaff';
+import { useRoles } from '../hooks/useRoles';
 import { getApiErrorMessage } from '../lib/apiError';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,22 +14,22 @@ interface AddStaffModalProps {
   onClose: () => void;
 }
 
-const ROLES: { value: StaffRole; label: string; desc: string }[] = [
-  { value: 'admin', label: 'Administrator', desc: 'Full system access & financial controls' },
-  { value: 'manager', label: 'Operations Manager', desc: 'Manage inventory, guests & staff' },
-  { value: 'receptionist', label: 'Front Desk', desc: 'Check-ins, bookings & guest services' },
-  { value: 'housekeeping', label: 'Housekeeping', desc: 'Unit status & maintenance tasks' },
-];
-
-const DEFAULT_VALUES: StaffFormValues = { name: '', username: '', email: '', password: '', confirmPassword: '', role: 'receptionist' };
+const DEFAULT_VALUES: StaffFormValues = { name: '', username: '', email: '', password: '', confirmPassword: '', roleId: '' };
 
 export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose }) => {
   const createStaff = useCreateStaff();
+  const { data: roles = [] } = useRoles();
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
     defaultValues: DEFAULT_VALUES,
   });
-  const role = watch('role');
+  const roleId = watch('roleId');
+
+  // Le premier rôle chargé sert de sélection par défaut — la liste est dynamique, impossible de
+  // fixer un id de rôle par défaut avant que la requête ait répondu.
+  useEffect(() => {
+    if (!roleId && roles.length > 0) setValue('roleId', roles[0].id);
+  }, [roles, roleId, setValue]);
 
   const handleClose = () => {
     if (createStaff.isPending) return;
@@ -43,7 +43,7 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
       {
         name: data.name, username: data.username,
         ...(data.email ? { email: data.email } : {}),
-        password: data.password, role: data.role,
+        password: data.password, roleId: data.roleId,
       },
       { onSuccess: handleClose },
     );
@@ -171,31 +171,31 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-5 text-center">Assign Organizational Role</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {ROLES.map((r) => (
+                    {roles.map((r) => (
                       <button
-                        key={r.value}
+                        key={r.id}
                         type="button"
-                        onClick={() => setValue('role', r.value, { shouldValidate: true })}
+                        onClick={() => setValue('roleId', r.id, { shouldValidate: true })}
                         className={cn(
                           "p-5 text-left border rounded-2xl transition-all relative group",
-                          role === r.value
+                          roleId === r.id
                             ? "bg-teal-50/50 border-teal-600 ring-4 ring-teal-50"
                             : "bg-white border-stone-200 hover:border-stone-400"
                         )}
                       >
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="flex justify-between items-start">
                            <p className={cn(
                              "text-[10px] font-bold uppercase tracking-widest",
-                             role === r.value ? "text-teal-600" : "text-on-surface-variant"
+                             roleId === r.id ? "text-teal-600" : "text-on-surface-variant"
                            )}>
-                             {r.label}
+                             {r.name}
                            </p>
-                           {role === r.value && <div className="w-5 h-5 bg-teal-600 rounded-full flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
+                           {roleId === r.id && <div className="w-5 h-5 bg-teal-600 rounded-full flex items-center justify-center"><Check className="w-3 h-3 text-white" /></div>}
                         </div>
-                        <p className="text-[11px] text-on-surface-variant/60 font-light leading-snug">{r.desc}</p>
                       </button>
                     ))}
                   </div>
+                  {errors.roleId && <p className="text-[10px] text-red-500 mt-2 font-medium text-center">{errors.roleId.message}</p>}
                 </div>
 
                 <div className="flex items-center gap-4 pt-6">

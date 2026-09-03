@@ -30,7 +30,9 @@ export interface BookingNote {
   createdAt: string;
 }
 
-export type StaffRole = 'admin' | 'manager' | 'receptionist' | 'housekeeping';
+// Rôles configurables (table dynamique côté serveur, pas un enum figé) — le nom du rôle lui-même
+// est la donnée d'affichage, plus de normalisation minuscule (voir api/staff.ts).
+export type StaffRole = string;
 
 export interface StaffMember {
   id: string;
@@ -38,6 +40,7 @@ export interface StaffMember {
   username: string;
   email: string;
   role: StaffRole;
+  roleId: string;
   status: 'active' | 'on-leave' | 'inactive';
   avatar?: string;
   joinedDate: string;

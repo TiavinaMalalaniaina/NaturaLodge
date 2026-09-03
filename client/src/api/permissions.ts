@@ -1,12 +1,11 @@
 import { api } from './client';
-import { UserRole } from '../context/AuthContext';
 
 export interface PermissionEntry {
   id:          string;
   key:         string;
   domain:      string;
   description: string;
-  roles:       UserRole[];
+  roleIds:     string[];
 }
 
 export const fetchPermissions = async (): Promise<PermissionEntry[]> => {
@@ -16,7 +15,7 @@ export const fetchPermissions = async (): Promise<PermissionEntry[]> => {
 
 export interface UpdatePermissionPayload {
   permissionId: string;
-  role:         UserRole;
+  roleId:       string;
   granted:      boolean;
 }
 
