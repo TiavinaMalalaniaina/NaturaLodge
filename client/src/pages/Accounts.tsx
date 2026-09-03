@@ -1,17 +1,11 @@
-import React, { useState } from 'react';
-import { X, Plus, Pencil, Power, RotateCcw, AlertCircle, Wallet } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Plus, Pencil, Power, RotateCcw, AlertCircle, Wallet, Search } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { LedgerAccountFull, LedgerAccountType } from '../api/ledger';
 import { useAllAccounts, useCreateAccount, useUpdateAccount } from '../hooks/useLedger';
 import { getApiErrorMessage } from '../lib/apiError';
-import { Modal } from './Modal';
-
-interface AccountManagerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
 
 const ACCOUNT_TYPES: LedgerAccountType[] = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
 const PAYMENT_METHODS = ['CASH', 'CARD', 'BANK_TRANSFER', 'ONLINE', 'MVOLA', 'ORANGE_MONEY'];
@@ -26,7 +20,10 @@ type FormValues = {
 
 const DEFAULT_VALUES: FormValues = { code: '', name: '', type: 'EXPENSE', isCashAccount: false, allowedMethods: [] };
 
-export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({ isOpen, onClose }) => {
+type TypeFilter = 'ALL' | LedgerAccountType;
+type StatusFilter = 'active' | 'inactive' | 'all';
+
+export const Accounts: React.FC = () => {
   const { t } = useTranslation();
   const { data: accounts = [], isLoading } = useAllAccounts();
   const createAccount = useCreateAccount();
@@ -40,11 +37,26 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({ isOpen
     EXPENSE:   t('accounts.type_expense'),
   };
 
+  const [typeFilter,   setTypeFilter]   = useState<TypeFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
+  const [cashOnly,      setCashOnly]     = useState(false);
+  const [search,        setSearch]       = useState('');
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [apiError, setApiError]     = useState('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [values, setValues]         = useState<FormValues>(DEFAULT_VALUES);
+
+  const filteredAccounts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return accounts.filter(a =>
+      (typeFilter === 'ALL' || a.type === typeFilter) &&
+      (statusFilter === 'all' || (statusFilter === 'active' ? a.isActive : !a.isActive)) &&
+      (!cashOnly || a.isCashAccount) &&
+      (!q || a.code.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)),
+    );
+  }, [accounts, typeFilter, statusFilter, cashOnly, search]);
 
   const closeForm = () => { setIsFormOpen(false); setEditingId(null); setValues(DEFAULT_VALUES); setApiError(''); };
 
@@ -102,23 +114,96 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({ isOpen
   const isSaving = createAccount.isPending || updateAccount.isPending;
   const canSubmit = values.name.trim().length > 0 && (editingId || values.code.trim().length > 0);
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title={t('accounts.title')} zIndexClassName="z-[110]"
-      className="max-w-3xl bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 overflow-hidden">
+  const TYPE_TABS: { key: TypeFilter; label: string }[] = [
+    { key: 'ALL', label: t('common.all') },
+    ...ACCOUNT_TYPES.map(type => ({ key: type as TypeFilter, label: TYPE_LABEL[type] })),
+  ];
 
-      <div className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+  return (
+    <div className="space-y-8">
+
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
-          <h3 className="font-display italic text-2xl text-on-surface">{t('accounts.title')}</h3>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('accounts.subtitle')}</p>
+          <h2 className="font-display italic text-3xl md:text-4xl text-primary leading-none">{t('accounts.title')}</h2>
+          <p className="text-[10px] text-on-surface-variant/50 font-bold uppercase tracking-[0.2em] mt-2">
+            {t('accounts.subtitle')} — {t('accounts.count', { count: filteredAccounts.length })}
+          </p>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-stone-200">
-          <X className="w-5 h-5 text-on-surface-variant" />
+        <button
+          onClick={openAddForm}
+          className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+        >
+          <Plus className="w-4 h-4" />
+          {t('accounts.new')}
         </button>
       </div>
 
-      <div className="p-8 grid grid-cols-1 md:grid-cols-5 gap-6">
+      {/* ── Filters ── */}
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-2 flex-wrap">
+          {TYPE_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setTypeFilter(tab.key)}
+              className={cn(
+                'px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all',
+                typeFilter === tab.key
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-on-surface-variant border-stone-200 hover:border-primary/30',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="relative max-w-sm flex-1 min-w-[200px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={t('accounts.search')}
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-stone-200 rounded-2xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {(['active', 'inactive', 'all'] as StatusFilter[]).map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={cn(
+                  'px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all',
+                  statusFilter === s
+                    ? 'bg-stone-900 text-white border-stone-900'
+                    : 'bg-white text-on-surface-variant border-stone-200 hover:border-stone-300',
+                )}
+              >
+                {t(`accounts.status_${s}`)}
+              </button>
+            ))}
+            <button
+              onClick={() => setCashOnly(v => !v)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-widest border transition-all',
+                cashOnly
+                  ? 'bg-teal-50 text-teal-700 border-teal-200'
+                  : 'bg-white text-on-surface-variant border-stone-200 hover:border-stone-300',
+              )}
+            >
+              <Wallet className="w-3 h-3" /> {t('accounts.cashOnly')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Body ── */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* Account list */}
-        <div className="space-y-3 max-h-[55vh] overflow-y-auto no-scrollbar pr-1 md:col-span-3">
+        <div className="space-y-3 md:col-span-3">
           {apiError && !isFormOpen && (
             <div className="flex items-center gap-2 text-red-500 text-xs">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />{apiError}
@@ -126,15 +211,17 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({ isOpen
           )}
 
           {isLoading ? (
-            <p className="text-xs text-on-surface-variant/40 text-center py-8">{t('common.loading')}</p>
-          ) : accounts.length === 0 ? (
-            <p className="text-xs text-on-surface-variant/40 text-center py-8">{t('accounts.empty')}</p>
-          ) : accounts.map(account => {
+            <p className="text-xs text-on-surface-variant/40 text-center py-12">{t('common.loading')}</p>
+          ) : filteredAccounts.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-stone-200 p-16 text-center">
+              <p className="text-sm font-medium text-on-surface-variant/50">{t('accounts.empty')}</p>
+            </div>
+          ) : filteredAccounts.map(account => {
             const isToggling = togglingId === account.id;
             const isEditing  = editingId === account.id;
             return (
               <div key={account.id}
-                className={cn('flex items-center justify-between p-4 bg-stone-50 rounded-2xl border border-stone-100 group hover:border-primary/20 transition-all',
+                className={cn('flex items-center justify-between p-4 bg-white rounded-2xl border border-stone-200 group hover:border-primary/20 transition-all',
                   isEditing && 'border-primary/40 bg-teal-50/40',
                   (isToggling || !account.isActive) && 'opacity-50')}>
                 <div className="min-w-0">
@@ -177,10 +264,10 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({ isOpen
 
         {/* Add / edit panel */}
         <div className="md:col-span-2">
-          <div className="md:sticky md:top-0">
+          <div className="md:sticky md:top-6">
             {isFormOpen ? (
               <motion.form onSubmit={handleSave} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="space-y-4 p-6 bg-teal-50/50 rounded-2xl border border-primary/10">
+                className="space-y-4 p-6 bg-teal-50/50 rounded-3xl border border-primary/10">
                 {apiError && (
                   <div className="flex items-center gap-2 text-red-500 text-xs">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />{apiError}
@@ -241,21 +328,20 @@ export const AccountManagerModal: React.FC<AccountManagerModalProps> = ({ isOpen
                 </div>
               </motion.form>
             ) : (
-              <button onClick={openAddForm}
-                className="w-full h-full min-h-[160px] py-4 border-2 border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center gap-3 text-on-surface-variant/60 hover:border-primary/40 hover:text-primary transition-all group">
-                <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" />
-                <span className="text-[10px] font-bold uppercase tracking-widest">{t('accounts.new')}</span>
-              </button>
+              <div className="p-6 bg-white rounded-3xl border border-stone-200 space-y-4">
+                <p className="text-[10px] text-on-surface-variant/40 leading-relaxed">
+                  {t('accounts.footerNote')}
+                </p>
+                <button onClick={openAddForm}
+                  className="w-full py-8 border-2 border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center gap-3 text-on-surface-variant/60 hover:border-primary/40 hover:text-primary transition-all group">
+                  <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{t('accounts.new')}</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
-
-      <div className="p-8 pt-0">
-        <p className="text-[10px] text-on-surface-variant/40 leading-relaxed text-center">
-          {t('accounts.footerNote')}
-        </p>
-      </div>
-    </Modal>
+    </div>
   );
 };

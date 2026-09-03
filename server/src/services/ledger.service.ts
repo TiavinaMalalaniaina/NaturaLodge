@@ -9,6 +9,108 @@ function normalBalance(type: LedgerAccountType, rawBalance: number): number {
   return type === 'ASSET' || type === 'EXPENSE' ? rawBalance : -rawBalance;
 }
 
+function longestCommonPrefix(codes: string[]): string {
+  let prefix = codes[0];
+  for (const code of codes.slice(1)) {
+    let i = 0;
+    while (i < prefix.length && i < code.length && prefix[i] === code[i]) i++;
+    prefix = prefix.slice(0, i);
+    if (prefix === '') break;
+  }
+  return prefix;
+}
+
+type PrefixLeaf = { id: string; code: string; name: string; balance: number };
+type PrefixRow  = PrefixLeaf & { depth: number; isGroup: boolean };
+type PrefixNode =
+  | { kind: 'leaf'; leaf: PrefixLeaf }
+  | { kind: 'group'; prefix: string; children: PrefixNode[]; balance: number; label?: string };
+
+// Regroupe des comptes par préfixe de code commun, façon plan comptable français (512100 BMOI et
+// 512200 BNI partagent "512" → un en-tête de section virtuel "512" apparaît avec la somme des
+// deux). Purement dérivé du code, aucune configuration à saisir : un groupe n'apparaît que là où
+// au moins deux comptes partagent un préfixe non vide, et les niveaux intermédiaires sans
+// embranchement réel (ex: "51" s'il n'y a que la famille "512" en dessous) sont absorbés
+// automatiquement — même compression qu'un radix trie. Si un compte réel du plan comptable porte
+// exactement ce préfixe comme code (ex: code "512", nom "Banque" — un vrai "compte collectif"),
+// son nom sert de libellé au groupe au lieu d'être listé comme un sous-compte de plus.
+function buildPrefixTree(items: PrefixLeaf[]): PrefixNode[] {
+  if (items.length <= 1) return items.map(leaf => ({ kind: 'leaf', leaf }));
+
+  const prefix = longestCommonPrefix(items.map(i => i.code));
+  const selfAccount = prefix.length > 0 ? items.find(i => i.code === prefix) : undefined;
+  const rest = selfAccount ? items.filter(i => i !== selfAccount) : items;
+
+  const buckets = new Map<string, PrefixLeaf[]>();
+  for (const item of rest) {
+    const ch = item.code[prefix.length] ?? '';
+    if (!buckets.has(ch)) buckets.set(ch, []);
+    buckets.get(ch)!.push(item);
+  }
+
+  const childNodes: PrefixNode[] = [];
+  for (const bucket of buckets.values()) {
+    if (bucket.length === 1) childNodes.push({ kind: 'leaf', leaf: bucket[0] });
+    else childNodes.push(...buildPrefixTree(bucket));
+  }
+
+  if (prefix.length > 0 && (childNodes.length > 1 || selfAccount)) {
+    return [{
+      kind: 'group', prefix, children: childNodes,
+      balance: items.reduce((s, i) => s + i.balance, 0),
+      label: selfAccount?.name,
+    }];
+  }
+  // Aucun préfixe commun exploitable (racine) ou un seul enfant après compression — pas d'en-tête
+  // à afficher, on remonte les enfants directement.
+  return childNodes;
+}
+
+function collectLeafNames(nodes: PrefixNode[]): string[] {
+  const names: string[] = [];
+  for (const node of nodes) {
+    if (node.kind === 'leaf') names.push(node.leaf.name);
+    else names.push(...collectLeafNames(node.children));
+  }
+  return names;
+}
+
+// Libellé d'un groupe : les mots communs en début de nom parmi ses comptes (ex: "Mobile Money —
+// Mvola" / "Mobile Money — Orange Money..." → "Mobile Money"), comparaison mot par mot (jamais
+// caractère par caractère, sinon "Caisse principale" et "Clients" se retrouveraient groupés à tort
+// juste parce qu'ils commencent tous les deux par "C"). Vide si les comptes du groupe n'ont rien
+// en commun dans leur nom — le préfixe de code brut reste alors le seul libellé affiché.
+function commonWordPrefix(names: string[]): string {
+  const wordLists = names.map(n => n.trim().split(/\s+/));
+  const first = wordLists[0];
+  let count = 0;
+  while (count < first.length && wordLists.every(words => words[count]?.toLowerCase() === first[count].toLowerCase())) {
+    count++;
+  }
+  return first.slice(0, count).join(' ').replace(/[-–—:]+$/, '').trim();
+}
+
+function flattenPrefixTree(nodes: PrefixNode[], depth: number, out: PrefixRow[]): void {
+  for (const node of nodes) {
+    if (node.kind === 'leaf') {
+      out.push({ ...node.leaf, depth, isGroup: false });
+    } else {
+      // Le nom d'un vrai compte collectif (code == préfixe) prime sur la déduction par mots
+      // communs — plus fiable, et permet des noms de sous-comptes courts sans mot répété.
+      const label = node.label ?? commonWordPrefix(collectLeafNames(node.children));
+      const name  = label ? `${node.prefix} · ${label}` : node.prefix;
+      out.push({ id: `group:${node.prefix}`, code: node.prefix, name, balance: node.balance, depth, isGroup: true });
+      flattenPrefixTree(node.children, depth + 1, out);
+    }
+  }
+}
+
+function groupByCodePrefix(leaves: PrefixLeaf[]): PrefixRow[] {
+  const rows: PrefixRow[] = [];
+  flattenPrefixTree(buildPrefixTree(leaves), 0, rows);
+  return rows;
+}
+
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
 // Une ligne référence un compte soit par son code (comptes fixes du plan comptable, ex: '411000'),
@@ -195,6 +297,64 @@ export async function getCashAccountsBalances() {
   });
 }
 
+// Même comptes que getCashAccountsBalances(), mais regroupés par les 3 premiers chiffres du code
+// (ex: BMOI et BNI, tous deux "512xxx", apparaissent sous un en-tête "512 · Banque") — un seul
+// niveau, volontairement plus simple que le regroupement en cascade de getBalanceSheet (5→51→512)
+// qui n'a de sens que pour un relevé texte, pas pour une grille de cartes. Le libellé vient du
+// compte collectif à ce code s'il existe (voir seedChartOfAccounts.ts), sinon le code brut sert
+// d'en-tête. Un préfixe partagé par un seul compte n'est pas encapsulé dans un groupe.
+export async function getCashAccountGroups() {
+  const accounts = await prisma.ledgerAccount.findMany({
+    where:   { isCashAccount: true, isActive: true },
+    orderBy: { code: 'asc' },
+  });
+  if (accounts.length === 0) return [];
+
+  const totals = await prisma.journalLine.groupBy({
+    by:    ['accountId'],
+    where: { accountId: { in: accounts.map(a => a.id) } },
+    _sum:  { debit: true, credit: true },
+  });
+  const totalsByAccountId = new Map(totals.map(t => [t.accountId, t]));
+
+  const groupCodes = [...new Set(accounts.map(a => a.code.slice(0, 3)))];
+  const groupAccounts = await prisma.ledgerAccount.findMany({ where: { code: { in: groupCodes } } });
+  const groupNameByCode = new Map(groupAccounts.map(g => [g.code, g.name]));
+
+  const byGroupCode = new Map<string, typeof accounts>();
+  for (const a of accounts) {
+    const groupCode = a.code.slice(0, 3);
+    if (!byGroupCode.has(groupCode)) byGroupCode.set(groupCode, []);
+    byGroupCode.get(groupCode)!.push(a);
+  }
+
+  const rows: { id: string; code: string; name: string; balance: number; depth: number; isGroup: boolean }[] = [];
+  for (const [groupCode, members] of byGroupCode) {
+    const withBalance = members.map(a => {
+      const t = totalsByAccountId.get(a.id);
+      return { account: a, balance: (t?._sum.debit ?? 0) - (t?._sum.credit ?? 0) };
+    });
+    const label = groupNameByCode.get(groupCode);
+    // Sans compte collectif dédié à ce préfixe, un seul membre ne mérite pas d'en-tête (juste du
+    // bruit visuel) — mais si un collectif existe (ex: "530 · Caisse principale"), son libellé
+    // prime : affiché même pour un seul sous-compte, pour rester cohérent une fois qu'un deuxième
+    // compte rejoindra le groupe plus tard.
+    if (members.length === 1 && !label) {
+      const { account, balance } = withBalance[0];
+      rows.push({ id: account.id, code: account.code, name: account.name, balance, depth: 0, isGroup: false });
+      continue;
+    }
+    rows.push({
+      id: `group:${groupCode}`, code: groupCode, name: label ? `${groupCode} · ${label}` : groupCode,
+      balance: withBalance.reduce((s, w) => s + w.balance, 0), depth: 0, isGroup: true,
+    });
+    for (const { account, balance } of withBalance) {
+      rows.push({ id: account.id, code: account.code, name: account.name, balance, depth: 1, isGroup: false });
+    }
+  }
+  return rows;
+}
+
 // Plan comptable complet (actif + inactif), pour l'écran d'administration — contrairement à
 // getCashAccountsBalances(), pas filtré aux seuls comptes de trésorerie actifs.
 export async function listAccounts() {
@@ -225,7 +385,9 @@ export type UpdateAccountParams = {
 // Le code et le type ne sont jamais modifiables une fois le compte créé : le code est référencé
 // en dur (accountCode: '411000', '706000'...) dans invoice.service.ts/expense.service.ts, et le
 // type détermine le sens normal du solde (normalBalance ci-dessus) — les changer casserait
-// silencieusement la comptabilité déjà posée sur ce compte.
+// silencieusement la comptabilité déjà posée sur ce compte. Le regroupement hiérarchique
+// (getBalanceSheet/getIncomeStatement) est dérivé automatiquement du code (voir
+// groupByCodePrefix) — pas de champ parent à gérer ici.
 export async function updateAccount(id: string, params: UpdateAccountParams) {
   const account = await prisma.ledgerAccount.findUnique({ where: { id } });
   if (!account) throw new NotFoundError('Compte comptable');
@@ -346,12 +508,16 @@ export async function getAccountBalance(accountId: string) {
   return { account, balance: normalBalance(account.type, rawBalance) };
 }
 
-export type BalanceSheetRow = { id: string; code: string; name: string; balance: number };
+export type BalanceSheetRow = PrefixRow;
 
 // Bilan simplifié à une date donnée : agrégation des soldes par type de compte. Actif = Passif +
 // Capitaux propres + résultat cumulé non affecté (produits − charges, jamais "clôturés" vers les
 // capitaux propres faute d'exercice comptable formel) — invariant vérifiable via `balanced`.
-export async function getBalanceSheet(asOf?: string) {
+// Les comptes partageant un préfixe de code sont regroupés sous un en-tête virtuel (voir
+// groupByCodePrefix) ; seuls les vrais comptes (`isGroup: false`) entrent dans les totaux, les
+// groupes ne sont qu'un cumul d'affichage pour éviter de compter deux fois. Par défaut, un compte
+// jamais mouvementé (solde nul) n'apparaît pas — `includeZero` force le plan comptable complet.
+export async function getBalanceSheet(asOf?: string, includeZero = false) {
   const dateFilter = asOf ? { lte: new Date(asOf) } : undefined;
 
   const accounts = await prisma.ledgerAccount.findMany({ where: { isActive: true }, orderBy: { code: 'asc' } });
@@ -362,25 +528,29 @@ export async function getBalanceSheet(asOf?: string) {
   });
   const totalsByAccountId = new Map(totals.map(t => [t.accountId, t]));
 
-  const rows = accounts.map(a => {
-    const t   = totalsByAccountId.get(a.id);
-    const raw = (t?._sum.debit ?? 0) - (t?._sum.credit ?? 0);
-    return { id: a.id, code: a.code, name: a.name, type: a.type, balance: normalBalance(a.type, raw) };
-  }).filter(r => r.balance !== 0);
-
-  const byType = (type: LedgerAccountType): BalanceSheetRow[] =>
-    rows.filter(r => r.type === type).map(({ id, code, name, balance }) => ({ id, code, name, balance }));
-  const sumOf = (list: BalanceSheetRow[]) => list.reduce((s, r) => s + r.balance, 0);
+  // Le regroupement (et la détection d'un compte collectif comme "512" Banque, voir
+  // buildPrefixTree) se fait sur TOUS les comptes du type, solde nul compris — un compte collectif
+  // n'a lui-même quasiment jamais de solde propre, le filtrer avant le regroupement ferait perdre
+  // son libellé. Le filtre "solde ≠ 0" s'applique après, ligne par ligne (compte ou groupe).
+  const byType = (type: LedgerAccountType): BalanceSheetRow[] => {
+    const leaves = accounts.filter(a => a.type === type).map(a => {
+      const t   = totalsByAccountId.get(a.id);
+      const raw = (t?._sum.debit ?? 0) - (t?._sum.credit ?? 0);
+      return { id: a.id, code: a.code, name: a.name, balance: normalBalance(a.type, raw) };
+    });
+    if (leaves.length === 0) return [];
+    const rows = groupByCodePrefix(leaves);
+    return includeZero ? rows : rows.filter(r => r.balance !== 0);
+  };
+  const sumOf = (rows: BalanceSheetRow[]) => rows.filter(r => !r.isGroup).reduce((s, r) => s + r.balance, 0);
 
   const assets      = byType('ASSET');
   const liabilities = byType('LIABILITY');
   const equity      = byType('EQUITY');
-  const revenue     = byType('REVENUE');
-  const expense     = byType('EXPENSE');
 
   const totalAssets      = sumOf(assets);
   const totalLiabilities = sumOf(liabilities);
-  const netIncomeToDate  = sumOf(revenue) - sumOf(expense);
+  const netIncomeToDate  = sumOf(byType('REVENUE')) - sumOf(byType('EXPENSE'));
   const totalEquity      = sumOf(equity) + netIncomeToDate;
   const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
@@ -393,8 +563,12 @@ export async function getBalanceSheet(asOf?: string) {
   };
 }
 
+export type IncomeStatementRow = { id: string; code: string; name: string; total: number; depth: number; isGroup: boolean };
+
 // Compte de résultat comptable (produits/charges par compte, en partie double) sur une période —
 // distinct de getSummary() qui donne une vue trésorerie (encaissé vs facturé) par catégorie métier.
+// Même regroupement par préfixe de code que getBalanceSheet (voir groupByCodePrefix) : les
+// groupes ne sont qu'un cumul d'affichage, seuls les vrais comptes entrent dans les totaux.
 export async function getIncomeStatement(params: SummaryParams) {
   const dateFilter = {
     ...(params.dateFrom ? { gte: new Date(params.dateFrom) } : {}),
@@ -413,16 +587,21 @@ export async function getIncomeStatement(params: SummaryParams) {
   });
   const totalsByAccountId = new Map(totals.map(t => [t.accountId, t]));
 
-  const rows = accounts.map(a => {
-    const t   = totalsByAccountId.get(a.id);
-    const raw = (t?._sum.debit ?? 0) - (t?._sum.credit ?? 0);
-    return { code: a.code, name: a.name, type: a.type, total: normalBalance(a.type, raw) };
-  }).filter(r => r.total !== 0);
+  const byType = (type: LedgerAccountType): IncomeStatementRow[] => {
+    const leaves = accounts.filter(a => a.type === type).map(a => {
+      const t   = totalsByAccountId.get(a.id);
+      const raw = (t?._sum.debit ?? 0) - (t?._sum.credit ?? 0);
+      return { id: a.id, code: a.code, name: a.name, balance: normalBalance(a.type, raw) };
+    }).filter(leaf => leaf.balance !== 0);
+    if (leaves.length === 0) return [];
+    return groupByCodePrefix(leaves).map(({ id, code, name, balance, depth, isGroup }) => ({ id, code, name, total: balance, depth, isGroup }));
+  };
+  const sumOf = (rows: IncomeStatementRow[]) => rows.filter(r => !r.isGroup).reduce((s, r) => s + r.total, 0);
 
-  const revenue      = rows.filter(r => r.type === 'REVENUE').map(({ code, name, total }) => ({ code, name, total }));
-  const expenses      = rows.filter(r => r.type === 'EXPENSE').map(({ code, name, total }) => ({ code, name, total }));
-  const totalRevenue  = revenue.reduce((s, r) => s + r.total, 0);
-  const totalExpenses = expenses.reduce((s, r) => s + r.total, 0);
+  const revenue        = byType('REVENUE');
+  const expenses       = byType('EXPENSE');
+  const totalRevenue   = sumOf(revenue);
+  const totalExpenses  = sumOf(expenses);
 
   return {
     dateFrom: params.dateFrom ?? null,

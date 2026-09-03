@@ -255,13 +255,27 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String  @id @default(cuid())
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id          String            @id @default(cuid())
+  invoice     Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   invoiceId   String
   description String
-  quantity    Int     @default(1)
+  quantity    Int               @default(1)
   unitPrice   Int
   total       Int
+  // BOOKING : ligne dérivée de la réservation (chambre/supplément), réécrite à chaque
+  // resynchronisation par syncInvoiceWithBooking. MANUAL : ligne libre ajoutée à la main sur la
+  // facture (dégâts, service exceptionnel, remise avec unitPrice négatif…) — jamais touchée par la
+  // resynchronisation, seuls les endpoints /invoices/:id/items la modifient.
+  source      InvoiceItemSource @default(BOOKING)
+  // Renseigné (1–100) uniquement pour une remise en pourcentage : `total` (négatif) est alors
+  // recalculé à chaque resynchronisation à partir de la base du moment (somme des lignes à total
+  // positif). null = ligne à montant figé — charge, ou remise en montant fixe (unitPrice négatif).
+  discountRate Int?
+}
+
+enum InvoiceItemSource {
+  BOOKING
+  MANUAL
 }
 
 enum InvoiceStatus {

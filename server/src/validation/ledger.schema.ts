@@ -33,6 +33,9 @@ export const contributionSchema = z.object({
 
 export const balanceSheetQuerySchema = z.object({
   asOf: z.string().datetime().optional(),
+  // z.coerce.boolean() ne convient pas ici : Boolean("false") vaut true en JS (toute chaîne non
+  // vide est truthy), donc ?includeZero=false serait lu comme "true" par erreur.
+  includeZero: z.preprocess(v => v === 'true' || v === true, z.boolean()),
 });
 
 export const exportQuerySchema = z.object({

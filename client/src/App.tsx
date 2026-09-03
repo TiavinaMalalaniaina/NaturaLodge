@@ -28,6 +28,7 @@ const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ def
 const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 const AuditLog            = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLog })));
 const Permissions          = lazy(() => import('./pages/Permissions').then(m => ({ default: m.Permissions })));
+const Accounts              = lazy(() => import('./pages/Accounts').then(m => ({ default: m.Accounts })));
 
 const App: React.FC = () => {
   return (
@@ -67,6 +68,9 @@ const App: React.FC = () => {
                   <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
                     <Route path="treasury" element={<Treasury />} />
                     <Route path="reports" element={<Reports />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="ledger.manage_accounts" />}>
+                    <Route path="accounts" element={<Accounts />} />
                   </Route>
                   <Route element={<ProtectedRoute permission="auditLogs.view" />}>
                     <Route path="audit-log" element={<AuditLog />} />

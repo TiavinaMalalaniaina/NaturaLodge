@@ -13,6 +13,23 @@ export const fetchCashAccounts = async (): Promise<CashAccount[]> => {
   return data.map(a => ({ ...a, allowedMethods: (a.allowedMethods ?? []).map((m: string) => m.toLowerCase()) }));
 };
 
+// Mêmes comptes que fetchCashAccounts, regroupés par préfixe de code (ex: BMOI + BNI sous
+// "512 · Banque") — voir groupByCodePrefix côté serveur. `isGroup` distingue un en-tête de
+// regroupement (jamais sélectionnable comme compte) d'un vrai compte.
+export interface CashAccountGroupRow {
+  id:      string;
+  code:    string;
+  name:    string;
+  balance: number;
+  depth:   number;
+  isGroup: boolean;
+}
+
+export const fetchCashAccountGroups = async (): Promise<CashAccountGroupRow[]> => {
+  const { data } = await api.get<CashAccountGroupRow[]>('/ledger/cash-account-groups');
+  return data;
+};
+
 export type LedgerAccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
 
 export interface LedgerAccountFull {
@@ -138,6 +155,8 @@ export interface BalanceSheetRow {
   code:    string;
   name:    string;
   balance: number;
+  depth:   number;
+  isGroup: boolean;
 }
 
 export interface BalanceSheet {
@@ -153,15 +172,18 @@ export interface BalanceSheet {
   balanced:                   boolean;
 }
 
-export const fetchBalanceSheet = async (asOf?: string): Promise<BalanceSheet> => {
-  const { data } = await api.get<BalanceSheet>('/ledger/balance-sheet', { params: { asOf } });
+export const fetchBalanceSheet = async (asOf?: string, includeZero?: boolean): Promise<BalanceSheet> => {
+  const { data } = await api.get<BalanceSheet>('/ledger/balance-sheet', { params: { asOf, includeZero } });
   return data;
 };
 
 export interface IncomeStatementRow {
-  code:  string;
-  name:  string;
-  total: number;
+  id:      string;
+  code:    string;
+  name:    string;
+  total:   number;
+  depth:   number;
+  isGroup: boolean;
 }
 
 export interface IncomeStatement {

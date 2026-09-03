@@ -17,6 +17,12 @@ ledgerRouter.get('/cash-accounts', can('ledger.view_cash_accounts'), asyncHandle
   res.json(await ledgerService.getCashAccountsBalances());
 }));
 
+// GET /ledger/cash-account-groups  ──  mêmes comptes, regroupés par préfixe de code (cartes de
+// Treasury.tsx, ex: BMOI + BNI sous "512 · Banque")
+ledgerRouter.get('/cash-account-groups', can('ledger.view_cash_accounts'), asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await ledgerService.getCashAccountGroups());
+}));
+
 // GET /ledger/accounts  ──  plan comptable complet (actif + inactif), pour l'écran d'admin
 ledgerRouter.get('/accounts', can('ledger.manage_accounts'), asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
   res.json(await ledgerService.listAccounts());
@@ -68,7 +74,7 @@ ledgerRouter.post('/contributions', can('ledger.contribute'), asyncHandler(async
 ledgerRouter.get('/balance-sheet', can('ledger.view_reports'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = balanceSheetQuerySchema.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await ledgerService.getBalanceSheet(parsed.data.asOf));
+  res.json(await ledgerService.getBalanceSheet(parsed.data.asOf, parsed.data.includeZero));
 }));
 
 // GET /ledger/income-statement  ──  compte de résultat (produits/charges) sur une période

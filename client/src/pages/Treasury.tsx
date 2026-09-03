@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Wallet, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight, PiggyBank, Settings2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useCashAccounts, useLedgerEntries, useLedgerSummary } from '../hooks/useLedger';
+import { useCashAccounts, useCashAccountGroups, useLedgerEntries, useLedgerSummary } from '../hooks/useLedger';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateTransferModal } from '../components/CreateTransferModal';
 import { CreateContributionModal } from '../components/CreateContributionModal';
-import { AccountManagerModal } from '../components/AccountManagerModal';
 import { formatDate, formatCurrency, dateToLocalStr, todayLocalStr, startOfDayIso, endOfDayIso } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
 
@@ -19,6 +19,7 @@ const firstOfMonth = () => {
 export const Treasury: React.FC = () => {
   const { t } = useTranslation();
   const { can } = useAuth();
+  const navigate = useNavigate();
 
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState(firstOfMonth());
@@ -26,9 +27,9 @@ export const Treasury: React.FC = () => {
   const [page, setPage] = useState(1);
   const [isTransferOpen, setTransferOpen] = useState(false);
   const [isContributionOpen, setContributionOpen] = useState(false);
-  const [isAccountsOpen, setAccountsOpen] = useState(false);
 
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useCashAccounts();
+  const { data: accountGroups } = useCashAccountGroups();
   const { data: summary } = useLedgerSummary({
     dateFrom: dateFrom ? startOfDayIso(dateFrom) : undefined,
     dateTo:   dateTo   ? endOfDayIso(dateTo)     : undefined,
@@ -61,7 +62,7 @@ export const Treasury: React.FC = () => {
         <div className="flex items-center gap-3">
           {can('ledger.manage_accounts') && (
             <button
-              onClick={() => setAccountsOpen(true)}
+              onClick={() => navigate('/accounts')}
               className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
             >
               <Settings2 className="w-4 h-4" />
@@ -89,18 +90,24 @@ export const Treasury: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Cash account cards ── */}
+      {/* ── Cash account cards — regroupées par préfixe de code à 3 chiffres (ex: BMOI + BNI
+          sous "512 · Banque"), voir getCashAccountGroups côté serveur ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(accounts ?? []).map((a, i) => (
+        {(accountGroups ?? []).map((row, i) => row.isGroup ? (
+          <div key={row.id} className="col-span-full flex items-center justify-between px-1 pt-2 first:pt-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{row.name}</p>
+            <p className="font-mono text-xs font-semibold text-on-surface-variant/60">{formatCurrency(row.balance)}</p>
+          </div>
+        ) : (
           <motion.button
-            key={a.id}
+            key={row.id}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
-            onClick={() => { setSelectedAccountId(a.id); setPage(1); }}
+            onClick={() => { setSelectedAccountId(row.id); setPage(1); }}
             className={cn(
               'text-left bg-white p-6 rounded-2xl border transition-all',
-              activeAccountId === a.id ? 'border-primary shadow-md shadow-primary/10' : 'border-stone-200/60 hover:border-primary/30',
+              activeAccountId === row.id ? 'border-primary shadow-md shadow-primary/10' : 'border-stone-200/60 hover:border-primary/30',
             )}
           >
             <div className="flex items-center justify-between mb-4">
@@ -108,8 +115,8 @@ export const Treasury: React.FC = () => {
                 <Wallet className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1 truncate">{a.name}</p>
-            <p className="font-mono text-xl font-bold text-on-surface">{formatCurrency(a.balance)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1 truncate">{row.name}</p>
+            <p className="font-mono text-xl font-bold text-on-surface">{formatCurrency(row.balance)}</p>
           </motion.button>
         ))}
       </div>
@@ -221,7 +228,6 @@ export const Treasury: React.FC = () => {
 
       <CreateTransferModal isOpen={isTransferOpen} onClose={() => setTransferOpen(false)} />
       <CreateContributionModal isOpen={isContributionOpen} onClose={() => setContributionOpen(false)} />
-      <AccountManagerModal isOpen={isAccountsOpen} onClose={() => setAccountsOpen(false)} />
     </div>
   );
 };

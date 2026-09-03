@@ -1,11 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchCashAccounts, fetchLedgerEntries, fetchLedgerSummary, createTransfer, createContribution,
+  fetchCashAccounts, fetchCashAccountGroups, fetchLedgerEntries, fetchLedgerSummary, createTransfer, createContribution,
   fetchBalanceSheet, fetchIncomeStatement, fetchAllAccounts, createAccount, updateAccount,
   UpdateAccountPayload,
 } from '../api/ledger';
 
 export const CASH_ACCOUNTS_KEY = ['ledger', 'cash-accounts'] as const;
+// Imbriquée sous CASH_ACCOUNTS_KEY : invalider CASH_ACCOUNTS_KEY (transferts, paiements,
+// dépenses...) invalide automatiquement aussi cette vue groupée, sans toucher chaque appelant.
+export const CASH_ACCOUNT_GROUPS_KEY = [...CASH_ACCOUNTS_KEY, 'groups'] as const;
 export const ALL_ACCOUNTS_KEY = ['ledger', 'accounts'] as const;
 export const LEDGER_ENTRIES_KEY = ['ledger', 'entries'] as const;
 export const LEDGER_SUMMARY_KEY = ['ledger', 'summary'] as const;
@@ -16,6 +19,14 @@ export function useCashAccounts() {
   return useQuery({
     queryKey: CASH_ACCOUNTS_KEY,
     queryFn:  fetchCashAccounts,
+    staleTime: 60_000,
+  });
+}
+
+export function useCashAccountGroups() {
+  return useQuery({
+    queryKey: CASH_ACCOUNT_GROUPS_KEY,
+    queryFn:  fetchCashAccountGroups,
     staleTime: 60_000,
   });
 }
@@ -37,10 +48,10 @@ export function useLedgerSummary(params?: Parameters<typeof fetchLedgerSummary>[
   });
 }
 
-export function useBalanceSheet(asOf?: string) {
+export function useBalanceSheet(asOf?: string, includeZero?: boolean) {
   return useQuery({
-    queryKey: [...BALANCE_SHEET_KEY, asOf],
-    queryFn:  () => fetchBalanceSheet(asOf),
+    queryKey: [...BALANCE_SHEET_KEY, asOf, includeZero],
+    queryFn:  () => fetchBalanceSheet(asOf, includeZero),
     placeholderData: (prev) => prev,
   });
 }
