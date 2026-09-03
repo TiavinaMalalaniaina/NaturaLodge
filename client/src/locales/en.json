@@ -18,7 +18,8 @@
     "groupAccounting": "Accounting",
     "groupAdmin":      "Administration",
     "auditLog":        "Audit Log",
-    "permissions":     "Permissions"
+    "permissions":     "Permissions",
+    "treasuryAccess":  "Treasury access"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
@@ -528,6 +529,18 @@
     "action": "Action",
     "newRole":            "New role",
     "newRolePlaceholder": "Role name"
+  },
+  "treasuryAccess": {
+    "title":       "Treasury access",
+    "hint":        "Per role: which cash accounts are visible, which may be the source or destination of a transfer, and which may pay an expense.",
+    "account":     "Account",
+    "visible":     "Visible",
+    "source":      "Source",
+    "destination": "Destination",
+    "expense":     "Expenses",
+    "seesAll":     "No account ticked: this role sees every cash account and can transfer and spend from all of them. Tick accounts to restrict.",
+    "accessAllWarning": "This role has the “See all cash accounts” permission: it sees everything and transfers/spends without restriction regardless of what you set here. Remove that permission from the Permissions screen for these settings to take effect.",
+    "footnote":    "A transfer is allowed when the role has the origin ticked as “Source” and the destination ticked as “Destination”. An expense is allowed when the account is ticked as “Expenses”. For each of these columns, if no box is ticked, any visible account qualifies."
   },
   "settings": {
     "title":             "Settings",

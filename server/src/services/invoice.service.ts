@@ -6,6 +6,7 @@ import {
   UpdateInvoiceInput, UpdateInvoiceItemInput,
 } from '../validation/invoice.schema';
 import * as ledgerService from './ledger.service';
+import { assertCanViewCashAccount } from '../lib/treasuryAccess';
 import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
@@ -431,7 +432,11 @@ export async function cancelInvoiceForBooking(bookingId: string, cancelledById?:
   return cancelInvoice(invoice.id, cancelledById, client);
 }
 
-export async function addPayment(invoiceId: string, data: PaymentInput, processedById: string) {
+export async function addPayment(invoiceId: string, data: PaymentInput, processedById: string, processedByRole?: string) {
+  if (processedByRole) {
+    // Le compte de trésorerie qui reçoit l'encaissement doit être accessible au rôle de l'opérateur.
+    await assertCanViewCashAccount(processedByRole, data.accountId);
+  }
   // Enregistrement du paiement + resynchronisation du statut de la facture dans une seule
   // transaction : évite qu'une facture reste dans un statut périmé si le process meurt entre les deux.
   return prisma.$transaction(async (tx) => {

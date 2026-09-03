@@ -39,12 +39,13 @@ model User {
 // rôle custom démarre sans aucune permission accordée ; l'ADMIN les coche ensuite case par case
 // sur la même matrice que les rôles historiques.
 model Role {
-  id        String           @id @default(cuid())
-  name      String           @unique
-  isSystem  Boolean          @default(false)
-  users     User[]
-  rolePerms RolePermission[]
-  createdAt DateTime         @default(now())
+  id            String              @id @default(cuid())
+  name          String              @unique
+  isSystem      Boolean             @default(false)
+  users         User[]
+  rolePerms     RolePermission[]
+  ledgerAccess  RoleLedgerAccount[]
+  createdAt     DateTime            @default(now())
 }
 
 enum UserStatus {
@@ -346,8 +347,32 @@ model LedgerAccount {
   payments      Payment[]
   expenses      Expense[]
   expenseCategories ExpenseCategory[]
+  roleAccess    RoleLedgerAccount[]
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+}
+
+// Accès d'un rôle à un compte de TRÉSORERIE (isCashAccount). Une ligne = ce rôle voit ce compte.
+// Règle de visibilité : un rôle qui a au moins une ligne ne voit QUE ses comptes listés ; un rôle
+// sans aucune ligne voit tout (défaut non-régressif) ; la permission `ledger.access_all_accounts`
+// court-circuite tout.
+//   canTransferFrom / canTransferTo : ce rôle peut utiliser ce compte comme source / arrivée d'un
+//     virement ;
+//   canPayExpenses : ce rôle peut payer une dépense depuis ce compte.
+// Pour chacun de ces trois drapeaux : si le rôle n'a AUCUNE ligne où il est coché, tout compte
+// visible convient (fallback permissif). Voir lib/treasuryAccess.ts.
+model RoleLedgerAccount {
+  role            Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId          String
+  account         LedgerAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId       String
+  canTransferFrom Boolean       @default(false)
+  canTransferTo   Boolean       @default(false)
+  canPayExpenses  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  @@id([roleId, accountId])
+  @@index([accountId])
 }
 
 enum LedgerAccountType {

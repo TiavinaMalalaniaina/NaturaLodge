@@ -1,6 +1,10 @@
 import { JournalSource, LedgerAccountType, PaymentMethod, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ConflictError, NotFoundError } from '../errors/AppError';
+import {
+  assertCanTransfer, assertCanViewCashAccount, cashAccountVisibilityFilter,
+  invalidateTreasuryAccessCache,
+} from '../lib/treasuryAccess';
 
 // Les comptes ASSET/EXPENSE ont un solde normal débiteur, LIABILITY/EQUITY/REVENUE un solde
 // normal créditeur — Σdebit − Σcredit est la donnée brute en base, ce helper la remet dans le
@@ -212,7 +216,8 @@ export type TransferParams = {
   amount:        number;
   fee?:          number;
   memo?:         string;
-  performedById?: string;
+  performedById?:   string;
+  performedByRole?: string;
 };
 
 // Déplace de l'argent entre deux comptes de trésorerie de l'hôtel (ex: dépôt d'espèces en
@@ -234,6 +239,9 @@ export async function transfer(params: TransferParams) {
   if (!from.isCashAccount || !to.isCashAccount) {
     throw new ConflictError('Un virement ne peut se faire qu\'entre deux comptes de trésorerie.');
   }
+  if (params.performedByRole) {
+    await assertCanTransfer(params.performedByRole, params.fromAccountId, params.toAccountId);
+  }
 
   const fee = params.fee ?? 0;
 
@@ -253,7 +261,8 @@ export type ContributionParams = {
   toAccountId:   string;
   amount:        number;
   memo?:         string;
-  performedById?: string;
+  performedById?:   string;
+  performedByRole?: string;
 };
 
 // Argent injecté depuis l'extérieur de l'hôtel (apport du propriétaire, etc.) — Débit le compte
@@ -264,6 +273,9 @@ export async function recordContribution(params: ContributionParams) {
   if (!account) throw new NotFoundError('Compte de trésorerie');
   if (!account.isCashAccount) {
     throw new ConflictError('Un apport ne peut être crédité que sur un compte de trésorerie.');
+  }
+  if (params.performedByRole) {
+    await assertCanViewCashAccount(params.performedByRole, params.toAccountId);
   }
 
   return postEntry({
@@ -277,11 +289,12 @@ export async function recordContribution(params: ContributionParams) {
   });
 }
 
-export async function getCashAccountsBalances() {
-  const accounts = await prisma.ledgerAccount.findMany({
+export async function getCashAccountsBalances(roleName: string) {
+  const visible = await cashAccountVisibilityFilter(roleName);
+  const accounts = (await prisma.ledgerAccount.findMany({
     where:   { isCashAccount: true, isActive: true },
     orderBy: { code: 'asc' },
-  });
+  })).filter(a => visible(a.id));
 
   const totals = await prisma.journalLine.groupBy({
     by:     ['accountId'],
@@ -303,11 +316,12 @@ export async function getCashAccountsBalances() {
 // qui n'a de sens que pour un relevé texte, pas pour une grille de cartes. Le libellé vient du
 // compte collectif à ce code s'il existe (voir seedChartOfAccounts.ts), sinon le code brut sert
 // d'en-tête. Un préfixe partagé par un seul compte n'est pas encapsulé dans un groupe.
-export async function getCashAccountGroups() {
-  const accounts = await prisma.ledgerAccount.findMany({
+export async function getCashAccountGroups(roleName: string) {
+  const visible = await cashAccountVisibilityFilter(roleName);
+  const accounts = (await prisma.ledgerAccount.findMany({
     where:   { isCashAccount: true, isActive: true },
     orderBy: { code: 'asc' },
-  });
+  })).filter(a => visible(a.id));
   if (accounts.length === 0) return [];
 
   const totals = await prisma.journalLine.groupBy({
@@ -400,13 +414,19 @@ export type AccountEntriesParams = {
   dateTo?:   string;
   page:      number;
   limit:     number;
+  roleName?: string;
 };
 
 // Relevé de compte façon relevé bancaire : une ligne par écriture qui touche ce compte, la plus
 // récente en premier.
 export async function getAccountEntries(params: AccountEntriesParams) {
-  const { accountId, dateFrom, dateTo, page, limit } = params;
+  const { accountId, dateFrom, dateTo, page, limit, roleName } = params;
   const skip = (page - 1) * limit;
+
+  if (roleName) {
+    const account = await prisma.ledgerAccount.findUnique({ where: { id: accountId }, select: { isCashAccount: true } });
+    if (account?.isCashAccount) await assertCanViewCashAccount(roleName, accountId);
+  }
 
   const where: Prisma.JournalLineWhereInput = {
     accountId,
@@ -648,4 +668,72 @@ export async function exportEntriesCsv(params: ExportParams): Promise<string> {
   ].join(','));
 
   return [header, ...rows].join('\n');
+}
+
+// ─── Accès trésorerie (écran d'administration) ───────────────────────────────
+
+// État complet pour l'écran Accès trésorerie : la liste des rôles, la liste des comptes de
+// trésorerie, et pour chaque rôle ses comptes visibles + drapeaux source/arrivée. `accessAll`
+// signale les rôles qui court-circuitent tout (permission ledger.access_all_accounts).
+export async function getTreasuryAccessConfig() {
+  const [roles, cashAccounts, grants, accessAllLinks] = await Promise.all([
+    prisma.role.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.ledgerAccount.findMany({
+      where: { isCashAccount: true, isActive: true }, orderBy: { code: 'asc' },
+      select: { id: true, code: true, name: true },
+    }),
+    prisma.roleLedgerAccount.findMany({
+      select: { roleId: true, accountId: true, canTransferFrom: true, canTransferTo: true, canPayExpenses: true },
+    }),
+    prisma.rolePermission.findMany({
+      where:  { permission: { key: 'ledger.access_all_accounts' } },
+      select: { roleId: true },
+    }),
+  ]);
+
+  return {
+    roles,
+    cashAccounts,
+    grants,
+    accessAllRoleIds: accessAllLinks.map(l => l.roleId),
+  };
+}
+
+export type RoleTreasuryGrant = {
+  accountId:       string;
+  canTransferFrom: boolean;
+  canTransferTo:   boolean;
+  canPayExpenses:  boolean;
+};
+
+// Remplace intégralement les accès trésorerie d'un rôle (liste blanche + drapeaux). Une ligne
+// absente = compte non visible pour ce rôle. Transaction : on efface puis on récrée, jamais d'état
+// partiel. Invalide le cache pour que les checks suivants voient la nouvelle config.
+export async function setRoleTreasuryAccess(roleId: string, grants: RoleTreasuryGrant[]) {
+  const role = await prisma.role.findUnique({ where: { id: roleId } });
+  if (!role) throw new NotFoundError('Rôle');
+
+  const accountIds = grants.map(g => g.accountId);
+  if (accountIds.length > 0) {
+    const found = await prisma.ledgerAccount.count({ where: { id: { in: accountIds }, isCashAccount: true } });
+    if (found !== new Set(accountIds).size) {
+      throw new ConflictError('Un des comptes sélectionnés est inconnu ou n\'est pas un compte de trésorerie.');
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.roleLedgerAccount.deleteMany({ where: { roleId } }),
+    prisma.roleLedgerAccount.createMany({
+      data: grants.map(g => ({
+        roleId,
+        accountId:       g.accountId,
+        canTransferFrom: g.canTransferFrom,
+        canTransferTo:   g.canTransferTo,
+        canPayExpenses:  g.canPayExpenses,
+      })),
+    }),
+  ]);
+
+  invalidateTreasuryAccessCache();
+  return getTreasuryAccessConfig();
 }

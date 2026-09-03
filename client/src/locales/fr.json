@@ -18,7 +18,8 @@
     "groupAccounting": "Comptabilité",
     "groupAdmin":      "Administration",
     "auditLog":        "Journal d'audit",
-    "permissions":     "Permissions"
+    "permissions":     "Permissions",
+    "treasuryAccess":  "Accès trésorerie"
   },
   "topbar": {
     "searchPlaceholder": "Chercher un client, une chambre…",
@@ -528,6 +529,18 @@
     "action": "Action",
     "newRole":            "Nouveau rôle",
     "newRolePlaceholder": "Nom du rôle"
+  },
+  "treasuryAccess": {
+    "title":       "Accès trésorerie",
+    "hint":        "Par rôle : quels comptes de trésorerie sont visibles, lesquels peuvent servir de source ou d'arrivée à un virement, et lesquels peuvent payer une dépense.",
+    "account":     "Compte",
+    "visible":     "Visible",
+    "source":      "Source",
+    "destination": "Arrivée",
+    "expense":     "Dépenses",
+    "seesAll":     "Aucun compte coché : ce rôle voit tous les comptes de trésorerie et peut transférer et dépenser depuis tous. Cochez des comptes pour restreindre.",
+    "accessAllWarning": "Ce rôle a la permission « Voir tous les comptes de trésorerie » : il voit tout et transfère/dépense sans restriction quoi que vous configuriez ici. Retirez-lui cette permission depuis l'écran Permissions pour que ces réglages s'appliquent.",
+    "footnote":    "Un virement passe si le rôle a le compte de départ coché « Source » et le compte d'arrivée coché « Arrivée ». Une dépense passe si le compte est coché « Dépenses ». Pour chacune de ces colonnes, si aucune case n'est cochée, tout compte visible convient."
   },
   "settings": {
     "title":             "Paramètres",

@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchCashAccounts, fetchCashAccountGroups, fetchLedgerEntries, fetchLedgerSummary, createTransfer, createContribution,
   fetchBalanceSheet, fetchIncomeStatement, fetchAllAccounts, createAccount, updateAccount,
-  UpdateAccountPayload,
+  fetchTreasuryAccess, saveRoleTreasuryAccess,
+  UpdateAccountPayload, RoleTreasuryGrantInput,
 } from '../api/ledger';
 
 export const CASH_ACCOUNTS_KEY = ['ledger', 'cash-accounts'] as const;
@@ -14,6 +15,7 @@ export const LEDGER_ENTRIES_KEY = ['ledger', 'entries'] as const;
 export const LEDGER_SUMMARY_KEY = ['ledger', 'summary'] as const;
 export const BALANCE_SHEET_KEY = ['ledger', 'balance-sheet'] as const;
 export const INCOME_STATEMENT_KEY = ['ledger', 'income-statement'] as const;
+export const TREASURY_ACCESS_KEY = ['ledger', 'access'] as const;
 
 export function useCashAccounts() {
   return useQuery({
@@ -114,6 +116,26 @@ export function useCreateContribution() {
       qc.invalidateQueries({ queryKey: LEDGER_ENTRIES_KEY });
       qc.invalidateQueries({ queryKey: LEDGER_SUMMARY_KEY });
       qc.invalidateQueries({ queryKey: BALANCE_SHEET_KEY });
+    },
+  });
+}
+
+export function useTreasuryAccess() {
+  return useQuery({
+    queryKey: TREASURY_ACCESS_KEY,
+    queryFn:  fetchTreasuryAccess,
+  });
+}
+
+export function useSaveRoleTreasuryAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ roleId, grants }: { roleId: string; grants: RoleTreasuryGrantInput[] }) =>
+      saveRoleTreasuryAccess(roleId, grants),
+    onSuccess: (config) => {
+      qc.setQueryData(TREASURY_ACCESS_KEY, config);
+      // La visibilité des comptes change potentiellement pour l'utilisateur courant.
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
     },
   });
 }

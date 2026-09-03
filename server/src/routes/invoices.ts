@@ -78,7 +78,7 @@ invoicesRouter.delete('/:id/items/:itemId', can('invoices.update'), asyncHandler
 invoicesRouter.post('/:id/payments', can('invoices.record_payment'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = paymentSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.status(201).json(await invoiceService.addPayment(req.params.id, parsed.data, req.user!.id));
+  res.status(201).json(await invoiceService.addPayment(req.params.id, parsed.data, req.user!.id, req.user!.role));
 }));
 
 // DELETE /invoices/:id/payments/:paymentId  ──  annuler un paiement

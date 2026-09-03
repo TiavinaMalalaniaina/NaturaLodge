@@ -61,6 +61,18 @@ export const updateAccountSchema = z.object({
   isActive:       z.boolean().optional(),
 });
 
+// Accès trésorerie d'un rôle : la liste complète des comptes visibles + drapeaux source/arrivée.
+// L'absence d'un compte = non visible pour ce rôle. Liste vide = le rôle voit tout (défaut).
+export const roleTreasuryAccessSchema = z.object({
+  grants: z.array(z.object({
+    accountId:       z.string().min(1),
+    canTransferFrom: z.boolean().default(false),
+    canTransferTo:   z.boolean().default(false),
+    canPayExpenses:  z.boolean().default(false),
+  })).default([]),
+});
+
+export type RoleTreasuryAccessInput = z.infer<typeof roleTreasuryAccessSchema>;
 export type LedgerEntriesParams = z.infer<typeof ledgerEntriesQuerySchema>;
 export type LedgerSummaryParams = z.infer<typeof ledgerSummaryQuerySchema>;
 export type TransferInput = z.infer<typeof transferSchema>;

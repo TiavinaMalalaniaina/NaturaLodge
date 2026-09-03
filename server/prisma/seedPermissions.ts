@@ -80,11 +80,12 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'payments.view', domain: 'payments', description: 'Consulter l\'historique des paiements',                                      roles: ALL_STAFF },
 
   // ── ledger / trésorerie ── (rapports déjà restreints ADMIN/MANAGER aujourd'hui)
-  { key: 'ledger.view_cash_accounts', domain: 'ledger', description: 'Consulter les comptes de trésorerie et leur solde',                roles: ALL_STAFF },
-  { key: 'ledger.view_reports',       domain: 'ledger', description: 'Consulter relevés, résumé, bilan, compte de résultat, export CSV', roles: ADMIN_MANAGER },
-  { key: 'ledger.transfer',           domain: 'ledger', description: 'Effectuer un virement entre comptes de trésorerie',                roles: ADMIN_MANAGER },
-  { key: 'ledger.contribute',         domain: 'ledger', description: 'Enregistrer un apport externe (capital propriétaire...)',          roles: ADMIN_MANAGER },
-  { key: 'ledger.manage_accounts',    domain: 'ledger', description: 'Créer, modifier ou désactiver un compte du plan comptable',         roles: ADMIN_ONLY },
+  { key: 'ledger.view_cash_accounts',  domain: 'ledger', description: 'Consulter les comptes de trésorerie et leur solde',                roles: FRONT_DESK },
+  { key: 'ledger.access_all_accounts', domain: 'ledger', description: 'Voir tous les comptes de trésorerie et transférer sans restriction de compte', roles: ADMIN_MANAGER },
+  { key: 'ledger.view_reports',        domain: 'ledger', description: 'Consulter relevés, résumé, bilan, compte de résultat, export CSV', roles: ADMIN_MANAGER },
+  { key: 'ledger.transfer',            domain: 'ledger', description: 'Effectuer un virement entre comptes de trésorerie',                roles: ADMIN_MANAGER },
+  { key: 'ledger.contribute',          domain: 'ledger', description: 'Enregistrer un apport externe (capital propriétaire...)',          roles: ADMIN_MANAGER },
+  { key: 'ledger.manage_accounts',     domain: 'ledger', description: 'Créer, modifier un compte du plan comptable et gérer les accès trésorerie', roles: ADMIN_ONLY },
 
   // ── expenses ──
   { key: 'expenses.view',   domain: 'expenses', description: 'Consulter les dépenses',                                                   roles: ALL_STAFF },

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { ConflictError, NotFoundError } from '../errors/AppError';
 import { CreateExpenseInput, ExpenseListParams } from '../validation/expense.schema';
 import * as ledgerService from './ledger.service';
+import { assertCanPayExpenseFrom } from '../lib/treasuryAccess';
 
 const include = {
   category:   { select: { id: true, name: true } },
@@ -40,7 +41,11 @@ export async function list(params: ExpenseListParams) {
   };
 }
 
-export async function create(data: CreateExpenseInput, approvedById: string) {
+export async function create(data: CreateExpenseInput, approvedById: string, approvedByRole?: string) {
+  if (approvedByRole) {
+    // Le rôle doit être autorisé à payer une dépense depuis ce compte de trésorerie.
+    await assertCanPayExpenseFrom(approvedByRole, data.paidFromId);
+  }
   return prisma.$transaction(async (tx) => {
     const category = await tx.expenseCategory.findUnique({ where: { id: data.categoryId } });
     if (!category)          throw new NotFoundError('Catégorie de dépense');

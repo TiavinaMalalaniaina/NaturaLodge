@@ -201,6 +201,40 @@ export const fetchIncomeStatement = async (params?: LedgerSummaryParams): Promis
   return data;
 };
 
+// ─── Accès trésorerie (écran d'administration) ──────────────────────────────
+
+export interface TreasuryAccessGrant {
+  roleId:          string;
+  accountId:       string;
+  canTransferFrom: boolean;
+  canTransferTo:   boolean;
+  canPayExpenses:  boolean;
+}
+
+export interface TreasuryAccessConfig {
+  roles:            { id: string; name: string }[];
+  cashAccounts:     { id: string; code: string; name: string }[];
+  grants:           TreasuryAccessGrant[];
+  accessAllRoleIds: string[];
+}
+
+export const fetchTreasuryAccess = async (): Promise<TreasuryAccessConfig> => {
+  const { data } = await api.get<TreasuryAccessConfig>('/ledger/access');
+  return data;
+};
+
+export interface RoleTreasuryGrantInput {
+  accountId:       string;
+  canTransferFrom: boolean;
+  canTransferTo:   boolean;
+  canPayExpenses:  boolean;
+}
+
+export const saveRoleTreasuryAccess = async (roleId: string, grants: RoleTreasuryGrantInput[]): Promise<TreasuryAccessConfig> => {
+  const { data } = await api.put<TreasuryAccessConfig>(`/ledger/access/${roleId}`, { grants });
+  return data;
+};
+
 export interface ExportParams {
   accountId?: string;
   dateFrom?:  string;

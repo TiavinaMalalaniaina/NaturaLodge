@@ -45,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet,         permission: 'ledger.view_reports' },
         { path: '/reports',      label: t('nav.reports'),      icon: Scale,          permission: 'ledger.view_reports' },
         { path: '/accounts',     label: t('nav.accounts'),     icon: Landmark,       permission: 'ledger.manage_accounts' },
+        { path: '/treasury-access', label: t('nav.treasuryAccess'), icon: Lock,      permission: 'ledger.manage_accounts' },
       ],
     },
     {
