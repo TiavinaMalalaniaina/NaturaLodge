@@ -14,7 +14,8 @@ model User {
   email             String?       @unique
   password          String
   name              String
-  role              Role          @default(GERANT)
+  role              Role          @relation(fields: [roleId], references: [id])
+  roleId            String
   status            UserStatus    @default(ACTIVE)
   avatar            String?
   joinedDate        DateTime      @default(now())
@@ -29,13 +30,22 @@ model User {
   journalEntries    JournalEntry[]
   approvedExpenses  Expense[]
   auditLogs         AuditLog[]
+
+  @@index([roleId])
 }
 
-enum Role {
-  ADMIN
-  MANAGER
-  GERANT
-  HOUSEKEEPING
+// Rôles configurables par l'ADMIN (écran Permissions) — les 4 rôles historiques (isSystem: true)
+// ne peuvent pas être supprimés, mais peuvent être renommés comme n'importe quel autre rôle. Un
+// rôle custom démarre sans aucune permission accordée ; l'ADMIN les coche ensuite case par case
+// sur la même matrice que les rôles historiques.
+model Role {
+  id            String              @id @default(cuid())
+  name          String              @unique
+  isSystem      Boolean             @default(false)
+  users         User[]
+  rolePerms     RolePermission[]
+  ledgerAccess  RoleLedgerAccount[]
+  createdAt     DateTime            @default(now())
 }
 
 enum UserStatus {
@@ -246,13 +256,27 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String  @id @default(cuid())
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id          String            @id @default(cuid())
+  invoice     Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   invoiceId   String
   description String
-  quantity    Int     @default(1)
+  quantity    Int               @default(1)
   unitPrice   Int
   total       Int
+  // BOOKING : ligne dérivée de la réservation (chambre/supplément), réécrite à chaque
+  // resynchronisation par syncInvoiceWithBooking. MANUAL : ligne libre ajoutée à la main sur la
+  // facture (dégâts, service exceptionnel, remise avec unitPrice négatif…) — jamais touchée par la
+  // resynchronisation, seuls les endpoints /invoices/:id/items la modifient.
+  source      InvoiceItemSource @default(BOOKING)
+  // Renseigné (1–100) uniquement pour une remise en pourcentage : `total` (négatif) est alors
+  // recalculé à chaque resynchronisation à partir de la base du moment (somme des lignes à total
+  // positif). null = ligne à montant figé — charge, ou remise en montant fixe (unitPrice négatif).
+  discountRate Int?
+}
+
+enum InvoiceItemSource {
+  BOOKING
+  MANUAL
 }
 
 enum InvoiceStatus {
@@ -322,8 +346,33 @@ model LedgerAccount {
   lines         JournalLine[]
   payments      Payment[]
   expenses      Expense[]
+  expenseCategories ExpenseCategory[]
+  roleAccess    RoleLedgerAccount[]
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+}
+
+// Accès d'un rôle à un compte de TRÉSORERIE (isCashAccount). Une ligne = ce rôle voit ce compte.
+// Règle de visibilité : un rôle qui a au moins une ligne ne voit QUE ses comptes listés ; un rôle
+// sans aucune ligne voit tout (défaut non-régressif) ; la permission `ledger.access_all_accounts`
+// court-circuite tout.
+//   canTransferFrom / canTransferTo : ce rôle peut utiliser ce compte comme source / arrivée d'un
+//     virement ;
+//   canPayExpenses : ce rôle peut payer une dépense depuis ce compte.
+// Pour chacun de ces trois drapeaux : si le rôle n'a AUCUNE ligne où il est coché, tout compte
+// visible convient (fallback permissif). Voir lib/treasuryAccess.ts.
+model RoleLedgerAccount {
+  role            Role          @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId          String
+  account         LedgerAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId       String
+  canTransferFrom Boolean       @default(false)
+  canTransferTo   Boolean       @default(false)
+  canPayExpenses  Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  @@id([roleId, accountId])
+  @@index([accountId])
 }
 
 enum LedgerAccountType {
@@ -376,7 +425,8 @@ model JournalLine {
 
 model Expense {
   id           String          @id @default(cuid())
-  category     ExpenseCategory
+  category     ExpenseCategory @relation(fields: [categoryId], references: [id])
+  categoryId   String
   amount       Int
   description  String
   paidFrom     LedgerAccount   @relation(fields: [paidFromId], references: [id])
@@ -386,15 +436,25 @@ model Expense {
   incurredAt   DateTime        @default(now())
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+
+  @@index([categoryId])
 }
 
-enum ExpenseCategory {
-  SUPPLIES
-  UTILITIES
-  MAINTENANCE
-  MARKETING
-  SALARIES
-  OTHER
+// Catégories de dépense configurables par l'ADMIN (écran dédié, voir accounts.manage_categories) —
+// chacune débite un compte de charge (classe 6) précis à la création d'une dépense. Séparée du
+// plan comptable : le nom ici est le vocabulaire métier vu par le personnel (ex. "Fournitures de
+// ménage"), le compte lié reste le nom comptable technique (ex. "606100 — Achats de fournitures").
+model ExpenseCategory {
+  id        String        @id @default(cuid())
+  name      String        @unique
+  account   LedgerAccount @relation(fields: [accountId], references: [id])
+  accountId String
+  isActive  Boolean       @default(true)
+  expenses  Expense[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([accountId])
 }
 
 // ─── Audit ───────────────────────────────────────────────────────
@@ -437,15 +497,15 @@ model Permission {
   createdAt   DateTime         @default(now())
 }
 
-// Les 4 rôles restent l'enum Role existant (décision Phase 0 : pas de rôles personnalisés) — donc
-// pas de table Role séparée, juste la liaison Role (enum) x Permission.
+// Liaison Rôle x Permission — voir le modèle Role plus haut (rôles configurables).
 model RolePermission {
   id           String     @id @default(cuid())
-  role         Role
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId       String
   permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   permissionId String
   createdAt    DateTime   @default(now())
 
-  @@unique([role, permissionId])
-  @@index([role])
+  @@unique([roleId, permissionId])
+  @@index([roleId])
 }

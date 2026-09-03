@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { UserPlus, Search, Shield, MoreVertical, Mail, Clock, Users, UserCheck, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useStaff, useUpdateStaff } from '../hooks/useStaff';
+import { useRoles } from '../hooks/useRoles';
 import { AddStaffModal } from '../components/AddStaffModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { PageLoader, PageError } from '../components/QueryLoader';
@@ -10,22 +11,22 @@ import { STAFF_ROLE_CLASS, STAFF_STATUS_DOT_CLASS } from '../lib/statusColors';
 import { FilterChip } from '../components/FilterChip';
 import { useAuth } from '../context/AuthContext';
 import { getApiErrorMessage } from '../lib/apiError';
-import { StaffRole } from '../types';
-
-const ROLES: Array<'ALL' | StaffRole> = ['ALL', 'admin', 'manager', 'gerant', 'housekeeping'];
 
 export const Staff: React.FC = () => {
   const { data: staffList = [], isLoading, isError } = useStaff();
-  const { user, can } = useAuth();
+  const { data: roles = [] } = useRoles();
+  const { can } = useAuth();
   const updateStaff = useUpdateStaff();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | StaffRole>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | string>('ALL');
   const [apiError, setApiError] = useState('');
-  const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; name: string; role: StaffRole } | null>(null);
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; name: string; roleId: string; roleName: string } | null>(null);
 
-  const canManageRoles = user?.role === 'ADMIN';
+  const canManageRoles = can('staff.assign_role');
   const canCreateStaff = can('staff.create');
+
+  const roleTabs = useMemo(() => ['ALL', ...roles.map(r => r.name)], [roles]);
 
   const filteredStaff = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -38,9 +39,9 @@ export const Staff: React.FC = () => {
   const activeCount   = staffList.filter(m => m.status === 'active').length;
   const onLeaveCount  = staffList.filter(m => m.status === 'on-leave').length;
 
-  const handleRoleChange = (id: string, role: StaffRole) => {
+  const handleRoleChange = (id: string, roleId: string) => {
     setApiError('');
-    updateStaff.mutate({ id, role }, {
+    updateStaff.mutate({ id, roleId }, {
       onError: (err) => setApiError(getApiErrorMessage(err)),
     });
   };
@@ -105,7 +106,7 @@ export const Staff: React.FC = () => {
            </div>
            <div className="flex items-center gap-4 flex-wrap">
               <div className="flex gap-1.5 flex-wrap">
-                {ROLES.map(r => (
+                {roleTabs.map(r => (
                   <FilterChip key={r} active={roleFilter === r} onClick={() => setRoleFilter(r)} activeClassName="bg-zinc-900 text-white border-zinc-900">
                     {r === 'ALL' ? 'All' : r}
                   </FilterChip>
@@ -149,21 +150,24 @@ export const Staff: React.FC = () => {
                   <td className="px-8 py-5">
                     {canManageRoles ? (
                       <select
-                        value={member.role}
+                        value={member.roleId}
                         disabled={updateStaff.isPending}
-                        onChange={e => setPendingRoleChange({ id: member.id, name: member.name, role: e.target.value as StaffRole })}
+                        onChange={e => {
+                          const nextRole = roles.find(r => r.id === e.target.value);
+                          if (nextRole) setPendingRoleChange({ id: member.id, name: member.name, roleId: nextRole.id, roleName: nextRole.name });
+                        }}
                         className={cn(
                           "text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border outline-none cursor-pointer disabled:opacity-40",
                           STAFF_ROLE_CLASS[member.role] ?? "bg-stone-50 text-stone-500 border-stone-200"
                         )}>
-                        {ROLES.slice(1).map(r => <option key={r} value={r}>{r === 'admin' ? 'Superuser' : r}</option>)}
+                        {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                       </select>
                     ) : (
                       <span className={cn(
                         "text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border",
                         STAFF_ROLE_CLASS[member.role] ?? "bg-stone-50 text-stone-500 border-stone-200"
                       )}>
-                        {member.role === 'admin' ? 'Superuser' : member.role}
+                        {member.role}
                       </span>
                     )}
                   </td>
@@ -201,12 +205,12 @@ export const Staff: React.FC = () => {
         isOpen={!!pendingRoleChange}
         onClose={() => setPendingRoleChange(null)}
         onConfirm={() => {
-          if (pendingRoleChange) handleRoleChange(pendingRoleChange.id, pendingRoleChange.role);
+          if (pendingRoleChange) handleRoleChange(pendingRoleChange.id, pendingRoleChange.roleId);
           setPendingRoleChange(null);
         }}
         title="Change role?"
         message={pendingRoleChange
-          ? `${pendingRoleChange.name} will be granted "${pendingRoleChange.role === 'admin' ? 'Superuser' : pendingRoleChange.role}" access.`
+          ? `${pendingRoleChange.name} will be granted "${pendingRoleChange.roleName}" access.`
           : ''}
         confirmLabel="Confirm"
         variant="warning"

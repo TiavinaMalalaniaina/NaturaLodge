@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Receipt, Plus } from 'lucide-react';
+import { Receipt, Plus, Settings2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { useExpenses } from '../hooks/useExpenses';
+import { useExpenses, useExpenseCategories } from '../hooks/useExpenses';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { CreateExpenseModal } from '../components/CreateExpenseModal';
-import { ExpenseCategory } from '../api/expenses';
+import { ExpenseCategoryManagerModal } from '../components/ExpenseCategoryManagerModal';
 import { formatDate, formatCurrency, startOfDayIso, endOfDayIso } from '../lib/format';
 import { useAuth } from '../context/AuthContext';
 
-type CategoryFilter = 'all' | ExpenseCategory;
+type CategoryFilter = 'all' | string;
 
 export const Expenses: React.FC = () => {
   const { t } = useTranslation();
@@ -21,9 +21,12 @@ export const Expenses: React.FC = () => {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [isCreateOpen, setCreateOpen] = useState(false);
+  const [isCategoriesOpen, setCategoriesOpen] = useState(false);
+
+  const { data: categories = [] } = useExpenseCategories();
 
   const { data, isLoading, isError } = useExpenses({
-    category: categoryFilter !== 'all' ? categoryFilter : undefined,
+    categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
     dateFrom: dateFrom ? startOfDayIso(dateFrom) : undefined,
     dateTo:   dateTo   ? endOfDayIso(dateTo)     : undefined,
     page,
@@ -34,13 +37,8 @@ export const Expenses: React.FC = () => {
   const meta      = data?.meta;
 
   const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
-    { key: 'all',         label: t('common.all') },
-    { key: 'supplies',    label: t('expenses.category_supplies') },
-    { key: 'utilities',   label: t('expenses.category_utilities') },
-    { key: 'maintenance', label: t('expenses.category_maintenance') },
-    { key: 'marketing',   label: t('expenses.category_marketing') },
-    { key: 'salaries',    label: t('expenses.category_salaries') },
-    { key: 'other',       label: t('expenses.category_other') },
+    { key: 'all', label: t('common.all') },
+    ...categories.filter(c => c.isActive).map(c => ({ key: c.id, label: c.name })),
   ];
 
   if (isLoading) return <PageLoader />;
@@ -57,15 +55,26 @@ export const Expenses: React.FC = () => {
             {t('expenses.count', { count: meta?.total ?? expenses.length })}
           </p>
         </div>
-        {can('expenses.create') && (
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
-          >
-            <Plus className="w-4 h-4" />
-            {t('expenses.record')}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {can('expenses.manage_categories') && (
+            <button
+              onClick={() => setCategoriesOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
+            >
+              <Settings2 className="w-4 h-4" />
+              {t('expenses.manageCategories')}
+            </button>
+          )}
+          {can('expenses.create') && (
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+            >
+              <Plus className="w-4 h-4" />
+              {t('expenses.record')}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Filters ── */}
@@ -130,7 +139,7 @@ export const Expenses: React.FC = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-bold text-on-surface truncate">{e.description}</p>
                     <span className="px-2 py-0.5 rounded-full bg-stone-100 text-[9px] font-bold text-on-surface-variant/60 uppercase tracking-widest shrink-0">
-                      {t(`expenses.category_${e.category}`)}
+                      {e.category.name}
                     </span>
                   </div>
                   <p className="text-[10px] text-on-surface-variant/50 mt-0.5 truncate">
@@ -172,6 +181,7 @@ export const Expenses: React.FC = () => {
       )}
 
       <CreateExpenseModal isOpen={isCreateOpen} onClose={() => setCreateOpen(false)} />
+      <ExpenseCategoryManagerModal isOpen={isCategoriesOpen} onClose={() => setCategoriesOpen(false)} />
     </div>
   );
 };

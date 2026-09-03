@@ -1,8 +1,12 @@
-import { ExtraPricing, InvoiceStatus, Prisma } from '@prisma/client';
+import { BookingStatus, ExtraPricing, InvoiceStatus, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { NotFoundError, ConflictError } from '../errors/AppError';
-import { GenerateInvoiceInput, InvoiceListParams, PaymentInput, UpdateInvoiceInput } from '../validation/invoice.schema';
+import {
+  GenerateInvoiceInput, InvoiceDiscountInput, InvoiceItemInput, InvoiceListParams, PaymentInput,
+  UpdateInvoiceInput, UpdateInvoiceItemInput,
+} from '../validation/invoice.schema';
 import * as ledgerService from './ledger.service';
+import { assertCanViewCashAccount } from '../lib/treasuryAccess';
 import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
@@ -28,6 +32,7 @@ function buildInvoiceItemsFromBooking(booking: BookingForInvoiceItems) {
       quantity:    nights,
       unitPrice:   br.roomRate,
       total:       br.roomRate * nights,
+      source:      'BOOKING' as const,
     };
     const extraItems = br.extras.map(e => {
       const quantity = e.quantity * (e.pricing === 'PER_NIGHT' ? nights : 1);
@@ -36,6 +41,7 @@ function buildInvoiceItemsFromBooking(booking: BookingForInvoiceItems) {
         quantity,
         unitPrice: e.unitPrice,
         total:     quantity * e.unitPrice,
+        source:    'BOOKING' as const,
       };
     });
     return [roomItem, ...extraItems];
@@ -230,12 +236,25 @@ export async function generate(data: GenerateInvoiceInput, issuedById: string) {
   });
 }
 
+// Base de calcul des remises en pourcentage : somme des lignes à total positif (chambres +
+// suppléments + charges manuelles positives). Les remises elles-mêmes en sont exclues — plusieurs
+// remises % portent donc toutes sur le même montant brut, sans cumul en cascade.
+function positiveBaseOf(items: { total: number }[]): number {
+  return items.reduce((s, i) => (i.total > 0 ? s + i.total : s), 0);
+}
+
 // Resynchronise les lignes et le total d'une facture déjà générée sur l'état actuel de la
 // réservation (chambres/suppléments), appelée par booking.service.ts après toute mutation qui
 // touche le montant (reassign, add/removeRoom, add/update/removeExtra). Ne touche pas aux
 // factures CANCELLED/REFUNDED — chapitre clos, pas de resynchronisation silencieuse. La taxe
 // (`taxAmount`) n'est jamais recalculée automatiquement : elle reste au montant déjà fixé (généré
 // ou modifié manuellement via `update`), faute de taux stocké permettant de la rescaler proprement.
+//
+// Lignes MANUAL (dépenses flexibles / remises, voir addManualItem / addDiscount) :
+//  - montant figé (`discountRate` null) → conservées telles quelles ;
+//  - remise en pourcentage (`discountRate` renseigné) → `total` recalculé sur la base du moment.
+// Le grand livre est ajusté par deux écritures distinctes : la variation côté réservation touche le
+// produit 706000, la variation des remises % touche le contra-produit 709000.
 export async function syncInvoiceWithBooking(tx: PrismaOrTx, bookingId: string): Promise<void> {
   const invoice = await tx.invoice.findFirst({ where: { bookingId }, orderBy: { issuedAt: 'desc' } });
   if (!invoice || invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') return;
@@ -253,29 +272,63 @@ export async function syncInvoiceWithBooking(tx: PrismaOrTx, bookingId: string):
   });
   if (!booking) return;
 
-  const items    = buildInvoiceItemsFromBooking(booking);
-  const subtotal = items.reduce((s, i) => s + i.total, 0);
+  const bookingItems    = buildInvoiceItemsFromBooking(booking);
+  const bookingSubtotal = bookingItems.reduce((s, i) => s + i.total, 0);
+
+  const manualItems  = await tx.invoiceItem.findMany({ where: { invoiceId: invoice.id, source: 'MANUAL' } });
+  const fixedManual  = manualItems.filter(i => i.discountRate === null);
+  const pctDiscounts = manualItems.filter(i => i.discountRate !== null);
+
+  const fixedManualSubtotal = fixedManual.reduce((s, i) => s + i.total, 0);
+
+  // La base des remises % : lignes réservation + charges manuelles positives, hors remises.
+  const pctBase = bookingSubtotal + positiveBaseOf(fixedManual);
+
+  let pctDiscountOld = 0;
+  let pctDiscountNew = 0;
+  for (const d of pctDiscounts) {
+    const newTotal = -Math.round(pctBase * d.discountRate! / 100);
+    pctDiscountOld += d.total;
+    pctDiscountNew += newTotal;
+    if (newTotal !== d.total) {
+      await tx.invoiceItem.update({ where: { id: d.id }, data: { unitPrice: newTotal, total: newTotal } });
+    }
+  }
 
   const previousSubtotal = invoice.totalAmount - invoice.taxAmount;
-  const delta            = subtotal - previousSubtotal;
+  const newSubtotal      = bookingSubtotal + fixedManualSubtotal + pctDiscountNew;
+  // previousSubtotal = ancienBooking + fixedManual + pctDiscountOld → on en déduit l'ancienne part
+  // "réservation" pour isoler chaque variation sur le bon compte de produit.
+  const deltaBooking  = bookingSubtotal - (previousSubtotal - fixedManualSubtotal - pctDiscountOld);
+  const deltaDiscount = pctDiscountNew - pctDiscountOld;
 
-  await tx.invoiceItem.deleteMany({ where: { invoiceId: invoice.id } });
+  await tx.invoiceItem.deleteMany({ where: { invoiceId: invoice.id, source: 'BOOKING' } });
   await tx.invoice.update({
     where: { id: invoice.id },
-    data:  { totalAmount: subtotal + invoice.taxAmount, items: { create: items } },
+    data:  { totalAmount: newSubtotal + invoice.taxAmount, items: { create: bookingItems } },
   });
 
-  // Le grand livre doit suivre le montant facturé même quand il change après coup (chambre/
-  // supplément ajouté ou retiré) — on ajuste par le delta plutôt que de re-poser toute l'écriture,
-  // pour ne jamais toucher aux lignes déjà postées (piste d'audit intacte).
-  if (delta !== 0) {
+  // Le grand livre suit le montant facturé même quand il change après coup — on ajuste par le delta
+  // plutôt que de re-poser toute l'écriture, pour ne jamais toucher aux lignes déjà postées.
+  if (deltaBooking !== 0) {
     await ledgerService.postEntry({
       source:           'INVOICE',
       relatedInvoiceId: invoice.id,
       memo:             `Resynchronisation facture ${invoice.number}`,
-      lines: delta > 0
-        ? [{ accountCode: '411000', debit: delta }, { accountCode: '706000', credit: delta }]
-        : [{ accountCode: '706000', debit: -delta }, { accountCode: '411000', credit: -delta }],
+      lines: deltaBooking > 0
+        ? [{ accountCode: '411000', debit: deltaBooking }, { accountCode: '706000', credit: deltaBooking }]
+        : [{ accountCode: '706000', debit: -deltaBooking }, { accountCode: '411000', credit: -deltaBooking }],
+    }, tx);
+  }
+  // deltaDiscount < 0 : la remise a grossi (base en hausse) → 709000 débité, créance réduite.
+  if (deltaDiscount !== 0) {
+    await ledgerService.postEntry({
+      source:           'INVOICE',
+      relatedInvoiceId: invoice.id,
+      memo:             `Resynchronisation remise facture ${invoice.number}`,
+      lines: deltaDiscount < 0
+        ? [{ accountCode: '709000', debit: -deltaDiscount }, { accountCode: '411000', credit: -deltaDiscount }]
+        : [{ accountCode: '411000', debit: deltaDiscount }, { accountCode: '709000', credit: deltaDiscount }],
     }, tx);
   }
 
@@ -379,7 +432,11 @@ export async function cancelInvoiceForBooking(bookingId: string, cancelledById?:
   return cancelInvoice(invoice.id, cancelledById, client);
 }
 
-export async function addPayment(invoiceId: string, data: PaymentInput, processedById: string) {
+export async function addPayment(invoiceId: string, data: PaymentInput, processedById: string, processedByRole?: string) {
+  if (processedByRole) {
+    // Le compte de trésorerie qui reçoit l'encaissement doit être accessible au rôle de l'opérateur.
+    await assertCanViewCashAccount(processedByRole, data.accountId);
+  }
   // Enregistrement du paiement + resynchronisation du statut de la facture dans une seule
   // transaction : évite qu'une facture reste dans un statut périmé si le process meurt entre les deux.
   return prisma.$transaction(async (tx) => {
@@ -464,6 +521,176 @@ export async function voidPayment(invoiceId: string, paymentId: string, voidedBy
     await syncInvoiceStatus(invoiceId, tx);
     await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 
+    return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
+  });
+}
+
+// ─── Lignes personnalisées : dépenses flexibles & remises ────────────────────
+// Lignes `InvoiceItem.source = MANUAL` ajoutées à la main sur une facture existante :
+//  - charge libre (casse, service exceptionnel…) → total positif ;
+//  - remise en montant fixe → total négatif, `discountRate` null ;
+//  - remise en pourcentage → `discountRate` renseigné, total recalculé à chaque resynchronisation.
+// Elles échappent à syncInvoiceWithBooking (qui ne réécrit que les lignes BOOKING). La TVA n'est
+// jamais recalculée — cohérent avec le reste du domaine ; ajuster `taxAmount` via `update` si besoin.
+// Comptes de contrepartie de la créance 411000 : produit 706000 pour une charge, contra-produit
+// 709000 (Rabais, remises et ristournes accordés) pour une remise.
+
+type ContraAccount = '706000' | '709000';
+
+// Une ligne à total négatif ou portant un taux de remise est une remise → contra-produit 709000.
+function contraAccountFor(line: { total: number; discountRate: number | null }): ContraAccount {
+  return line.discountRate !== null || line.total < 0 ? '709000' : '706000';
+}
+
+function assertInvoiceItemsEditable(invoiceStatus: InvoiceStatus, bookingStatus: BookingStatus): void {
+  if (invoiceStatus === 'CANCELLED' || invoiceStatus === 'REFUNDED') {
+    throw new ConflictError('Cette facture est annulée, ses lignes ne peuvent plus être modifiées.');
+  }
+  if (bookingStatus === 'CLOSED') {
+    throw new ConflictError('La réservation est clôturée, sa facture ne peut plus être modifiée.');
+  }
+}
+
+// Répercute une variation de montant d'une ligne (ajout / modification / suppression) sur le total
+// facturé ET sur le grand livre — créance client 411000 vs `contra` (706000 ou 709000), même
+// mécanique de delta que syncInvoiceWithBooking — puis resynchronise le statut de la facture et
+// celui de la réservation liée. `delta > 0` = la facture augmente. Écriture omise si le delta est nul.
+async function applyInvoiceItemDelta(
+  tx: Prisma.TransactionClient,
+  invoice: { id: string; number: string; totalAmount: number; bookingId: string },
+  delta: number,
+  contra: ContraAccount,
+  memo: string,
+  postedById: string,
+): Promise<void> {
+  if (delta !== 0) {
+    await tx.invoice.update({ where: { id: invoice.id }, data: { totalAmount: invoice.totalAmount + delta } });
+    await ledgerService.postEntry({
+      source:           'INVOICE',
+      relatedInvoiceId: invoice.id,
+      postedById,
+      memo,
+      lines: delta > 0
+        ? [{ accountCode: '411000', debit: delta }, { accountCode: contra, credit: delta }]
+        : [{ accountCode: contra, debit: -delta }, { accountCode: '411000', credit: -delta }],
+    }, tx);
+  }
+  await syncInvoiceStatus(invoice.id, tx);
+  await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
+}
+
+async function loadEditableInvoice(tx: Prisma.TransactionClient, invoiceId: string) {
+  const invoice = await tx.invoice.findUnique({
+    where: { id: invoiceId },
+    include: { booking: { select: { status: true } }, items: { select: { total: true } } },
+  });
+  if (!invoice) throw new NotFoundError('Facture');
+  assertInvoiceItemsEditable(invoice.status, invoice.booking.status);
+  return invoice;
+}
+
+export async function addManualItem(invoiceId: string, data: InvoiceItemInput, postedById: string) {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await loadEditableInvoice(tx, invoiceId);
+
+    const total = data.quantity * data.unitPrice;
+    await tx.invoiceItem.create({
+      data: {
+        invoiceId,
+        description: data.description,
+        quantity:   data.quantity,
+        unitPrice:  data.unitPrice,
+        total,
+        source:     'MANUAL',
+      },
+    });
+
+    await applyInvoiceItemDelta(tx, invoice, total, contraAccountFor({ total, discountRate: null }), `Ligne ajoutée « ${data.description} » — facture ${invoice.number}`, postedById);
+    return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
+  });
+}
+
+// Applique une remise : `mode: 'fixed'` → montant en Ariary figé ; `mode: 'percent'` → pourcentage
+// entier 1–100 dont le montant se recalcule à chaque resynchronisation (voir syncInvoiceWithBooking)
+// sur la base des lignes à total positif du moment. `value` est reçue en positif, portée en négatif.
+export async function addDiscount(invoiceId: string, data: InvoiceDiscountInput, postedById: string) {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await loadEditableInvoice(tx, invoiceId);
+
+    let amount: number;
+    let description: string;
+    let discountRate: number | null = null;
+
+    if (data.mode === 'percent') {
+      const base = positiveBaseOf(invoice.items);
+      if (base <= 0) throw new ConflictError('Aucun montant à remiser sur cette facture.');
+      discountRate = data.value;
+      amount       = -Math.round(base * data.value / 100);
+      description  = data.label ?? `Remise ${data.value} %`;
+    } else {
+      amount      = -data.value;
+      description = data.label ?? 'Remise';
+    }
+
+    const currentSubtotal = invoice.totalAmount - invoice.taxAmount;
+    if (currentSubtotal + amount < 0) {
+      throw new ConflictError('La remise dépasse le montant de la facture.');
+    }
+
+    await tx.invoiceItem.create({
+      data: { invoiceId, description, quantity: 1, unitPrice: amount, total: amount, source: 'MANUAL', discountRate },
+    });
+
+    await applyInvoiceItemDelta(tx, invoice, amount, '709000', `${description} — facture ${invoice.number}`, postedById);
+    return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
+  });
+}
+
+export async function updateManualItem(invoiceId: string, itemId: string, data: UpdateInvoiceItemInput, postedById: string) {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await loadEditableInvoice(tx, invoiceId);
+
+    const item = await tx.invoiceItem.findUnique({ where: { id: itemId } });
+    if (!item || item.invoiceId !== invoiceId) throw new NotFoundError('Ligne de facture');
+    if (item.source !== 'MANUAL') {
+      throw new ConflictError('Cette ligne est dérivée de la réservation, elle se modifie via la réservation.');
+    }
+    if (item.discountRate !== null) {
+      throw new ConflictError('Cette remise est en pourcentage : retirez-la et ré-appliquez-la pour changer le taux.');
+    }
+
+    const quantity  = data.quantity  ?? item.quantity;
+    const unitPrice = data.unitPrice ?? item.unitPrice;
+    const newTotal  = quantity * unitPrice;
+    const delta     = newTotal - item.total;
+
+    await tx.invoiceItem.update({
+      where: { id: itemId },
+      data: {
+        ...(data.description !== undefined && { description: data.description }),
+        quantity,
+        unitPrice,
+        total: newTotal,
+      },
+    });
+
+    await applyInvoiceItemDelta(tx, invoice, delta, contraAccountFor({ total: newTotal, discountRate: null }), `Ligne modifiée « ${data.description ?? item.description} » — facture ${invoice.number}`, postedById);
+    return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
+  });
+}
+
+export async function removeManualItem(invoiceId: string, itemId: string, postedById: string) {
+  return prisma.$transaction(async (tx) => {
+    const invoice = await loadEditableInvoice(tx, invoiceId);
+
+    const item = await tx.invoiceItem.findUnique({ where: { id: itemId } });
+    if (!item || item.invoiceId !== invoiceId) throw new NotFoundError('Ligne de facture');
+    if (item.source !== 'MANUAL') {
+      throw new ConflictError('Cette ligne est dérivée de la réservation, elle se retire via la réservation.');
+    }
+
+    await tx.invoiceItem.delete({ where: { id: itemId } });
+    await applyInvoiceItemDelta(tx, invoice, -item.total, contraAccountFor(item), `Ligne retirée « ${item.description} » — facture ${invoice.number}`, postedById);
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
   });
 }

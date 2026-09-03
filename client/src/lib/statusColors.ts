@@ -42,9 +42,11 @@ export const ROOM_STATUS_BADGE_CLASS: Partial<Record<RoomStatus, string>> = {
   occupied:  'bg-orange-50 text-status-occupied border-orange-200',
 };
 
+// Rôles configurables : seuls les 2 rôles historiques les plus fréquents ont un style dédié, tout
+// rôle custom (ou GERANT/HOUSEKEEPING) retombe sur le style neutre par défaut du composant.
 export const STAFF_ROLE_CLASS: Partial<Record<StaffRole, string>> = {
-  admin:   'bg-zinc-900 text-white border-zinc-900',
-  manager: 'bg-teal-50 text-teal-600 border-teal-200',
+  ADMIN:   'bg-zinc-900 text-white border-zinc-900',
+  MANAGER: 'bg-teal-50 text-teal-600 border-teal-200',
 };
 
 export const STAFF_STATUS_DOT_CLASS: Record<StaffMember['status'], string> = {

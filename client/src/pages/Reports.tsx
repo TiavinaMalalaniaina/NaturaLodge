@@ -12,14 +12,24 @@ const firstOfMonth = () => {
   return dateToLocalStr(new Date(now.getFullYear(), now.getMonth(), 1));
 };
 
-const RowList: React.FC<{ rows: { code: string; name: string; balance?: number; total?: number }[] }> = ({ rows }) => (
+// Les comptes partageant un préfixe de code sont regroupés sous un en-tête virtuel calculé
+// côté serveur (ex: 512100 BMOI + 512200 BNI → groupe "512 · Banque") — `isGroup` distingue ces cumuls d'affichage
+// des vrais comptes, `depth` gère l'indentation en cascade.
+const RowList: React.FC<{ rows: { code: string; name: string; balance?: number; total?: number; depth: number; isGroup: boolean }[] }> = ({ rows }) => (
   <div className="space-y-2">
-    {rows.map(r => (
-      <div key={r.code} className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-on-surface-variant truncate">{r.name}</span>
-        <span className="font-mono font-semibold text-on-surface shrink-0">{formatCurrency(r.balance ?? r.total ?? 0)}</span>
-      </div>
-    ))}
+    {rows.map(r => {
+      const amount = r.balance ?? r.total ?? 0;
+      return (
+        <div key={r.code} className={cn('flex items-center justify-between gap-3 text-sm', amount === 0 && 'opacity-40')} style={{ paddingLeft: r.depth * 16 }}>
+          <span className={cn('truncate', r.isGroup ? 'text-on-surface font-semibold' : 'text-on-surface-variant')}>
+            {!r.isGroup && r.depth > 0 && '↳ '}{r.name}
+          </span>
+          <span className={cn('font-mono shrink-0', r.isGroup ? 'font-bold text-on-surface' : 'text-on-surface-variant')}>
+            {formatCurrency(amount)}
+          </span>
+        </div>
+      );
+    })}
   </div>
 );
 
@@ -30,9 +40,11 @@ export const Reports: React.FC = () => {
   const [dateFrom, setDateFrom] = useState(firstOfMonth());
   const [dateTo,   setDateTo]   = useState(todayLocalStr());
   const [isExporting, setExporting] = useState(false);
+  const [showZeroBalances, setShowZeroBalances] = useState(false);
 
   const { data: balanceSheet, isLoading: bsLoading, isError: bsError } = useBalanceSheet(
     asOf ? endOfDayIso(asOf) : undefined,
+    showZeroBalances,
   );
   const { data: incomeStatement } = useIncomeStatement({
     dateFrom: dateFrom ? startOfDayIso(dateFrom) : undefined,
@@ -87,7 +99,12 @@ export const Reports: React.FC = () => {
             <Scale className="w-4 h-4 text-on-surface-variant/50" />
             <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('reports.balanceSheet')}</h4>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={showZeroBalances} onChange={e => setShowZeroBalances(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-stone-300 text-primary focus:ring-primary/30 cursor-pointer" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">{t('reports.showZeroBalances')}</span>
+            </label>
             <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">{t('reports.asOf')}</label>
             <input type="date" value={asOf} onChange={e => setAsOf(e.target.value)}
               className="px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none" />
