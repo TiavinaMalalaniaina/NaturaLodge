@@ -42,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       items: [
         { path: '/invoices',     label: t('nav.invoices'),     icon: FileText        },
         { path: '/expenses',     label: t('nav.expenses'),     icon: Receipt,        permission: 'expenses.view'       },
-        { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet,         permission: 'ledger.view_reports' },
+        { path: '/treasury',     label: t('nav.treasury'),     icon: Wallet,         permission: 'ledger.view_cash_accounts' },
         { path: '/reports',      label: t('nav.reports'),      icon: Scale,          permission: 'ledger.view_reports' },
         { path: '/accounts',     label: t('nav.accounts'),     icon: Landmark,       permission: 'ledger.manage_accounts' },
         { path: '/treasury-access', label: t('nav.treasuryAccess'), icon: Lock,      permission: 'ledger.manage_accounts' },
@@ -60,16 +60,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
   ].map(group => ({ ...group, items: group.items.filter(i => !i.permission || can(i.permission)) }));
 
+  // Correspondance exacte ou sous-route (`/reservations/:id`) — mais pas un préfixe partiel :
+  // `/treasury-access` ne doit pas activer `/treasury`.
+  const matchPath = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + '/');
+
   // Le groupe contenant la page active s'ouvre automatiquement (au montage et à chaque
   // navigation) — jamais atterrir sur une page dont le groupe est replié. Les autres groupes
   // gardent l'état choisi par l'utilisateur.
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
-    const active = navGroups.find(g => g.items.some(i => location.pathname.startsWith(i.path)));
+    const active = navGroups.find(g => g.items.some(i => matchPath(i.path)));
     return new Set(active ? [active.key] : [navGroups[0].key]);
   });
 
   useEffect(() => {
-    const active = navGroups.find(g => g.items.some(i => location.pathname.startsWith(i.path)));
+    const active = navGroups.find(g => g.items.some(i => matchPath(i.path)));
     if (active) setOpenGroups(prev => prev.has(active.key) ? prev : new Set(prev).add(active.key));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
@@ -144,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   >
                     <div className="space-y-1 pb-2">
                       {group.items.map((item) => {
-                        const isActive = location.pathname.startsWith(item.path);
+                        const isActive = matchPath(item.path);
                         return (
                           <button
                             key={item.path}

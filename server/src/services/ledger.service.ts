@@ -1,10 +1,11 @@
 import { JournalSource, LedgerAccountType, PaymentMethod, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { ConflictError, NotFoundError } from '../errors/AppError';
+import { ConflictError, ForbiddenError, NotFoundError } from '../errors/AppError';
 import {
   assertCanTransfer, assertCanViewCashAccount, cashAccountVisibilityFilter,
   invalidateTreasuryAccessCache,
 } from '../lib/treasuryAccess';
+import { roleHasPermission } from '../lib/permissions';
 
 // Les comptes ASSET/EXPENSE ont un solde normal débiteur, LIABILITY/EQUITY/REVENUE un solde
 // normal créditeur — Σdebit − Σcredit est la donnée brute en base, ce helper la remet dans le
@@ -425,7 +426,13 @@ export async function getAccountEntries(params: AccountEntriesParams) {
 
   if (roleName) {
     const account = await prisma.ledgerAccount.findUnique({ where: { id: accountId }, select: { isCashAccount: true } });
-    if (account?.isCashAccount) await assertCanViewCashAccount(roleName, accountId);
+    if (account?.isCashAccount) {
+      // Compte de trésorerie : accessible si le rôle le voit (relevé des virements/dépenses de ses comptes).
+      await assertCanViewCashAccount(roleName, accountId);
+    } else if (!(await roleHasPermission(roleName, 'ledger.view_reports'))) {
+      // Relevé d'un compte non-trésorerie (411 Clients, 706 Produits…) : réservé aux rapports.
+      throw new ForbiddenError('Le relevé de ce compte est réservé aux rôles ayant accès aux rapports.');
+    }
   }
 
   const where: Prisma.JournalLineWhereInput = {

@@ -66,8 +66,10 @@ const App: React.FC = () => {
                   <Route element={<ProtectedRoute permission="expenses.view" />}>
                     <Route path="expenses" element={<Expenses />} />
                   </Route>
-                  <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
+                  <Route element={<ProtectedRoute permission="ledger.view_cash_accounts" />}>
                     <Route path="treasury" element={<Treasury />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
                     <Route path="reports" element={<Reports />} />
                   </Route>
                   <Route element={<ProtectedRoute permission="ledger.manage_accounts" />}>

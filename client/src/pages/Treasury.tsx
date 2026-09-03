@@ -28,12 +28,17 @@ export const Treasury: React.FC = () => {
   const [isTransferOpen, setTransferOpen] = useState(false);
   const [isContributionOpen, setContributionOpen] = useState(false);
 
+  // Le relevé d'un compte de trésorerie (virements, dépenses, encaissements) suit la visibilité du
+  // compte : accessible avec `ledger.view_cash_accounts`. Le résumé de période (produits/charges
+  // agrégés) vient des endpoints "rapports" et reste réservé à `ledger.view_reports`.
+  const canReports = can('ledger.view_reports');
+
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useCashAccounts();
   const { data: accountGroups } = useCashAccountGroups();
   const { data: summary } = useLedgerSummary({
     dateFrom: dateFrom ? startOfDayIso(dateFrom) : undefined,
     dateTo:   dateTo   ? endOfDayIso(dateTo)     : undefined,
-  });
+  }, canReports);
 
   const activeAccountId = selectedAccountId ?? accounts?.[0]?.id ?? null;
   const { data: entries } = useLedgerEntries(activeAccountId ? {
@@ -135,8 +140,8 @@ export const Treasury: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Summary ── */}
-      {summary && (
+      {/* ── Summary (rapports uniquement) ── */}
+      {canReports && summary && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-stone-200/60">
             <div className="flex items-center gap-2 mb-3 text-on-surface-variant/50">

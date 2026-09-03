@@ -42,10 +42,11 @@ export function useLedgerEntries(params: Parameters<typeof fetchLedgerEntries>[0
   });
 }
 
-export function useLedgerSummary(params?: Parameters<typeof fetchLedgerSummary>[0]) {
+export function useLedgerSummary(params?: Parameters<typeof fetchLedgerSummary>[0], enabled = true) {
   return useQuery({
     queryKey: [...LEDGER_SUMMARY_KEY, params],
     queryFn:  () => fetchLedgerSummary(params),
+    enabled,
     placeholderData: (prev) => prev,
   });
 }

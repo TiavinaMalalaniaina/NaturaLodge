@@ -55,8 +55,10 @@ ledgerRouter.patch('/accounts/:id', can('ledger.manage_accounts'), asyncHandler(
   res.json(await ledgerService.updateAccount(req.params.id, parsed.data));
 }));
 
-// GET /ledger/entries  ──  relevé d'un compte (façon relevé bancaire)
-ledgerRouter.get('/entries', can('ledger.view_reports'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+// GET /ledger/entries  ──  relevé d'un compte (façon relevé bancaire). Accessible avec
+// `ledger.view_cash_accounts` pour les comptes de trésorerie visibles du rôle ; les autres comptes
+// (411, 706…) restent réservés à `ledger.view_reports` (voir getAccountEntries).
+ledgerRouter.get('/entries', can('ledger.view_cash_accounts'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = ledgerEntriesQuerySchema.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
   res.json(await ledgerService.getAccountEntries({ ...parsed.data, roleName: req.user!.role }));
