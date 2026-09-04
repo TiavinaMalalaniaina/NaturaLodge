@@ -1,10 +1,13 @@
 import { api } from './client';
 
-export type ExpenseCategory = 'supplies' | 'utilities' | 'maintenance' | 'marketing' | 'salaries' | 'other';
+export interface ExpenseCategorySummary {
+  id:   string;
+  name: string;
+}
 
 export interface Expense {
   id:          string;
-  category:    ExpenseCategory;
+  category:    ExpenseCategorySummary;
   amount:      number;
   description: string;
   incurredAt:  string;
@@ -12,25 +15,16 @@ export interface Expense {
   approvedBy:  { id: string; name: string; role: string } | null;
 }
 
-const CATEGORY_MAP: Record<string, ExpenseCategory> = {
-  SUPPLIES: 'supplies', UTILITIES: 'utilities', MAINTENANCE: 'maintenance',
-  MARKETING: 'marketing', SALARIES: 'salaries', OTHER: 'other',
-};
-
 function normalizeExpense(raw: any): Expense {
-  return {
-    ...raw,
-    category:   CATEGORY_MAP[raw.category] ?? raw.category,
-    incurredAt: raw.incurredAt.split('T')[0],
-  };
+  return { ...raw, incurredAt: raw.incurredAt.split('T')[0] };
 }
 
 export interface ExpensesListParams {
-  category?: string;
-  page?:     number;
-  limit?:    number;
-  dateFrom?: string;
-  dateTo?:   string;
+  categoryId?: string;
+  page?:       number;
+  limit?:      number;
+  dateFrom?:   string;
+  dateTo?:     string;
 }
 
 export interface ExpensesList {
@@ -46,14 +40,12 @@ export interface ExpensesList {
 }
 
 export const fetchExpenses = async (params?: ExpensesListParams): Promise<ExpensesList> => {
-  const { data } = await api.get<any>('/expenses', {
-    params: { ...params, category: params?.category ? params.category.toUpperCase() : undefined },
-  });
+  const { data } = await api.get<any>('/expenses', { params });
   return { data: (data.data as any[]).map(normalizeExpense), meta: data.meta };
 };
 
 export interface CreateExpensePayload {
-  category:    string;
+  categoryId:  string;
   amount:      number;
   description: string;
   paidFromId:  string;
@@ -61,6 +53,41 @@ export interface CreateExpensePayload {
 }
 
 export const createExpense = async (payload: CreateExpensePayload): Promise<Expense> => {
-  const { data } = await api.post<any>('/expenses', { ...payload, category: payload.category.toUpperCase() });
+  const { data } = await api.post<any>('/expenses', payload);
   return normalizeExpense(data);
+};
+
+// ─── Catégories de dépense ───────────────────────────────────────
+
+export interface ExpenseCategoryFull {
+  id:       string;
+  name:     string;
+  account:  { id: string; code: string; name: string };
+  isActive: boolean;
+}
+
+export const fetchExpenseCategories = async (): Promise<ExpenseCategoryFull[]> => {
+  const { data } = await api.get<ExpenseCategoryFull[]>('/expenses/categories');
+  return data;
+};
+
+export interface CreateExpenseCategoryPayload {
+  name:      string;
+  accountId: string;
+}
+
+export const createExpenseCategory = async (payload: CreateExpenseCategoryPayload): Promise<ExpenseCategoryFull> => {
+  const { data } = await api.post<ExpenseCategoryFull>('/expenses/categories', payload);
+  return data;
+};
+
+export interface UpdateExpenseCategoryPayload {
+  name?:      string;
+  accountId?: string;
+  isActive?:  boolean;
+}
+
+export const updateExpenseCategory = async (id: string, payload: UpdateExpenseCategoryPayload): Promise<ExpenseCategoryFull> => {
+  const { data } = await api.patch<ExpenseCategoryFull>(`/expenses/categories/${id}`, payload);
+  return data;
 };

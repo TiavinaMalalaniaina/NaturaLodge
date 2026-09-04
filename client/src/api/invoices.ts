@@ -9,12 +9,17 @@ export type PaymentStatus = 'completed' | 'pending' | 'failed' | 'refunded';
 // standard = facture normale, deposit = acompte, credit_note = avoir.
 export type InvoiceKind = 'standard' | 'deposit' | 'credit_note';
 
+export type InvoiceItemSource = 'booking' | 'manual';
+
 export interface InvoiceItem {
-  id:          string;
-  description: string;
-  quantity:    number;
-  unitPrice:   number;
-  total:       number;
+  id:           string;
+  description:  string;
+  quantity:     number;
+  unitPrice:    number;
+  total:        number;
+  source:       InvoiceItemSource;
+  // Renseigné uniquement pour une remise en pourcentage (1–100).
+  discountRate: number | null;
 }
 
 export interface InvoicePayment {
@@ -107,6 +112,10 @@ function normalizeInvoice(raw: any): Invoice {
     paidAt:   raw.paidAt ? raw.paidAt.split('T')[0] : null,
     relatesToInvoice: raw.relatesToInvoice ? normalizeRelatedRef(raw.relatesToInvoice) : null,
     creditedBy: (raw.creditedBy ?? []).map((c: any) => ({ ...normalizeRelatedRef(c), totalAmount: c.totalAmount, validatedAt: c.validatedAt ? c.validatedAt.split('T')[0] : null })),
+    items:    (raw.items ?? []).map((it: any) => ({
+      ...it,
+      source: (it.source ?? 'BOOKING').toLowerCase() as InvoiceItemSource,
+    })),
     payments: (raw.payments ?? []).map((p: any) => ({
       ...p,
       method: PAYMENT_METHOD_MAP[p.method] ?? p.method,
@@ -203,6 +212,38 @@ export type CancelInvoiceResult =
 export const cancelInvoice = async (id: string, refundRatePercent?: number): Promise<CancelInvoiceResult> => {
   const { data } = await api.post<any>(`/invoices/${id}/cancel`, refundRatePercent !== undefined ? { refundRatePercent } : {});
   return data.deleted ? { deleted: true } : { deleted: false, creditNote: normalizeInvoice(data.creditNote) };
+};
+
+export interface InvoiceItemPayload {
+  description: string;
+  quantity:   number;
+  unitPrice:  number;
+}
+
+export const addInvoiceItem = async (invoiceId: string, payload: InvoiceItemPayload): Promise<Invoice> => {
+  const { data } = await api.post<any>(`/invoices/${invoiceId}/items`, payload);
+  return normalizeInvoice(data);
+};
+
+export const updateInvoiceItem = async (invoiceId: string, itemId: string, payload: Partial<InvoiceItemPayload>): Promise<Invoice> => {
+  const { data } = await api.patch<any>(`/invoices/${invoiceId}/items/${itemId}`, payload);
+  return normalizeInvoice(data);
+};
+
+export const deleteInvoiceItem = async (invoiceId: string, itemId: string): Promise<Invoice> => {
+  const { data } = await api.delete<any>(`/invoices/${invoiceId}/items/${itemId}`);
+  return normalizeInvoice(data);
+};
+
+export interface DiscountPayload {
+  mode:   'percent' | 'fixed';
+  value:  number;
+  label?: string;
+}
+
+export const addInvoiceDiscount = async (invoiceId: string, payload: DiscountPayload): Promise<Invoice> => {
+  const { data } = await api.post<any>(`/invoices/${invoiceId}/discounts`, payload);
+  return normalizeInvoice(data);
 };
 
 export interface InvoicesListParams {

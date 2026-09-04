@@ -3,7 +3,8 @@ import {
   fetchInvoiceByBooking, fetchInvoice, fetchInvoices,
   generateInvoice, recordPayment, voidPayment, updateInvoice,
   createDeposit, validateInvoice, cancelInvoice,
-  PaymentPayload, CreateDepositPayload,
+  addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, addInvoiceDiscount,
+  PaymentPayload, CreateDepositPayload, InvoiceItemPayload, DiscountPayload,
 } from '../api/invoices';
 import { CASH_ACCOUNTS_KEY } from './useLedger';
 
@@ -72,6 +73,56 @@ export function useUpdateInvoice() {
       qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
       qc.setQueryData([...INVOICES_KEY, inv.id], inv);
     },
+  });
+}
+
+// Lignes personnalisées (dépenses flexibles) : le service renvoie la facture complète après avoir
+// ajusté le grand livre (411000/706000) et resynchronisé les statuts facture + réservation. On
+// rafraîchit la liste des factures en plus du détail, car totalAmount (donc « reste à payer »)
+// change. Pas d'invalidation trésorerie : une ligne à crédit ne bouge aucun compte de caisse.
+function invoiceItemMutationCallbacks(qc: ReturnType<typeof useQueryClient>) {
+  return {
+    onSuccess: (inv: Awaited<ReturnType<typeof addInvoiceItem>>) => {
+      qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
+      qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
+  };
+}
+
+export function useAddInvoiceItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, ...payload }: { invoiceId: string } & InvoiceItemPayload) =>
+      addInvoiceItem(invoiceId, payload),
+    ...invoiceItemMutationCallbacks(qc),
+  });
+}
+
+export function useUpdateInvoiceItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, itemId, ...payload }: { invoiceId: string; itemId: string } & Partial<InvoiceItemPayload>) =>
+      updateInvoiceItem(invoiceId, itemId, payload),
+    ...invoiceItemMutationCallbacks(qc),
+  });
+}
+
+export function useDeleteInvoiceItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, itemId }: { invoiceId: string; itemId: string }) =>
+      deleteInvoiceItem(invoiceId, itemId),
+    ...invoiceItemMutationCallbacks(qc),
+  });
+}
+
+export function useAddInvoiceDiscount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, ...payload }: { invoiceId: string } & DiscountPayload) =>
+      addInvoiceDiscount(invoiceId, payload),
+    ...invoiceItemMutationCallbacks(qc),
   });
 }
 

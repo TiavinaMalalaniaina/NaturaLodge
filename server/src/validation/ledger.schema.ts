@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LedgerAccountType, PaymentMethod } from '@prisma/client';
 
 export const ledgerEntriesQuerySchema = z.object({
   accountId: z.string().min(1),
@@ -32,6 +33,9 @@ export const contributionSchema = z.object({
 
 export const balanceSheetQuerySchema = z.object({
   asOf: z.string().datetime().optional(),
+  // z.coerce.boolean() ne convient pas ici : Boolean("false") vaut true en JS (toute chaîne non
+  // vide est truthy), donc ?includeZero=false serait lu comme "true" par erreur.
+  includeZero: z.preprocess(v => v === 'true' || v === true, z.boolean()),
 });
 
 export const exportQuerySchema = z.object({
@@ -40,9 +44,40 @@ export const exportQuerySchema = z.object({
   dateTo:    z.string().datetime().optional(),
 });
 
+export const createAccountSchema = z.object({
+  code:           z.string().min(1).max(20),
+  name:           z.string().min(1).max(120),
+  type:           z.nativeEnum(LedgerAccountType),
+  isCashAccount:  z.boolean().default(false),
+  allowedMethods: z.array(z.nativeEnum(PaymentMethod)).default([]),
+});
+
+// Le code et le type sont volontairement absents : voir le commentaire dans
+// ledger.service.ts::updateAccount — ils ne doivent jamais changer après création.
+export const updateAccountSchema = z.object({
+  name:           z.string().min(1).max(120).optional(),
+  isCashAccount:  z.boolean().optional(),
+  allowedMethods: z.array(z.nativeEnum(PaymentMethod)).optional(),
+  isActive:       z.boolean().optional(),
+});
+
+// Accès trésorerie d'un rôle : la liste complète des comptes visibles + drapeaux source/arrivée.
+// L'absence d'un compte = non visible pour ce rôle. Liste vide = le rôle voit tout (défaut).
+export const roleTreasuryAccessSchema = z.object({
+  grants: z.array(z.object({
+    accountId:       z.string().min(1),
+    canTransferFrom: z.boolean().default(false),
+    canTransferTo:   z.boolean().default(false),
+    canPayExpenses:  z.boolean().default(false),
+  })).default([]),
+});
+
+export type RoleTreasuryAccessInput = z.infer<typeof roleTreasuryAccessSchema>;
 export type LedgerEntriesParams = z.infer<typeof ledgerEntriesQuerySchema>;
 export type LedgerSummaryParams = z.infer<typeof ledgerSummaryQuerySchema>;
 export type TransferInput = z.infer<typeof transferSchema>;
 export type ContributionInput = z.infer<typeof contributionSchema>;
 export type BalanceSheetParams = z.infer<typeof balanceSheetQuerySchema>;
 export type ExportQueryParams = z.infer<typeof exportQuerySchema>;
+export type CreateAccountInput = z.infer<typeof createAccountSchema>;
+export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;

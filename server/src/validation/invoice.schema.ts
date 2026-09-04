@@ -48,9 +48,40 @@ export const paymentSchema = z.object({
   notes:     z.string().optional(),
 });
 
+// Ligne personnalisée ("dépense flexible") ajoutée à la main sur une facture. `unitPrice` peut être
+// négatif (remise / avoir) — c'est le seul champ montant qui l'autorise dans tout le domaine
+// facturation. `quantity` reste strictement positif : une remise se saisit via un prix unitaire
+// négatif, pas une quantité négative.
+export const invoiceItemSchema = z.object({
+  description: z.string().min(1).max(200),
+  quantity:    z.number().int().positive().default(1),
+  unitPrice:   z.number().int(),
+});
+
+export const updateInvoiceItemSchema = z.object({
+  description: z.string().min(1).max(200).optional(),
+  quantity:    z.number().int().positive().optional(),
+  unitPrice:   z.number().int().optional(),
+});
+
+// Remise sur facture : `value` est toujours saisie en positif (le service la porte en négatif).
+// mode 'percent' → pourcentage entier 1–100, recalculé à chaque resynchronisation ; mode 'fixed' →
+// montant en Ariary, figé.
+export const invoiceDiscountSchema = z.object({
+  mode:  z.enum(['percent', 'fixed']),
+  value: z.number().int().positive(),
+  label: z.string().min(1).max(200).optional(),
+}).refine(d => d.mode !== 'percent' || d.value <= 100, {
+  message: 'Une remise en pourcentage ne peut pas dépasser 100.',
+  path: ['value'],
+});
+
 export type InvoiceListParams = z.infer<typeof invoiceListQuerySchema>;
 export type GenerateInvoiceInput = z.infer<typeof generateInvoiceSchema>;
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
 export type PaymentInput = z.infer<typeof paymentSchema>;
 export type CreateDepositInput = z.infer<typeof createDepositSchema>;
 export type CancelInvoiceInput = z.infer<typeof cancelInvoiceSchema>;
+export type InvoiceItemInput = z.infer<typeof invoiceItemSchema>;
+export type UpdateInvoiceItemInput = z.infer<typeof updateInvoiceItemSchema>;
+export type InvoiceDiscountInput = z.infer<typeof invoiceDiscountSchema>;

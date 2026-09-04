@@ -5,6 +5,7 @@ import { asyncHandler } from '../middleware/asyncHandler';
 import {
   invoiceListQuerySchema, generateInvoiceSchema, updateInvoiceSchema, paymentSchema,
   createDepositSchema, cancelInvoiceSchema,
+  invoiceItemSchema, updateInvoiceItemSchema, invoiceDiscountSchema,
 } from '../validation/invoice.schema';
 import * as invoiceService from '../services/invoice.service';
 
@@ -63,11 +64,37 @@ invoicesRouter.post('/:id/cancel', can('invoices.cancel'), asyncHandler(async (r
   res.json(await invoiceService.cancelInvoice(req.params.id, req.user!.id, undefined, parsed.data.refundRatePercent));
 }));
 
+// POST /invoices/:id/items  ──  ajouter une ligne personnalisée (dépense flexible)
+invoicesRouter.post('/:id/items', can('invoices.update'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = invoiceItemSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await invoiceService.addManualItem(req.params.id, parsed.data, req.user!.id));
+}));
+
+// POST /invoices/:id/discounts  ──  appliquer une remise (montant fixe ou pourcentage)
+invoicesRouter.post('/:id/discounts', can('invoices.update'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = invoiceDiscountSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await invoiceService.addDiscount(req.params.id, parsed.data, req.user!.id));
+}));
+
+// PATCH /invoices/:id/items/:itemId  ──  modifier une ligne personnalisée
+invoicesRouter.patch('/:id/items/:itemId', can('invoices.update'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = updateInvoiceItemSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.json(await invoiceService.updateManualItem(req.params.id, req.params.itemId, parsed.data, req.user!.id));
+}));
+
+// DELETE /invoices/:id/items/:itemId  ──  retirer une ligne personnalisée
+invoicesRouter.delete('/:id/items/:itemId', can('invoices.update'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await invoiceService.removeManualItem(req.params.id, req.params.itemId, req.user!.id));
+}));
+
 // POST /invoices/:id/payments  ──  enregistrer un paiement
 invoicesRouter.post('/:id/payments', can('invoices.record_payment'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = paymentSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.status(201).json(await invoiceService.addPayment(req.params.id, parsed.data, req.user!.id));
+  res.status(201).json(await invoiceService.addPayment(req.params.id, parsed.data, req.user!.id, req.user!.role));
 }));
 
 // DELETE /invoices/:id/payments/:paymentId  ──  annuler un paiement

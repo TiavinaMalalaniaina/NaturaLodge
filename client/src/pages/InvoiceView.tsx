@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw, ShieldCheck, PiggyBank, FileText } from 'lucide-react';
+import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw, Trash2, ShieldCheck, PiggyBank, FileText } from 'lucide-react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import {
   useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment,
   useValidateInvoice, useCreateDeposit, useBookingDocuments,
+  useAddInvoiceItem, useDeleteInvoiceItem, useAddInvoiceDiscount,
 } from '../hooks/useInvoices';
 import { useCashAccounts } from '../hooks/useLedger';
 import { PaymentMethod } from '../api/invoices';
@@ -68,6 +69,9 @@ export const InvoiceView: React.FC = () => {
   const createDeposit = useCreateDeposit();
   const { data: deposits }    = useBookingDocuments(bookingId ?? null, 'deposit');
   const { data: creditNotes } = useBookingDocuments(bookingId ?? null, 'credit_note');
+  const addInvoiceItem = useAddInvoiceItem();
+  const deleteInvoiceItem = useDeleteInvoiceItem();
+  const addInvoiceDiscount = useAddInvoiceDiscount();
 
   const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState('');
@@ -88,6 +92,23 @@ export const InvoiceView: React.FC = () => {
   const [showDepositForm, setShowDepositForm] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositNotes, setDepositNotes] = useState('');
+
+  const [showItemForm, setShowItemForm] = useState(false);
+  const [addMode, setAddMode] = useState<'charge' | 'discount'>('charge');
+  const [discountKind, setDiscountKind] = useState<'percent' | 'fixed'>('percent');
+  const [itemDesc, setItemDesc] = useState('');
+  const [itemQty, setItemQty] = useState('1');
+  const [itemPrice, setItemPrice] = useState('');
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+  const resetItemForm = () => {
+    setShowItemForm(false);
+    setAddMode('charge');
+    setDiscountKind('percent');
+    setItemDesc('');
+    setItemQty('1');
+    setItemPrice('');
+  };
 
   // Filtre le sélecteur de compte selon la méthode choisie (ex: Mvola -> seul le compte Mvola) —
   // repli sur tous les comptes si aucun n'est associé à cette méthode (ex: carte/virement, pas
@@ -160,11 +181,50 @@ export const InvoiceView: React.FC = () => {
     );
   };
 
+  const handleAddItem = () => {
+    if (!invoice) return;
+    const quantity = parseInt(itemQty, 10);
+    const unitPrice = parseInt(itemPrice, 10);
+    if (!itemDesc.trim() || !quantity || quantity <= 0 || Number.isNaN(unitPrice)) return;
+    setApiError('');
+    addInvoiceItem.mutate(
+      { invoiceId: invoice.id, description: itemDesc.trim(), quantity, unitPrice },
+      {
+        onSuccess: resetItemForm,
+        onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+      },
+    );
+  };
+
+  const handleAddDiscount = () => {
+    if (!invoice) return;
+    const value = parseInt(itemPrice, 10);
+    if (!value || value <= 0) return;
+    if (discountKind === 'percent' && value > 100) return;
+    setApiError('');
+    addInvoiceDiscount.mutate(
+      { invoiceId: invoice.id, mode: discountKind, value, label: itemDesc.trim() || undefined },
+      {
+        onSuccess: resetItemForm,
+        onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+      },
+    );
+  };
+
+  const handleDeleteItem = () => {
+    if (!invoice || !itemToDelete) return;
+    setApiError('');
+    deleteInvoiceItem.mutate({ invoiceId: invoice.id, itemId: itemToDelete }, {
+      onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+    });
+  };
+
   const canGenerate = can('invoices.generate');
   const canRecordPayment = can('invoices.record_payment');
   const canVoid = can('invoices.void_payment');
   const canValidate = can('invoices.validate');
   const canIssueDeposit = can('invoices.issue_deposit');
+  const canEditItems = can('invoices.update') && !!invoice && invoice.status !== 'cancelled' && invoice.status !== 'refunded';
   const noInvoice = !isLoading && (isError || !invoice);
   const isDraft = !!invoice && !invoice.validatedAt;
 
@@ -436,19 +496,186 @@ export const InvoiceView: React.FC = () => {
                     {['Description', 'Qté', 'P.U.', t('invoice.total')].map((h, i) => (
                       <th key={i} className={cn('py-3 text-[10px] font-bold uppercase tracking-widest opacity-40', i > 0 && 'text-right', i === 1 && 'text-center')}>{h}</th>
                     ))}
+                    {canEditItems && <th className="no-print w-10" aria-hidden />}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
                   {invoice.items.map(item => (
                     <tr key={item.id}>
-                      <td className="py-4 text-sm font-medium text-on-surface">{item.description}</td>
+                      <td className="py-4 text-sm font-medium text-on-surface">
+                        {item.description}
+                        {item.source === 'manual' && (
+                          item.discountRate !== null || item.total < 0 ? (
+                            <span className="no-print ml-2 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8px] font-bold uppercase tracking-widest align-middle">
+                              {item.discountRate !== null ? `− ${item.discountRate} %` : t('invoice.discountBadge')}
+                            </span>
+                          ) : (
+                            <span className="no-print ml-2 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[8px] font-bold uppercase tracking-widest align-middle">
+                              {t('invoice.manualItem')}
+                            </span>
+                          )
+                        )}
+                      </td>
                       <td className="py-4 text-center text-xs font-mono">{item.quantity}</td>
                       <td className="py-4 text-right text-xs font-mono">{fmtAmount(item.unitPrice)}</td>
                       <td className="py-4 text-right text-sm font-bold">{fmtAmount(item.total)}</td>
+                      {canEditItems && (
+                        <td className="no-print py-4 text-right">
+                          {item.source === 'manual' && (
+                            <button
+                              onClick={() => setItemToDelete(item.id)}
+                              disabled={deleteInvoiceItem.isPending}
+                              className="p-1.5 rounded-lg text-on-surface-variant/40 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                              title={t('invoice.removeItem')}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {canEditItems && (
+                <div className="no-print mt-4">
+                  {!showItemForm ? (
+                    <button
+                      onClick={() => setShowItemForm(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {t('invoice.addItem')}
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-3 p-4 bg-stone-50 border border-stone-200 rounded-xl">
+                      {/* Charge / Remise */}
+                      <div className="flex gap-1 p-1 bg-white border border-stone-200 rounded-xl w-fit">
+                        {(['charge', 'discount'] as const).map(m => (
+                          <button
+                            key={m}
+                            onClick={() => setAddMode(m)}
+                            className={cn(
+                              'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors',
+                              addMode === m ? 'bg-primary text-white' : 'text-on-surface-variant/60 hover:bg-stone-50',
+                            )}
+                          >
+                            {t(m === 'charge' ? 'invoice.addCharge' : 'invoice.addDiscount')}
+                          </button>
+                        ))}
+                      </div>
+
+                      {addMode === 'charge' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.itemDescription')}</label>
+                            <input
+                              type="text"
+                              value={itemDesc}
+                              onChange={e => setItemDesc(e.target.value)}
+                              placeholder={t('invoice.itemDescriptionHint')}
+                              className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                            />
+                          </div>
+                          <div className="sm:w-20">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.itemQuantity')}</label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={itemQty}
+                              onChange={e => setItemQty(e.target.value)}
+                              className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                            />
+                          </div>
+                          <div className="sm:w-32">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.itemUnitPrice')}</label>
+                            <input
+                              type="number"
+                              value={itemPrice}
+                              onChange={e => setItemPrice(e.target.value)}
+                              placeholder="0"
+                              className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                            />
+                          </div>
+                          <p className="sm:col-span-3 text-[10px] text-on-surface-variant/50 -mt-1">{t('invoice.itemHint')}</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-3">
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.discountKind')}</label>
+                            <div className="flex gap-1 p-1 bg-white border border-stone-200 rounded-xl">
+                              {(['percent', 'fixed'] as const).map(k => (
+                                <button
+                                  key={k}
+                                  onClick={() => setDiscountKind(k)}
+                                  className={cn(
+                                    'px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors',
+                                    discountKind === k ? 'bg-emerald-600 text-white' : 'text-on-surface-variant/60 hover:bg-stone-50',
+                                  )}
+                                >
+                                  {t(k === 'percent' ? 'invoice.discountPercent' : 'invoice.discountFixed')}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.discountLabelOptional')}</label>
+                            <input
+                              type="text"
+                              value={itemDesc}
+                              onChange={e => setItemDesc(e.target.value)}
+                              placeholder={discountKind === 'percent' ? t('invoice.discountLabelHintPct') : t('invoice.discountLabelHintFixed')}
+                              className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                            />
+                          </div>
+                          <div className="sm:w-32">
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">
+                              {discountKind === 'percent' ? t('invoice.discountValuePercent') : t('invoice.discountValueFixed')}
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={discountKind === 'percent' ? 100 : undefined}
+                              value={itemPrice}
+                              onChange={e => setItemPrice(e.target.value)}
+                              placeholder={discountKind === 'percent' ? '10' : '0'}
+                              className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                            />
+                          </div>
+                          <p className="sm:col-span-3 text-[10px] text-on-surface-variant/50 -mt-1">{t('invoice.discountHint')}</p>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={resetItemForm}
+                          className="px-4 py-2.5 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-50 transition-colors"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                        {addMode === 'charge' ? (
+                          <button
+                            onClick={handleAddItem}
+                            disabled={!itemDesc.trim() || !itemPrice || addInvoiceItem.isPending}
+                            className="px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
+                          >
+                            {addInvoiceItem.isPending ? t('common.saving') : t('common.confirm')}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleAddDiscount}
+                            disabled={!itemPrice || parseInt(itemPrice, 10) <= 0 || (discountKind === 'percent' && parseInt(itemPrice, 10) > 100) || addInvoiceDiscount.isPending}
+                            className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-600/90 transition-colors disabled:opacity-50"
+                          >
+                            {addInvoiceDiscount.isPending ? t('common.saving') : t('common.confirm')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Totals */}
@@ -655,6 +882,15 @@ export const InvoiceView: React.FC = () => {
         message={t('invoice.cancelMessage')}
         confirmLabel={t('invoice.confirmCancel')}
         isPending={voidPayment.isPending}
+      />
+      <ConfirmModal
+        isOpen={itemToDelete !== null}
+        onClose={() => setItemToDelete(null)}
+        onConfirm={() => { handleDeleteItem(); setItemToDelete(null); }}
+        title={t('invoice.removeItemTitle')}
+        message={t('invoice.removeItemMessage')}
+        confirmLabel={t('invoice.removeItem')}
+        isPending={deleteInvoiceItem.isPending}
       />
     </motion.div>
   );
