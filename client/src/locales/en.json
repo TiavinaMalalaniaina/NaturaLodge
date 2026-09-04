@@ -376,7 +376,19 @@
     "method_ORANGE_MONEY":   "Orange Money",
     "cancelTitle":           "Cancel Payment ?",
     "cancelMessage":         "This will refund the payment and notify the system. The action cannot be undone.",
-    "confirmCancel":         "Yes, refund"
+    "confirmCancel":         "Yes, refund",
+    "draft":                 "Draft",
+    "notYetValidated":       "(not yet validated)",
+    "draftHint":             "This document is a draft: freely editable, and not yet on the ledger. Validate it to assign its final number and make it official.",
+    "validate":              "Validate",
+    "validateHint":          "Assigns the final number and posts the document to the ledger — irreversible.",
+    "kind_standard":         "Invoice",
+    "kind_deposit":          "Deposit",
+    "kind_credit_note":      "Credit note",
+    "deposit":               "Deposit",
+    "issueDeposit":          "Create a deposit",
+    "documentHistory":       "Document history",
+    "relatesTo":             "Credit note for"
   },
   "invoices": {
     "title":      "Invoices",

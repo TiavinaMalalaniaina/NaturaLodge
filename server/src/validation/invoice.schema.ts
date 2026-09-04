@@ -5,6 +5,8 @@ export const invoiceListQuerySchema = z.object({
   bookingId: z.string().optional(),
   guestId:   z.string().optional(),
   status:    z.string().optional(),
+  // STANDARD (facture) / DEPOSIT (acompte) / CREDIT_NOTE (avoir) — voir invoice.service.ts.
+  kind:      z.string().optional(),
   page:      z.coerce.number().int().min(1).default(1),
   limit:     z.coerce.number().int().min(1).max(500).default(20),
 });
@@ -14,6 +16,19 @@ export const generateInvoiceSchema = z.object({
   taxRate:   z.number().min(0).max(100).default(0),
   notes:     z.string().optional(),
   dueAt:     z.string().datetime().optional(),
+});
+
+export const createDepositSchema = z.object({
+  bookingId: z.string().min(1),
+  amount:    z.number().int().positive(),
+  notes:     z.string().optional(),
+});
+
+// `refundRatePercent` : override ponctuel du taux de remboursement par défaut
+// (DEFAULT_CANCELLATION_REFUND_RATE) au moment d'annuler une facture déjà visée. Sans effet si la
+// facture était encore un brouillon (suppression pure, pas d'avoir).
+export const cancelInvoiceSchema = z.object({
+  refundRatePercent: z.number().int().min(0).max(100).optional(),
 });
 
 // `status` n'est pas modifiable ici : PAID/PARTIALLY_PAID/PENDING sont recalculés automatiquement
@@ -37,3 +52,5 @@ export type InvoiceListParams = z.infer<typeof invoiceListQuerySchema>;
 export type GenerateInvoiceInput = z.infer<typeof generateInvoiceSchema>;
 export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
 export type PaymentInput = z.infer<typeof paymentSchema>;
+export type CreateDepositInput = z.infer<typeof createDepositSchema>;
+export type CancelInvoiceInput = z.infer<typeof cancelInvoiceSchema>;

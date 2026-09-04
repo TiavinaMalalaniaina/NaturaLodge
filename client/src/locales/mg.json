@@ -376,7 +376,19 @@
     "method_ORANGE_MONEY":   "Orange Money",
     "cancelTitle":           "Hamerina vola ve ?",
     "cancelMessage":         "Hanafaka izy io, hamerina ny fandoavam-bola ary hampandre ny rafitra. Tsy azo averina intsony ity hetsika ity.",
-    "confirmCancel":         "Eny, averina"
+    "confirmCancel":         "Eny, averina",
+    "draft":                 "Volavolana",
+    "notYetValidated":       "(mbola tsy nasiam-pamantarana)",
+    "draftHint":             "Volavolana ity antontan-taratasy ity : azo ovaina malalaka, tsy mbola voarakitra ao amin'ny grand livre. Asio famantarana izy io mba hanomezana azy ny laharana farany ary hahatonga azy ho ofisialy.",
+    "validate":              "Manisy famantarana",
+    "validateHint":          "Manome ny laharana farany ary mandrakitra ilay antontan-taratasy ao amin'ny grand livre — tsy azo averina.",
+    "kind_standard":         "Faktiora",
+    "kind_deposit":          "Antoka",
+    "kind_credit_note":      "Fanamarinam-bola",
+    "deposit":               "Antoka",
+    "issueDeposit":          "Mamorona antoka",
+    "documentHistory":       "Tantaran'ny antontan-taratasy",
+    "relatesTo":             "Fanamarinam-bola ho an'ny"
   },
   "invoices": {
     "title":      "Faktiora",

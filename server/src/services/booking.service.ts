@@ -21,7 +21,11 @@ const roomSelect  = {
 };
 // Sélectionné dans les deux formes pour calculer `paymentStatus` côté serveur (computePaymentStatus),
 // mais jamais renvoyé tel quel au client (voir la déstructuration `{ invoices, ...rest }` dans `list`).
+// Filtre `kind: STANDARD` : une réservation peut désormais porter aussi un acompte et/ou un avoir
+// (voir invoice.service.ts) — sans ce filtre, l'un de ces documents plus récent que la vraie
+// facture fausserait le statut de paiement affiché et le contrôle d'accès au check-out.
 const invoicesForStatus = {
+  where:   { kind: 'STANDARD' as const },
   select:  { status: true, totalAmount: true },
   orderBy: { issuedAt: 'desc' as const },
   take:    1,

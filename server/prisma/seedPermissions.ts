@@ -35,6 +35,8 @@ const PERMISSIONS: PermissionSeed[] = [
   // ── invoices ──
   { key: 'invoices.view',            domain: 'invoices', description: 'Consulter les factures',                                          roles: ALL_STAFF },
   { key: 'invoices.generate',        domain: 'invoices', description: 'Générer une facture depuis une réservation',                      roles: FRONT_DESK },
+  { key: 'invoices.issue_deposit',   domain: 'invoices', description: 'Créer une facture d\'acompte',                                    roles: FRONT_DESK },
+  { key: 'invoices.validate',        domain: 'invoices', description: 'Viser un document (acompte, facture ou avoir) — l\'assigne un numéro et le poste au grand livre', roles: ADMIN_MANAGER },
   { key: 'invoices.update',          domain: 'invoices', description: 'Modifier une facture (notes, échéance, TVA)',                     roles: ADMIN_MANAGER },
   { key: 'invoices.cancel',          domain: 'invoices', description: 'Annuler une facture',                                             roles: ADMIN_MANAGER },
   { key: 'invoices.record_payment',  domain: 'invoices', description: 'Enregistrer un paiement',                                         roles: FRONT_DESK },

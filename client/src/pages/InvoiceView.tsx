@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw, ShieldCheck, PiggyBank, FileText } from 'lucide-react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
-import { useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment } from '../hooks/useInvoices';
+import {
+  useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment,
+  useValidateInvoice, useCreateDeposit, useBookingDocuments,
+} from '../hooks/useInvoices';
 import { useCashAccounts } from '../hooks/useLedger';
 import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
@@ -61,6 +64,10 @@ export const InvoiceView: React.FC = () => {
   const generateInvoice = useGenerateInvoice();
   const recordPayment = useRecordPayment();
   const voidPayment = useVoidPayment();
+  const validateInvoice = useValidateInvoice();
+  const createDeposit = useCreateDeposit();
+  const { data: deposits }    = useBookingDocuments(bookingId ?? null, 'deposit');
+  const { data: creditNotes } = useBookingDocuments(bookingId ?? null, 'credit_note');
 
   const [taxRate, setTaxRate] = useState(0);
   const [notes, setNotes] = useState('');
@@ -77,6 +84,10 @@ export const InvoiceView: React.FC = () => {
   const [apiError, setApiError] = useState('');
   const [isConfirmRefundModalOpen, setConfirmRefundModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+
+  const [showDepositForm, setShowDepositForm] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositNotes, setDepositNotes] = useState('');
 
   // Filtre le sélecteur de compte selon la méthode choisie (ex: Mvola -> seul le compte Mvola) —
   // repli sur tous les comptes si aucun n'est associé à cette méthode (ex: carte/virement, pas
@@ -127,17 +138,44 @@ export const InvoiceView: React.FC = () => {
     });
   };
 
+  const handleValidate = () => {
+    if (!invoice) return;
+    setApiError('');
+    validateInvoice.mutate(invoice.id, {
+      onError: (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+    });
+  };
+
+  const handleCreateDeposit = () => {
+    if (!bookingId) return;
+    const amount = parseInt(depositAmount, 10);
+    if (!amount || amount <= 0) return;
+    setApiError('');
+    createDeposit.mutate(
+      { bookingId, amount, notes: depositNotes || undefined },
+      {
+        onSuccess: () => { setDepositAmount(''); setDepositNotes(''); setShowDepositForm(false); },
+        onError:   (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+      },
+    );
+  };
+
   const canGenerate = can('invoices.generate');
   const canRecordPayment = can('invoices.record_payment');
   const canVoid = can('invoices.void_payment');
+  const canValidate = can('invoices.validate');
+  const canIssueDeposit = can('invoices.issue_deposit');
   const noInvoice = !isLoading && (isError || !invoice);
+  const isDraft = !!invoice && !invoice.validatedAt;
 
   const subtotal = invoice ? invoice.totalAmount - invoice.taxAmount : 0;
   const totalPaid = invoice
     ? invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     : 0;
   const remaining = invoice ? Math.max(0, invoice.totalAmount - totalPaid) : 0;
-  const canReceivePayment = invoice && invoice.status !== 'paid' && invoice.status !== 'cancelled';
+  // Une facture doit être visée avant de pouvoir recevoir un paiement (voir invoice.service.ts:
+  // addPayment) — tant qu'elle est brouillon, aucun encaissement n'est possible.
+  const canReceivePayment = invoice && !isDraft && invoice.status !== 'paid' && invoice.status !== 'cancelled';
 
   if (isLoading) return <PageLoader />;
 
@@ -157,30 +195,138 @@ export const InvoiceView: React.FC = () => {
           <div>
             <h2 className="font-display italic text-2xl md:text-3xl text-on-surface leading-none">{t('invoice.title')}</h2>
             {invoice && (
-              <div className="flex items-center gap-3 mt-2">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 font-mono">{invoice.number}</p>
-                <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', STATUS_CLASS[invoice.status])}>
-                  {t(`invoice.status_${invoice.status}`)}
-                </span>
+              <div className="flex items-center gap-3 mt-2 flex-wrap">
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 font-mono">{invoice.number ?? t('invoice.draft')}</p>
+                {isDraft ? (
+                  <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200">
+                    {t('invoice.draft')}
+                  </span>
+                ) : (
+                  <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', STATUS_CLASS[invoice.status])}>
+                    {t(`invoice.status_${invoice.status}`)}
+                  </span>
+                )}
               </div>
             )}
           </div>
         </div>
-        {invoice && (
-          <button
-            onClick={() => window.print()}
-            className="p-3 border border-stone-200 rounded-xl hover:bg-stone-50 text-on-surface-variant transition-all flex items-center gap-2 bg-white"
-          >
-            <Printer className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">Print</span>
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isDraft && canValidate && (
+            <button
+              onClick={handleValidate}
+              disabled={validateInvoice.isPending}
+              className="p-3 border border-primary/30 rounded-xl hover:bg-primary/5 text-primary transition-all flex items-center gap-2 bg-white disabled:opacity-50"
+              title={t('invoice.validateHint')}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">
+                {validateInvoice.isPending ? t('common.saving') : t('invoice.validate')}
+              </span>
+            </button>
+          )}
+          {invoice && (
+            <button
+              onClick={() => window.print()}
+              className="p-3 border border-stone-200 rounded-xl hover:bg-stone-50 text-on-surface-variant transition-all flex items-center gap-2 bg-white"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">Print</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {isDraft && (
+        <div className="no-print flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <p className="text-xs font-medium">{t('invoice.draftHint')}</p>
+        </div>
+      )}
 
       {apiError && (
         <div className="no-print flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <p className="text-xs font-medium">{apiError}</p>
+        </div>
+      )}
+
+      {/* Acompte + historique des documents — indépendants de l'existence de la facture STANDARD :
+          un acompte se prend typiquement avant même de générer la facture. */}
+      {(canIssueDeposit || (deposits?.data.length ?? 0) > 0 || (creditNotes?.data.length ?? 0) > 0) && (
+        <div className="no-print grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {canIssueDeposit && (
+            <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
+              <div className="p-6 border-b border-stone-100 flex justify-between items-center flex-wrap gap-3">
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('invoice.deposit')}</h4>
+                <button
+                  onClick={() => setShowDepositForm(v => !v)}
+                  className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/10 transition-colors"
+                >
+                  <PiggyBank className="w-3.5 h-3.5" />
+                  {t('invoice.issueDeposit')}
+                </button>
+              </div>
+              {showDepositForm && (
+                <div className="p-6 grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.amount')}</label>
+                    <input
+                      type="number" min={1} value={depositAmount}
+                      onChange={e => setDepositAmount(e.target.value)}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">Notes</label>
+                    <input
+                      type="text" value={depositNotes}
+                      onChange={e => setDepositNotes(e.target.value)}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button onClick={() => setShowDepositForm(false)}
+                      className="px-4 py-2.5 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-50 transition-colors">
+                      {t('common.cancel')}
+                    </button>
+                    <button
+                      onClick={handleCreateDeposit}
+                      disabled={!depositAmount || createDeposit.isPending}
+                      className="px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {createDeposit.isPending ? t('common.saving') : t('common.confirm')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {((deposits?.data.length ?? 0) > 0 || (creditNotes?.data.length ?? 0) > 0) && (
+            <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
+              <div className="p-6 border-b border-stone-100">
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('invoice.documentHistory')}</h4>
+              </div>
+              <div className="divide-y divide-stone-100">
+                {[...(deposits?.data ?? []), ...(creditNotes?.data ?? [])].map(doc => (
+                  <Link
+                    key={doc.id}
+                    to={`/invoices/document/${doc.id}`}
+                    className="p-4 flex items-center justify-between gap-3 hover:bg-stone-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText className="w-4 h-4 text-on-surface-variant/40 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-on-surface font-mono truncate">{doc.number ?? t('invoice.draft')}</p>
+                        <p className="text-[10px] text-on-surface-variant/50">{t(`invoice.kind_${doc.kind}`)}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs font-mono font-semibold text-on-surface shrink-0">{fmtAmount(doc.totalAmount)}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -272,7 +418,10 @@ export const InvoiceView: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.number')}</p>
-                    <p className="font-mono mt-1">{invoice.number}</p>
+                    <p className="font-mono mt-1">
+                      {invoice.number ?? t('invoice.draft')}
+                      {isDraft && <span className="ml-2 text-[9px] font-bold uppercase tracking-widest text-amber-600 align-middle">{t('invoice.notYetValidated')}</span>}
+                    </p>
                   </div>
                 </div>
               </div>

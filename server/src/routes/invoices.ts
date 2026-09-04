@@ -2,7 +2,10 @@ import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { can } from '../middleware/can';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { invoiceListQuerySchema, generateInvoiceSchema, updateInvoiceSchema, paymentSchema } from '../validation/invoice.schema';
+import {
+  invoiceListQuerySchema, generateInvoiceSchema, updateInvoiceSchema, paymentSchema,
+  createDepositSchema, cancelInvoiceSchema,
+} from '../validation/invoice.schema';
 import * as invoiceService from '../services/invoice.service';
 
 export const invoicesRouter = Router();
@@ -25,12 +28,24 @@ invoicesRouter.get('/:id', can('invoices.view'), asyncHandler(async (req: AuthRe
   res.json(await invoiceService.getById(req.params.id));
 }));
 
-// POST /invoices/generate  ──  générer depuis une réservation (idempotent)
+// POST /invoices/generate  ──  générer (ou resynchroniser) le brouillon de facture d'une réservation
 invoicesRouter.post('/generate', can('invoices.generate'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = generateInvoiceSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
   const { invoice, created } = await invoiceService.generate(parsed.data, req.user!.id);
   res.status(created ? 201 : 200).json(invoice);
+}));
+
+// POST /invoices/deposit  ──  créer le brouillon d'une facture d'acompte pour une réservation
+invoicesRouter.post('/deposit', can('invoices.issue_deposit'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = createDepositSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await invoiceService.createDeposit(parsed.data.bookingId, parsed.data.amount, parsed.data.notes, req.user!.id));
+}));
+
+// POST /invoices/:id/validate  ──  viser un brouillon (numéro assigné, posté au grand livre, figé)
+invoicesRouter.post('/:id/validate', can('invoices.validate'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await invoiceService.validateInvoice(req.params.id, req.user!.id));
 }));
 
 // PATCH /invoices/:id  ──  modifier notes / dueAt / taxAmount
@@ -40,9 +55,12 @@ invoicesRouter.patch('/:id', can('invoices.update'), asyncHandler(async (req: Au
   res.json(await invoiceService.update(req.params.id, parsed.data));
 }));
 
-// POST /invoices/:id/cancel  ──  annuler la facture, extourne la part non encaissée
+// POST /invoices/:id/cancel  ──  brouillon jamais visé : supprimé. Facture visée : émet un avoir
+// en brouillon (taux de remboursement par défaut, overridable dans le corps de la requête).
 invoicesRouter.post('/:id/cancel', can('invoices.cancel'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
-  res.json(await invoiceService.cancelInvoice(req.params.id, req.user!.id));
+  const parsed = cancelInvoiceSchema.safeParse(req.body ?? {});
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.json(await invoiceService.cancelInvoice(req.params.id, req.user!.id, undefined, parsed.data.refundRatePercent));
 }));
 
 // POST /invoices/:id/payments  ──  enregistrer un paiement

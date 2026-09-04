@@ -223,9 +223,21 @@ model BookingRoomExtra {
 
 // ─── Invoices ────────────────────────────────────────────────────
 
+// STANDARD (facture normale) / DEPOSIT (acompte) / CREDIT_NOTE (avoir — une annulation à 100% du
+// solde restant EST un avoir, pas un type séparé). Voir invoice.service.ts pour le cycle de vie
+// brouillon → visé.
+enum InvoiceKind {
+  STANDARD
+  DEPOSIT
+  CREDIT_NOTE
+}
+
 model Invoice {
   id          String        @id @default(cuid())
-  number      String        @unique
+  // Nullable : un brouillon (validatedAt = null) n'a pas encore de numéro — il n'en consomme un
+  // qu'au visa, pour garantir une séquence sans trou dans l'ordre d'émission réel.
+  number      String?       @unique
+  kind        InvoiceKind   @default(STANDARD)
   booking     Booking       @relation(fields: [bookingId], references: [id])
   bookingId   String
   guest       Guest         @relation(fields: [guestId], references: [id])
@@ -233,7 +245,16 @@ model Invoice {
   issuedBy    User?         @relation(fields: [issuedById], references: [id])
   issuedById  String?
   status      InvoiceStatus @default(PENDING)
+  // null = brouillon (librement modifiable, absent du grand livre) ; non-null = visé (figé, posté
+  // au grand livre à cette date). `issuedAt` est (ré)écrit à la même valeur au moment du visa —
+  // c'est la date d'émission légale, pas la date de création du brouillon.
+  validatedAt DateTime?
   issuedAt    DateTime      @default(now())
+  // Un CREDIT_NOTE pointe vers la facture qu'il crédite. Un DEPOSIT n'a pas besoin de FK vers la
+  // facture finale qu'il alimente : il se retrouve par bookingId + kind (voir invoice.service.ts).
+  relatesToInvoiceId String?
+  relatesToInvoice   Invoice? @relation("InvoiceCredits", fields: [relatesToInvoiceId], references: [id])
+  creditedBy         Invoice[] @relation("InvoiceCredits")
   dueAt       DateTime?
   paidAt      DateTime?
   totalAmount Int
@@ -243,6 +264,8 @@ model Invoice {
   payments    Payment[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+
+  @@index([bookingId, kind])
 }
 
 model InvoiceItem {
@@ -351,7 +374,8 @@ model JournalEntry {
 
 enum JournalSource {
   INVOICE
-  INVOICE_CANCEL
+  INVOICE_CANCEL // legacy — plus jamais écrit (l'annulation d'une facture visée émet désormais un CREDIT_NOTE), conservé pour les écritures historiques
+  CREDIT_NOTE
   PAYMENT
   PAYMENT_VOID
   EXPENSE

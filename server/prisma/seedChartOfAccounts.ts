@@ -6,6 +6,10 @@ import { PrismaClient, PaymentMethod } from '@prisma/client'
 const CHART_OF_ACCOUNTS = [
   { code: '101000',  name: 'Capital / Apports propriétaire',        type: 'EQUITY',    isCashAccount: false, allowedMethods: [] },
   { code: '411000',  name: 'Clients',                               type: 'ASSET',     isCashAccount: false, allowedMethods: [] },
+  // Acompte encaissé avant la prestation : ce n'est pas encore du chiffre d'affaires (le séjour
+  // n'a pas eu lieu) — voir invoice.service.ts, écriture posée au visa d'une facture d'acompte,
+  // soldée contre 411000 au visa de la facture définitive.
+  { code: '419100',  name: 'Clients — avances et acomptes reçus',    type: 'LIABILITY', isCashAccount: false, allowedMethods: [] },
   { code: '401000',  name: 'Fournisseurs',                          type: 'LIABILITY', isCashAccount: false, allowedMethods: [] },
   { code: '4457000', name: 'TVA collectée',                         type: 'LIABILITY', isCashAccount: false, allowedMethods: [] },
   { code: '4456000', name: 'TVA déductible',                        type: 'ASSET',     isCashAccount: false, allowedMethods: [] },

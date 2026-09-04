@@ -59,8 +59,10 @@ export const Invoices: React.FC = () => {
     { key: 'cancelled',      label: t('invoice.status_cancelled') },
   ];
 
-  const handleOpen = (bookingId: string) => {
-    navigate(`/invoices/${bookingId}`);
+  // Une facture STANDARD reste adressée par réservation (route historique). Un acompte ou un avoir
+  // est un document à part entière, adressé par son propre id (voir /invoices/document/:invoiceId).
+  const handleOpen = (inv: { kind: string; id: string; bookingId: string }) => {
+    navigate(inv.kind === 'standard' ? `/invoices/${inv.bookingId}` : `/invoices/document/${inv.id}`);
   };
 
   if (isLoading) return <PageLoader />;
@@ -141,7 +143,7 @@ export const Invoices: React.FC = () => {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                onClick={() => handleOpen(inv.bookingId)}
+                onClick={() => handleOpen(inv)}
                 className="bg-white rounded-2xl border border-stone-200 p-5 flex items-center justify-between gap-4 hover:border-primary/30 hover:shadow-sm cursor-pointer transition-all group"
               >
                 <div className="flex items-center gap-4 min-w-0">
@@ -150,7 +152,12 @@ export const Invoices: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-on-surface font-mono">{inv.number}</p>
+                      <p className="text-sm font-bold text-on-surface font-mono">{inv.number ?? t('invoice.draft')}</p>
+                      {inv.kind !== 'standard' && (
+                        <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border bg-stone-50 text-on-surface-variant border-stone-200">
+                          {t(`invoice.kind_${inv.kind}`)}
+                        </span>
+                      )}
                       <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', STATUS_CLASS[inv.status])}>
                         {t(`invoice.status_${inv.status}`)}
                       </span>

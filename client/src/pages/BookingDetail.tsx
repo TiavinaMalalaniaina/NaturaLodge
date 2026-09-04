@@ -420,12 +420,13 @@ export const BookingDetail: React.FC = () => {
               {invoice && (
                 <span className={cn(
                   'px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border',
-                  invoice.status === 'paid' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                    invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200',
+                  !invoice.validatedAt ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                    invoice.status === 'paid' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                      invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200',
                 )}>
-                  {t(`invoice.status_${invoice.status}`)}
+                  {!invoice.validatedAt ? t('invoice.draft') : t(`invoice.status_${invoice.status}`)}
                 </span>
               )}
             </div>
@@ -439,7 +440,7 @@ export const BookingDetail: React.FC = () => {
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.number')}</span>
-                    <span className="text-sm font-semibold text-on-surface">{invoice.number}</span>
+                    <span className="text-sm font-semibold text-on-surface">{invoice.number ?? t('invoice.draft')}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.total')}</span>

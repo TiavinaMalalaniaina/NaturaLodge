@@ -376,7 +376,19 @@
     "method_ORANGE_MONEY":   "Orange Money",
     "cancelTitle":           "Annuler le paiement ?",
     "cancelMessage":         "Cela libérera remboursera le paiement et notifiera le système. Cette action est irréversible.",
-    "confirmCancel":         "Oui, remboursé"
+    "confirmCancel":         "Oui, remboursé",
+    "draft":                 "Brouillon",
+    "notYetValidated":       "(non visée)",
+    "draftHint":             "Ce document est un brouillon : librement modifiable, il n'apparaît pas encore au grand livre. Visez-le pour lui assigner son numéro définitif et le rendre officiel.",
+    "validate":              "Viser",
+    "validateHint":          "Assigne le numéro définitif et poste le document au grand livre — irréversible.",
+    "kind_standard":         "Facture",
+    "kind_deposit":          "Acompte",
+    "kind_credit_note":      "Avoir",
+    "deposit":               "Acompte",
+    "issueDeposit":          "Créer un acompte",
+    "documentHistory":       "Historique des documents",
+    "relatesTo":             "Avoir sur"
   },
   "invoices": {
     "title":      "Factures",
