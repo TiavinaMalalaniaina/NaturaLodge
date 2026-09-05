@@ -267,7 +267,7 @@ export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | '
 // Transactionnelle : le passage en CANCELLED annule aussi la facture de la réservation s'il y en
 // a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
 // ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
-export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: string, actingUserId?: string) {
+export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: string, actingUserId?: string, refundRatePercent?: number) {
   return prisma.$transaction(async (tx) => {
     let status: BookingStatus = requestedStatus;
     if (requestedStatus === 'CHECKED_OUT') {
@@ -314,7 +314,7 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
     }
 
     if (status === 'CANCELLED') {
-      await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx);
+      await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx, refundRatePercent);
     }
 
     return { ...booking, paymentStatus: computePaymentStatus(booking) };

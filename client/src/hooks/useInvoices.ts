@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchInvoiceByBooking, fetchInvoice, fetchInvoices,
-  generateInvoice, recordPayment, voidPayment, updateInvoice,
+  fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits,
+  generateInvoice, recordPayment, voidPayment, updateInvoice, deleteDraftInvoice,
   createDeposit, validateInvoice, cancelInvoice,
   addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, addInvoiceDiscount,
   PaymentPayload, CreateDepositPayload, InvoiceItemPayload, DiscountPayload,
@@ -133,6 +133,15 @@ export function useInvoices(params?: Parameters<typeof fetchInvoices>[0]) {
   });
 }
 
+// Acomptes visés pas encore absorbés par une facture définitive — trace le solde du compte 419100
+// au bilan (voir Reports.tsx).
+export function useOutstandingDeposits() {
+  return useQuery({
+    queryKey: [...INVOICES_KEY, 'deposits', 'outstanding'],
+    queryFn:  fetchOutstandingDeposits,
+  });
+}
+
 // Documents (acompte/avoir) d'une réservation, pour le panneau "Historique des documents" — une
 // requête filtrée côté serveur sur bookingId, pas de nouvel endpoint dédié.
 export function useBookingDocuments(bookingId: string | null, kind: 'deposit' | 'credit_note') {
@@ -169,6 +178,15 @@ export function useCancelInvoice() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, refundRatePercent }: { id: string; refundRatePercent?: number }) => cancelInvoice(id, refundRatePercent),
+    onSuccess: () => qc.invalidateQueries({ queryKey: INVOICES_KEY }),
+  });
+}
+
+// Suppression d'un brouillon jamais visé : le document disparaît, on invalide toute la clé.
+export function useDeleteDraftInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDraftInvoice(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: INVOICES_KEY }),
   });
 }

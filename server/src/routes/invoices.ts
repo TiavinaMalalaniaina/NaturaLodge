@@ -24,6 +24,13 @@ invoicesRouter.get('/booking/:bookingId', can('invoices.view'), asyncHandler(asy
   res.json(await invoiceService.getByBookingId(req.params.bookingId));
 }));
 
+// GET /invoices/deposits/outstanding  ──  acomptes visés pas encore absorbés par une facture
+// définitive — sert à tracer le solde du compte 419100 au bilan. Déclarée avant GET /:id, sinon
+// Express matcherait "deposits" comme un id de facture.
+invoicesRouter.get('/deposits/outstanding', can('ledger.view_reports'), asyncHandler(async (_req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await invoiceService.getOutstandingDeposits());
+}));
+
 // GET /invoices/:id
 invoicesRouter.get('/:id', can('invoices.view'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   res.json(await invoiceService.getById(req.params.id));
@@ -62,6 +69,13 @@ invoicesRouter.post('/:id/cancel', can('invoices.cancel'), asyncHandler(async (r
   const parsed = cancelInvoiceSchema.safeParse(req.body ?? {});
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
   res.json(await invoiceService.cancelInvoice(req.params.id, req.user!.id, undefined, parsed.data.refundRatePercent));
+}));
+
+// DELETE /invoices/:id  ──  supprimer un brouillon jamais visé (aucun impact comptable). Une
+// facture visée ne peut pas être supprimée ici — elle s'annule via POST /:id/cancel (avoir).
+invoicesRouter.delete('/:id', can('invoices.delete_draft'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  await invoiceService.deleteDraftInvoice(req.params.id);
+  res.status(204).send();
 }));
 
 // POST /invoices/:id/items  ──  ajouter une ligne personnalisée (dépense flexible)

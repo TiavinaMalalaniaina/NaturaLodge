@@ -63,7 +63,14 @@ const invoiceInclude = {
     },
     orderBy: { paidAt: 'asc' as const },
   },
-  relatesToInvoice: { select: { id: true, number: true, kind: true } },
+  // `payments` du document crédité : sert à borner un remboursement d'avoir à ce qui a réellement
+  // été encaissé (on ne rembourse pas de l'argent jamais reçu) — voir addPayment / InvoiceDocument.
+  relatesToInvoice: {
+    select: {
+      id: true, number: true, kind: true,
+      payments: { where: { status: 'COMPLETED' as const }, select: { amount: true } },
+    },
+  },
   creditedBy:        { select: { id: true, number: true, kind: true, totalAmount: true, validatedAt: true } },
   booking: {
     select: {
@@ -116,8 +123,12 @@ async function generateInvoiceNumber(client: PrismaOrTx, kind: InvoiceKind): Pro
 }
 
 async function syncInvoiceStatus(invoiceId: string, client: PrismaOrTx = prisma): Promise<void> {
-  const invoice = await client.invoice.findUnique({ where: { id: invoiceId }, select: { totalAmount: true } });
+  const invoice = await client.invoice.findUnique({ where: { id: invoiceId }, select: { totalAmount: true, status: true } });
   if (!invoice) return;
+  // CANCELLED/REFUNDED sont des états terminaux posés explicitement par cancelInvoice() : ne jamais
+  // les recalculer à partir des seuls paiements. Sans ce garde, un voidPayment() postérieur sur la
+  // facture annulée la ferait repasser en PENDING (« non payée » alors qu'elle est annulée).
+  if (invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') return;
 
   const payments = await client.payment.findMany({
     where: { invoiceId, status: 'COMPLETED' },
@@ -138,7 +149,7 @@ async function syncInvoiceStatus(invoiceId: string, client: PrismaOrTx = prisma)
 }
 
 export async function list(params: InvoiceListParams) {
-  const { bookingId, guestId, status, kind, page, limit } = params;
+  const { bookingId, guestId, status, kind, draft, page, limit } = params;
   const skip = (page - 1) * limit;
 
   const where = {
@@ -146,6 +157,7 @@ export async function list(params: InvoiceListParams) {
     ...(guestId   ? { guestId }   : {}),
     ...(status    ? { status: status.toUpperCase() as InvoiceStatus } : {}),
     ...(kind      ? { kind: kind.toUpperCase() as InvoiceKind } : {}),
+    ...(draft !== undefined ? { validatedAt: draft ? null : { not: null } } : {}),
   };
 
   const [invoices, total] = await Promise.all([
@@ -188,6 +200,37 @@ export async function getById(id: string) {
   const invoice = await prisma.invoice.findUnique({ where: { id }, include: invoiceInclude });
   if (!invoice) throw new NotFoundError('Facture');
   return invoice;
+}
+
+// « Acomptes en cours » : acomptes visés dont le montant n'a pas encore été absorbé par la facture
+// STANDARD de la réservation — sert à tracer/justifier le solde du compte 419100 au bilan,
+// réservation par réservation (sinon ce n'est qu'une somme opaque). Un acompte est absorbé au
+// moment où la facture STANDARD de la réservation est visée (voir validateInvoice, qui solde
+// TOUS les acomptes déjà visés à ce moment-là) : un acompte reste donc "en cours" tant qu'aucune
+// facture STANDARD n'a été visée après lui — pas de champ dédié à maintenir, juste une comparaison
+// de dates de visa.
+export async function getOutstandingDeposits() {
+  const deposits = await prisma.invoice.findMany({
+    where: { kind: 'DEPOSIT', validatedAt: { not: null } },
+    select: {
+      id: true, number: true, totalAmount: true, validatedAt: true, bookingId: true,
+      guest: { select: { id: true, name: true } },
+    },
+    orderBy: { validatedAt: 'asc' },
+  });
+  if (deposits.length === 0) return [];
+
+  const bookingIds = [...new Set(deposits.map(d => d.bookingId))];
+  const standardInvoices = await prisma.invoice.findMany({
+    where: { bookingId: { in: bookingIds }, kind: 'STANDARD' },
+    select: { bookingId: true, validatedAt: true },
+  });
+  const standardValidatedAtByBooking = new Map(standardInvoices.map(s => [s.bookingId, s.validatedAt]));
+
+  return deposits.filter(d => {
+    const standardValidatedAt = standardValidatedAtByBooking.get(d.bookingId);
+    return !standardValidatedAt || standardValidatedAt < d.validatedAt!;
+  });
 }
 
 // Crée (ou resynchronise) le brouillon de facture STANDARD d'une réservation. Ne poste plus rien
@@ -416,19 +459,48 @@ export async function validateInvoice(id: string, actingUserId?: string) {
         ],
       }, tx);
     } else {
-      // CREDIT_NOTE : extourne la créance/produit/TVA pour le montant crédité — même calcul que
-      // l'ancienne extourne de cancelInvoice, mais désormais un vrai document numéroté.
-      await ledgerService.postEntry({
-        source:           'CREDIT_NOTE',
-        relatedInvoiceId: id,
-        postedById:       actingUserId,
-        memo:             `Avoir ${number}`,
-        lines: [
-          ...(subtotal > 0 ? [{ accountCode: '706000', debit: subtotal } as const] : []),
-          ...(invoice.taxAmount > 0 ? [{ accountCode: '4457000', debit: invoice.taxAmount } as const] : []),
-          { accountCode: '411000', credit: invoice.totalAmount },
-        ],
-      }, tx);
+      // CREDIT_NOTE : extourne la contrepartie du document crédité — laquelle dépend de son
+      // `kind`. Un avoir sur FACTURE extourne créance/produit/TVA (706000/4457000), comme avant.
+      // Un avoir sur ACOMPTE doit éteindre le passif 419100, PAS 706000 : un acompte n'a jamais
+      // constaté de revenu (voir la branche DEPOSIT ci-dessus) — y extourner du 706000 fabriquerait
+      // un revenu qui n'a jamais existé et laisserait 419100 bloqué au bilan indéfiniment.
+      const relatesTo = invoice.relatesToInvoiceId
+        ? await tx.invoice.findUnique({ where: { id: invoice.relatesToInvoiceId }, select: { kind: true, totalAmount: true } })
+        : null;
+
+      if (relatesTo?.kind === 'DEPOSIT') {
+        // L'acompte n'a jamais constaté de revenu : son passif 419100 est soldé EN ENTIER ici.
+        // La part remboursée (`invoice.totalAmount`) rouvre la créance client 411000 — payée ensuite
+        // par un remboursement enregistré sur cet avoir (voir addPayment, sens inversé pour un
+        // CREDIT_NOTE). La part retenue devient un produit (708500, frais d'annulation).
+        const refunded = invoice.totalAmount;
+        const retained = Math.max(0, relatesTo.totalAmount - refunded);
+        if (refunded + retained > 0) {
+          await ledgerService.postEntry({
+            source:           'CREDIT_NOTE',
+            relatedInvoiceId: id,
+            postedById:       actingUserId,
+            memo:             `Avoir sur acompte ${number}`,
+            lines: [
+              { accountCode: '419100', debit: refunded + retained },
+              ...(refunded > 0 ? [{ accountCode: '411000', credit: refunded } as const] : []),
+              ...(retained > 0 ? [{ accountCode: '708500', credit: retained } as const] : []),
+            ],
+          }, tx);
+        }
+      } else {
+        await ledgerService.postEntry({
+          source:           'CREDIT_NOTE',
+          relatedInvoiceId: id,
+          postedById:       actingUserId,
+          memo:             `Avoir sur facture ${number}`,
+          lines: [
+            ...(subtotal > 0 ? [{ accountCode: '706000', debit: subtotal } as const] : []),
+            ...(invoice.taxAmount > 0 ? [{ accountCode: '4457000', debit: invoice.taxAmount } as const] : []),
+            { accountCode: '411000', credit: invoice.totalAmount },
+          ],
+        }, tx);
+      }
     }
 
     await syncInvoiceStatus(id, tx);
@@ -437,6 +509,29 @@ export async function validateInvoice(id: string, actingUserId?: string) {
 }
 
 export async function update(id: string, data: UpdateInvoiceInput) {
+  // Modification du montant : réservée à un brouillon d'ACOMPTE. Une facture STANDARD tient son
+  // montant de la réservation ; un document visé est un fait comptable figé. On réécrit la ligne
+  // unique de l'acompte pour qu'elle reste cohérente avec le total.
+  if (data.amount !== undefined) {
+    const invoice = await prisma.invoice.findUnique({ where: { id } });
+    if (!invoice) throw new NotFoundError('Facture');
+    if (invoice.kind !== 'DEPOSIT' || invoice.validatedAt) {
+      throw new ConflictError("Le montant ne peut être modifié que sur un brouillon d'acompte.");
+    }
+    return prisma.invoice.update({
+      where: { id },
+      data: {
+        totalAmount: data.amount,
+        ...(data.notes !== undefined && { notes: data.notes }),
+        items: {
+          deleteMany: {},
+          create: [{ description: 'Acompte', quantity: 1, unitPrice: data.amount, total: data.amount }],
+        },
+      },
+      include: invoiceInclude,
+    });
+  }
+
   if (data.taxAmount === undefined) {
     return prisma.invoice.update({
       where: { id },
@@ -556,20 +651,43 @@ export async function cancelInvoice(
 // TOUTES les factures non-terminales de la réservation (une réservation peut désormais porter un
 // acompte ET une facture simultanément) et applique à chacune la logique brouillon/visée
 // ci-dessus. Ne touche pas les avoirs déjà émis (rien à "annuler" une deuxième fois).
-export async function cancelInvoiceForBooking(bookingId: string, cancelledById?: string, client: PrismaOrTx = prisma): Promise<CancelInvoiceResult[]> {
+export async function cancelInvoiceForBooking(
+  bookingId: string,
+  cancelledById?: string,
+  client: PrismaOrTx = prisma,
+  refundRatePercent?: number,
+): Promise<CancelInvoiceResult[]> {
   const invoices = await client.invoice.findMany({
     where: { bookingId, kind: { not: 'CREDIT_NOTE' }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
   });
   const results: CancelInvoiceResult[] = [];
   for (const invoice of invoices) {
-    results.push(await cancelInvoice(invoice.id, cancelledById, client));
+    results.push(await cancelInvoice(invoice.id, cancelledById, client, refundRatePercent));
   }
   return results;
 }
 
+// Suppression sèche d'un brouillon jamais visé : aucune écriture n'a été posée, aucun numéro
+// consommé, rien à extourner. Une facture visée n'est jamais supprimée — elle s'annule par un avoir
+// (voir cancelInvoice).
+export async function deleteDraftInvoice(id: string) {
+  const invoice = await prisma.invoice.findUnique({ where: { id }, select: { validatedAt: true } });
+  if (!invoice) throw new NotFoundError('Facture');
+  if (invoice.validatedAt) {
+    throw new ConflictError("Cette facture est visée : elle ne peut plus être supprimée, seul un avoir peut l'annuler.");
+  }
+  await prisma.invoice.delete({ where: { id } });
+}
+
+// Enregistre un mouvement d'argent lié à un document visé. Deux sens :
+//  - facture / acompte : encaissement — l'argent entre dans un compte de trésorerie, la créance
+//    411000 diminue, la lifetimeValue du client augmente ;
+//  - avoir (CREDIT_NOTE) : remboursement — l'argent sort du compte choisi, la créance rouverte au
+//    visa de l'avoir (411000 crédité) est soldée, la lifetimeValue diminue. Le paiement d'origine
+//    de la facture/acompte crédité n'est jamais touché (il reste un fait historique).
 export async function addPayment(invoiceId: string, data: PaymentInput, processedById: string, processedByRole?: string) {
   if (processedByRole) {
-    // Le compte de trésorerie qui reçoit l'encaissement doit être accessible au rôle de l'opérateur.
+    // Le compte de trésorerie qui reçoit (ou verse) le mouvement doit être accessible à l'opérateur.
     await assertCanViewCashAccount(processedByRole, data.accountId);
   }
   // Enregistrement du paiement + resynchronisation du statut de la facture dans une seule
@@ -578,10 +696,35 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
     const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) throw new NotFoundError('Facture');
     if (!invoice.validatedAt) {
-      throw new ConflictError('Cette facture doit être visée avant de pouvoir recevoir un paiement.');
+      throw new ConflictError('Ce document doit être visé avant d\'enregistrer un mouvement.');
     }
     if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') {
-      throw new ConflictError('Cette facture ne peut plus recevoir de paiement.');
+      throw new ConflictError('Ce document ne peut plus recevoir de mouvement.');
+    }
+
+    const isRefund = invoice.kind === 'CREDIT_NOTE';
+
+    if (isRefund) {
+      const sumCompleted = async (invId: string) => (await tx.payment.findMany({
+        where: { invoiceId: invId, status: 'COMPLETED' }, select: { amount: true },
+      })).reduce((s, p) => s + p.amount, 0);
+
+      const alreadyRefunded = await sumCompleted(invoiceId);
+      // On ne peut rembourser que ce qui a réellement été encaissé sur le document crédité, et au
+      // plus le montant de l'avoir. Sans FK vers le crédité (cas théorique), on retombe sur le
+      // montant de l'avoir seul.
+      const collectedOnCredited = invoice.relatesToInvoiceId
+        ? await sumCompleted(invoice.relatesToInvoiceId)
+        : invoice.totalAmount;
+      const ceiling = Math.min(invoice.totalAmount, collectedOnCredited);
+
+      if (alreadyRefunded + data.amount > ceiling) {
+        throw new ConflictError(
+          collectedOnCredited === 0
+            ? "Le document d'origine n'a jamais été encaissé : il n'y a rien à rembourser."
+            : "Le remboursement dépasse ce qui a été encaissé sur le document d'origine.",
+        );
+      }
     }
 
     const payment = await tx.payment.create({
@@ -597,25 +740,30 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
       },
     });
 
-    // L'argent quitte la créance client pour entrer dans le compte de trésorerie choisi — c'est
-    // cette écriture, pas la facturation, qui fait bouger le solde "où est l'argent".
+    // C'est cette écriture, pas la facturation, qui fait bouger le solde "où est l'argent".
     await ledgerService.postEntry({
       source:           'PAYMENT',
       relatedPaymentId: payment.id,
       relatedInvoiceId: invoiceId,
       postedById:       processedById,
-      memo:             `Encaissement facture ${invoice.number}`,
-      lines: [
-        { accountId: data.accountId, debit: data.amount },
-        { accountCode: '411000', credit: data.amount },
-      ],
+      memo:             isRefund
+        ? `Remboursement avoir ${invoice.number}`
+        : `Encaissement facture ${invoice.number}`,
+      lines: isRefund
+        ? [
+            { accountCode: '411000', debit: data.amount },
+            { accountId: data.accountId, credit: data.amount },
+          ]
+        : [
+            { accountId: data.accountId, debit: data.amount },
+            { accountCode: '411000', credit: data.amount },
+          ],
     }, tx);
 
-    // Crédite le client de ce qui est réellement encaissé, au moment où ça l'est — pas d'un
-    // montant coté figé au check-out (voir booking.service.ts: updateStatus).
+    // Suit la valeur cumulée réellement échangée avec le client, au moment où elle l'est.
     await tx.guest.update({
       where: { id: invoice.guestId },
-      data:  { lifetimeValue: { increment: data.amount } },
+      data:  { lifetimeValue: isRefund ? { decrement: data.amount } : { increment: data.amount } },
     });
 
     await syncInvoiceStatus(invoiceId, tx);
@@ -636,24 +784,34 @@ export async function voidPayment(invoiceId: string, paymentId: string, voidedBy
 
     await tx.payment.update({ where: { id: paymentId }, data: { status: 'REFUNDED' } });
 
-    // Contre-écriture de addPayment : l'argent ressort du compte de trésorerie qui l'avait reçu,
-    // la créance client est rouverte. Jamais de suppression de l'écriture PAYMENT d'origine.
+    const isRefund = invoice.kind === 'CREDIT_NOTE';
+
+    // Contre-écriture exacte du mouvement d'origine (voir addPayment). Pour un encaissement :
+    // l'argent ressort du compte, la créance est rouverte. Pour un remboursement d'avoir : sens
+    // inverse. Jamais de suppression de l'écriture d'origine.
     await ledgerService.postEntry({
       source:           'PAYMENT_VOID',
       relatedPaymentId: payment.id,
       relatedInvoiceId: invoiceId,
       postedById:       voidedById,
-      memo:             `Annulation paiement — facture ${invoice.number}`,
-      lines: [
-        { accountCode: '411000', debit: payment.amount },
-        { accountId: payment.accountId, credit: payment.amount },
-      ],
+      memo:             isRefund
+        ? `Annulation remboursement — avoir ${invoice.number}`
+        : `Annulation paiement — facture ${invoice.number}`,
+      lines: isRefund
+        ? [
+            { accountId: payment.accountId, debit: payment.amount },
+            { accountCode: '411000', credit: payment.amount },
+          ]
+        : [
+            { accountCode: '411000', debit: payment.amount },
+            { accountId: payment.accountId, credit: payment.amount },
+          ],
     }, tx);
 
-    // Symétrique de addPayment : l'argent est rendu, on le retire de la valeur cumulée du client.
+    // Symétrique de addPayment : on défait l'effet du mouvement annulé sur la valeur cumulée.
     await tx.guest.update({
       where: { id: invoice.guestId },
-      data:  { lifetimeValue: { decrement: payment.amount } },
+      data:  { lifetimeValue: isRefund ? { increment: payment.amount } : { decrement: payment.amount } },
     });
 
     await syncInvoiceStatus(invoiceId, tx);

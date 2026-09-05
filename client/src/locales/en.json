@@ -132,6 +132,8 @@
     "cancelTitle":             "Cancel reservation?",
     "cancelMessage":           "This will free the room and notify the system. The action cannot be undone.",
     "confirmCancel":           "Yes, cancel",
+    "refundRate":              "Refund rate (%)",
+    "refundRateHint":          "Share of validated invoices returned to the guest. The rest is kept as a cancellation fee.",
     "bookingDetails":          "Booking Details",
     "stayWindow":              "Stay Window",
     "roomsBooked":             "Rooms Booked",
@@ -282,6 +284,7 @@
   },
   "bookingDetail": {
     "staySummary":          "Stay Summary",
+    "allDocuments":         "All documents",
     "viewGuestProfile":     "View Guest Profile",
     "metadata":             "Metadata",
     "bookingId":            "Booking ID",
@@ -388,6 +391,12 @@
     "recordPayment":         "Record Payment",
     "paymentHistory":        "Payment History",
     "noPayments":            "No payments recorded",
+    "recordRefund":          "Record a refund",
+    "refundHistory":         "Refund history",
+    "noRefunds":             "No refunds recorded",
+    "refunded":              "Refunded",
+    "remainingToRefund":     "Left to refund",
+    "nothingToRefund":       "The original document was never collected — there is nothing to refund on this credit note.",
     "amount":                "Amount",
     "method":                "Method",
     "account":               "Received into",
@@ -416,6 +425,10 @@
     "draftHint":             "This document is a draft: freely editable, and not yet on the ledger. Validate it to assign its final number and make it official.",
     "validate":              "Validate",
     "validateHint":          "Assigns the final number and posts the document to the ledger — irreversible.",
+    "deleteDraft":           "Delete draft",
+    "deleteDraftHint":       "Permanently deletes this draft. No accounting impact — it was never validated.",
+    "deleteDraftTitle":      "Delete this draft?",
+    "deleteDraftMessage":    "This draft will be permanently deleted. This action cannot be undone.",
     "kind_standard":         "Invoice",
     "kind_deposit":          "Deposit",
     "kind_credit_note":      "Credit note",
@@ -450,7 +463,8 @@
     "title":      "Invoices",
     "search":     "Search by number or guest…",
     "noInvoices": "No invoices found",
-    "count":      "{{count}} invoice(s)"
+    "count":      "{{count}} invoice(s)",
+    "draftsOnly": "Drafts only"
   },
   "payments": {
     "title":             "Payment History",
@@ -527,7 +541,9 @@
     "incomeStatement":       "Income statement",
     "revenue":               "Revenue",
     "expenses":              "Expenses",
-    "netIncome":             "Net income"
+    "netIncome":             "Net income",
+    "outstandingDeposits":   "Deposits outstanding",
+    "noOutstandingDeposits": "No deposit outstanding — every validated deposit has been absorbed by its final invoice."
   },
   "auditLog": {
     "title":        "Audit Log",

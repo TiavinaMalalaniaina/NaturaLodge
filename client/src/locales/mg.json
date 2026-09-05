@@ -132,6 +132,8 @@
     "cancelTitle":             "Foana ny firesevana?",
     "cancelMessage":           "Hahafaka ny efitrano izany ary hanakatra ny rafi-pitantanana. Tsy azo atao intsony izany.",
     "confirmCancel":           "Eny, foana",
+    "refundRate":              "Tahan'ny famerenam-bola (%)",
+    "refundRateHint":          "Ampahany amin'ny faktiora voamarina averina amin'ny mpanjifa. Ny ambiny dia tazonina ho saran'ny fanafoanana.",
     "bookingDetails":          "Antsipiriany ny firesevana",
     "stayWindow":              "Vanim-potoana fitoerana",
     "roomsBooked":             "Efitrano voatokana",
@@ -282,6 +284,7 @@
   },
   "bookingDetail": {
     "staySummary":          "Fehin-kevitry ny fiatoana",
+    "allDocuments":         "Ny antontan-taratasy rehetra",
     "viewGuestProfile":     "Hijery mombamomban'ny vahiny",
     "metadata":             "Angon-drakitra",
     "bookingId":            "ID firesevana",
@@ -388,6 +391,12 @@
     "recordPayment":         "Mandraikitra fandoavana",
     "paymentHistory":        "Tantaran'ny fandoavana",
     "noPayments":            "Tsy misy fandoavana voarakitra",
+    "recordRefund":          "Mandraikitra famerenam-bola",
+    "refundHistory":         "Tantaran'ny famerenam-bola",
+    "noRefunds":             "Tsy misy famerenam-bola voarakitra",
+    "refunded":              "Naverina",
+    "remainingToRefund":     "Sisa haverina",
+    "nothingToRefund":       "Tsy mbola voaray mihitsy ny antontan-taratasy fototra : tsy misy azo averina amin'ity avoir ity.",
     "amount":                "Vola",
     "method":                "Fomba",
     "account":               "Kaonty nandraisana",
@@ -416,6 +425,10 @@
     "draftHint":             "Volavolana ity antontan-taratasy ity : azo ovaina malalaka, tsy mbola voarakitra ao amin'ny grand livre. Asio famantarana izy io mba hanomezana azy ny laharana farany ary hahatonga azy ho ofisialy.",
     "validate":              "Manisy famantarana",
     "validateHint":          "Manome ny laharana farany ary mandrakitra ilay antontan-taratasy ao amin'ny grand livre — tsy azo averina.",
+    "deleteDraft":           "Fafao ny volavolana",
+    "deleteDraftHint":       "Fafana tanteraka ity volavolana ity. Tsy misy fiantraikany ara-kaonty — tsy mbola nasiana famantarana mihitsy izy.",
+    "deleteDraftTitle":      "Fafao ity volavolana ity?",
+    "deleteDraftMessage":    "Ho fafana tanteraka ity volavolana ity. Tsy azo averina ity hetsika ity.",
     "kind_standard":         "Faktiora",
     "kind_deposit":          "Antoka",
     "kind_credit_note":      "Fanamarinam-bola",
@@ -450,7 +463,8 @@
     "title":      "Faktiora",
     "search":     "Hikaroka amin'ny laharana na vahiny…",
     "noInvoices": "Tsy misy faktiora hita",
-    "count":      "Faktiora {{count}}"
+    "count":      "Faktiora {{count}}",
+    "draftsOnly": "Volavolana ihany"
   },
   "payments": {
     "title":             "Tantaran'ny fandoavam-bola",
@@ -527,7 +541,9 @@
     "incomeStatement":       "Fitanana ny vokatra",
     "revenue":               "Vola miditra",
     "expenses":              "Fandaniana",
-    "netIncome":             "Vokatra madio"
+    "netIncome":             "Vokatra madio",
+    "outstandingDeposits":   "Antoka mbola miandry",
+    "noOutstandingDeposits": "Tsy misy antoka miandry — voatelina ny faktiora farany avokoa ny antoka nasiam-pamantarana rehetra."
   },
   "auditLog": {
     "title":        "Diarin'ny asa",

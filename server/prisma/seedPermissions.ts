@@ -42,6 +42,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'invoices.validate',        domain: 'invoices', description: 'Viser un document (acompte, facture ou avoir) — l\'assigne un numéro et le poste au grand livre', roles: ADMIN_MANAGER },
   { key: 'invoices.update',          domain: 'invoices', description: 'Modifier une facture (notes, échéance, TVA, lignes personnalisées)', roles: ADMIN_MANAGER },
   { key: 'invoices.cancel',          domain: 'invoices', description: 'Annuler une facture',                                             roles: ADMIN_MANAGER },
+  { key: 'invoices.delete_draft',    domain: 'invoices', description: 'Supprimer un brouillon jamais visé',                             roles: FRONT_DESK },
   { key: 'invoices.record_payment',  domain: 'invoices', description: 'Enregistrer un paiement',                                         roles: FRONT_DESK },
   { key: 'invoices.void_payment',    domain: 'invoices', description: 'Annuler un paiement',                                             roles: ADMIN_MANAGER },
 

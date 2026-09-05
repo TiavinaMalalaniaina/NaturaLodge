@@ -7,6 +7,9 @@ export const invoiceListQuerySchema = z.object({
   status:    z.string().optional(),
   // STANDARD (facture) / DEPOSIT (acompte) / CREDIT_NOTE (avoir) — voir invoice.service.ts.
   kind:      z.string().optional(),
+  // true = uniquement les brouillons (validatedAt null) ; false = uniquement les documents visés.
+  // Omis = pas de filtre sur l'état de validation.
+  draft:     z.coerce.boolean().optional(),
   page:      z.coerce.number().int().min(1).default(1),
   limit:     z.coerce.number().int().min(1).max(500).default(20),
 });
@@ -38,6 +41,9 @@ export const updateInvoiceSchema = z.object({
   notes:      z.string().optional(),
   dueAt:      z.string().datetime().nullable().optional(),
   taxAmount:  z.number().int().min(0).optional(),
+  // Réservé au brouillon d'ACOMPTE : réécrit le montant de l'acompte (et sa ligne unique) avant
+  // visa. Rejeté sur une facture STANDARD (montant issu de la réservation) ou un document visé.
+  amount:     z.number().int().positive().optional(),
 });
 
 export const paymentSchema = z.object({

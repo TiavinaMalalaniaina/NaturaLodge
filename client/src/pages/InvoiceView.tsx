@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw, Trash2, ShieldCheck, PiggyBank, FileText } from 'lucide-react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Printer, CreditCard, Plus, AlertCircle, RotateCcw, Trash2, ShieldCheck, PiggyBank, FileText, ChevronRight } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import {
   useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment,
-  useValidateInvoice, useCreateDeposit, useBookingDocuments,
+  useValidateInvoice, useDeleteDraftInvoice, useCreateDeposit, useInvoices,
   useAddInvoiceItem, useDeleteInvoiceItem, useAddInvoiceDiscount,
 } from '../hooks/useInvoices';
 import { useCashAccounts } from '../hooks/useLedger';
@@ -66,9 +66,9 @@ export const InvoiceView: React.FC = () => {
   const recordPayment = useRecordPayment();
   const voidPayment = useVoidPayment();
   const validateInvoice = useValidateInvoice();
+  const deleteDraftInvoice = useDeleteDraftInvoice();
   const createDeposit = useCreateDeposit();
-  const { data: deposits }    = useBookingDocuments(bookingId ?? null, 'deposit');
-  const { data: creditNotes } = useBookingDocuments(bookingId ?? null, 'credit_note');
+  const { data: documentsList } = useInvoices(bookingId ? { bookingId, limit: 50 } : undefined);
   const addInvoiceItem = useAddInvoiceItem();
   const deleteInvoiceItem = useDeleteInvoiceItem();
   const addInvoiceDiscount = useAddInvoiceDiscount();
@@ -88,6 +88,7 @@ export const InvoiceView: React.FC = () => {
   const [apiError, setApiError] = useState('');
   const [isConfirmRefundModalOpen, setConfirmRefundModalOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(false);
 
   const [showDepositForm, setShowDepositForm] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
@@ -167,6 +168,15 @@ export const InvoiceView: React.FC = () => {
     });
   };
 
+  const handleDeleteDraft = () => {
+    if (!invoice) return;
+    setApiError('');
+    deleteDraftInvoice.mutate(invoice.id, {
+      onSuccess: () => navigate(bookingId ? `/reservations/${bookingId}` : '/invoices'),
+      onError:   (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
+    });
+  };
+
   const handleCreateDeposit = () => {
     if (!bookingId) return;
     const amount = parseInt(depositAmount, 10);
@@ -223,6 +233,7 @@ export const InvoiceView: React.FC = () => {
   const canRecordPayment = can('invoices.record_payment');
   const canVoid = can('invoices.void_payment');
   const canValidate = can('invoices.validate');
+  const canDeleteDraft = can('invoices.delete_draft');
   const canIssueDeposit = can('invoices.issue_deposit');
   const canEditItems = can('invoices.update') && !!invoice && invoice.status !== 'cancelled' && invoice.status !== 'refunded';
   const noInvoice = !isLoading && (isError || !invoice);
@@ -271,6 +282,19 @@ export const InvoiceView: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {isDraft && canDeleteDraft && (
+            <button
+              onClick={() => setConfirmDeleteDraft(true)}
+              disabled={deleteDraftInvoice.isPending}
+              className="p-3 border border-red-200 rounded-xl hover:bg-red-50 text-red-600 transition-all flex items-center gap-2 bg-white disabled:opacity-50"
+              title={t('invoice.deleteDraftHint')}
+            >
+              <Trash2 className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">
+                {t('invoice.deleteDraft')}
+              </span>
+            </button>
+          )}
           {isDraft && canValidate && (
             <button
               onClick={handleValidate}
@@ -310,9 +334,9 @@ export const InvoiceView: React.FC = () => {
         </div>
       )}
 
-      {/* Acompte + historique des documents — indépendants de l'existence de la facture STANDARD :
-          un acompte se prend typiquement avant même de générer la facture. */}
-      {(canIssueDeposit || (deposits?.data.length ?? 0) > 0 || (creditNotes?.data.length ?? 0) > 0) && (
+      {/* Acompte + liste des documents de la réservation — un acompte se prend typiquement avant
+          même de générer la facture, d'où l'indépendance vis-à-vis de la facture STANDARD. */}
+      {(canIssueDeposit || (documentsList?.data.length ?? 0) > 0) && (
         <div className="no-print grid grid-cols-1 lg:grid-cols-2 gap-6">
           {canIssueDeposit && (
             <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
@@ -362,27 +386,32 @@ export const InvoiceView: React.FC = () => {
             </div>
           )}
 
-          {((deposits?.data.length ?? 0) > 0 || (creditNotes?.data.length ?? 0) > 0) && (
+          {(documentsList?.data.length ?? 0) > 0 && (
             <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
               <div className="p-6 border-b border-stone-100">
-                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('invoice.documentHistory')}</h4>
+                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('bookingDetail.allDocuments')}</h4>
               </div>
               <div className="divide-y divide-stone-100">
-                {[...(deposits?.data ?? []), ...(creditNotes?.data ?? [])].map(doc => (
-                  <Link
+                {documentsList!.data.map(doc => (
+                  <button
                     key={doc.id}
-                    to={`/invoices/document/${doc.id}`}
-                    className="p-4 flex items-center justify-between gap-3 hover:bg-stone-50 transition-colors"
+                    onClick={() => navigate(doc.kind === 'standard' ? `/invoices/${doc.bookingId}` : `/invoices/document/${doc.id}`)}
+                    className="w-full p-4 flex items-center justify-between gap-3 hover:bg-stone-50 transition-colors text-left group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <FileText className="w-4 h-4 text-on-surface-variant/40 shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-on-surface font-mono truncate">{doc.number ?? t('invoice.draft')}</p>
-                        <p className="text-[10px] text-on-surface-variant/50">{t(`invoice.kind_${doc.kind}`)}</p>
+                        <p className="text-[9px] uppercase tracking-widest text-on-surface-variant/40">
+                          {t(`invoice.kind_${doc.kind}`)} · {!doc.validatedAt ? t('invoice.draft') : t(`invoice.status_${doc.status}`)}
+                        </p>
                       </div>
                     </div>
-                    <p className="text-xs font-mono font-semibold text-on-surface shrink-0">{fmtAmount(doc.totalAmount)}</p>
-                  </Link>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <p className="text-xs font-mono font-semibold text-on-surface">{fmtAmount(doc.totalAmount)}</p>
+                      <ChevronRight className="w-4 h-4 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -891,6 +920,15 @@ export const InvoiceView: React.FC = () => {
         message={t('invoice.removeItemMessage')}
         confirmLabel={t('invoice.removeItem')}
         isPending={deleteInvoiceItem.isPending}
+      />
+      <ConfirmModal
+        isOpen={confirmDeleteDraft}
+        onClose={() => setConfirmDeleteDraft(false)}
+        onConfirm={() => { handleDeleteDraft(); setConfirmDeleteDraft(false); }}
+        title={t('invoice.deleteDraftTitle')}
+        message={t('invoice.deleteDraftMessage')}
+        confirmLabel={t('invoice.deleteDraft')}
+        isPending={deleteDraftInvoice.isPending}
       />
     </motion.div>
   );

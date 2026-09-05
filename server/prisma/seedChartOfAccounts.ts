@@ -45,6 +45,9 @@ const CHART_OF_ACCOUNTS = [
   { code: '706000',  name: 'Prestations d\'hébergement',            type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
   // Contra-produit : les remises accordées y sont débitées, pour rester lisibles à part du CA brut.
   { code: '709000',  name: 'Rabais, remises et ristournes accordés', type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
+  // Part d'un acompte encaissé qui reste acquise à l'hôtel quand l'annulation ne rembourse pas
+  // 100 % : elle quitte le passif 419100 pour devenir du revenu (voir invoice.service.ts).
+  { code: '708500',  name: 'Frais d\'annulation retenus',            type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
 ] as const satisfies readonly { code: string; name: string; type: string; isCashAccount: boolean; allowedMethods: PaymentMethod[] }[]
 
 export async function seedChartOfAccounts(prisma: PrismaClient) {

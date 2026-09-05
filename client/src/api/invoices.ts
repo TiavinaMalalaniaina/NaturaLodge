@@ -38,6 +38,9 @@ export interface RelatedInvoiceRef {
   id:     string;
   number: string | null;
   kind:   InvoiceKind;
+  // Somme des encaissements réels sur ce document. Fourni uniquement sur `relatesToInvoice` du
+  // détail (getById) — sert à borner un remboursement d'avoir.
+  collectedAmount?: number;
 }
 
 export interface Invoice {
@@ -98,7 +101,12 @@ const KIND_MAP: Record<string, InvoiceKind> = {
 };
 
 function normalizeRelatedRef(raw: any): RelatedInvoiceRef {
-  return { id: raw.id, number: raw.number, kind: KIND_MAP[raw.kind] ?? 'standard' };
+  return {
+    id: raw.id, number: raw.number, kind: KIND_MAP[raw.kind] ?? 'standard',
+    ...(Array.isArray(raw.payments)
+      ? { collectedAmount: raw.payments.reduce((s: number, p: any) => s + p.amount, 0) }
+      : {}),
+  };
 }
 
 function normalizeInvoice(raw: any): Invoice {
@@ -180,9 +188,14 @@ export const voidPayment = async (invoiceId: string, paymentId: string): Promise
   return normalizeInvoice(data);
 };
 
-export const updateInvoice = async (id: string, payload: { notes?: string; taxAmount?: number; dueAt?: string | null }): Promise<Invoice> => {
+export const updateInvoice = async (id: string, payload: { notes?: string; taxAmount?: number; dueAt?: string | null; amount?: number }): Promise<Invoice> => {
   const { data } = await api.patch<any>(`/invoices/${id}`, payload);
   return normalizeInvoice(data);
+};
+
+// Supprime un brouillon jamais visé (aucun impact comptable). 404/409 si le document est visé.
+export const deleteDraftInvoice = async (id: string): Promise<void> => {
+  await api.delete(`/invoices/${id}`);
 };
 
 export interface CreateDepositPayload {
@@ -251,6 +264,8 @@ export interface InvoicesListParams {
   guestId?:   string;
   status?:    string;
   kind?:      InvoiceKind;
+  // true = brouillons uniquement, false = documents visés uniquement, omis = pas de filtre.
+  draft?:     boolean;
   page?:      number;
   limit?:     number;
 }
@@ -273,4 +288,20 @@ export const fetchInvoices = async (params?: InvoicesListParams): Promise<Invoic
     data: (data.data as any[]).map(normalizeInvoice),
     meta: data.meta,
   };
+};
+
+export interface OutstandingDeposit {
+  id:          string;
+  number:      string | null;
+  totalAmount: number;
+  validatedAt: string;
+  bookingId:   string;
+  guest:       { id: string; name: string };
+}
+
+// Acomptes visés pas encore absorbés par la facture définitive de leur réservation — trace le
+// solde du compte 419100 (avances et acomptes reçus) au bilan, réservation par réservation.
+export const fetchOutstandingDeposits = async (): Promise<OutstandingDeposit[]> => {
+  const { data } = await api.get<any[]>('/invoices/deposits/outstanding');
+  return data.map(d => ({ ...d, validatedAt: d.validatedAt.split('T')[0] }));
 };
