@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchInvoiceByBooking, fetchInvoice, fetchInvoices,
-  generateInvoice, recordPayment, voidPayment, updateInvoice,
+  fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits,
+  generateInvoice, recordPayment, voidPayment, updateInvoice, deleteDraftInvoice,
+  createDeposit, validateInvoice, cancelInvoice,
   addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, addInvoiceDiscount,
-  PaymentPayload, InvoiceItemPayload, DiscountPayload,
+  PaymentPayload, CreateDepositPayload, InvoiceItemPayload, DiscountPayload,
 } from '../api/invoices';
 import { CASH_ACCOUNTS_KEY } from './useLedger';
 
@@ -129,5 +130,63 @@ export function useInvoices(params?: Parameters<typeof fetchInvoices>[0]) {
   return useQuery({
     queryKey: [...INVOICES_KEY, 'list', params],
     queryFn:  () => fetchInvoices(params),
+  });
+}
+
+// Acomptes visés pas encore absorbés par une facture définitive — trace le solde du compte 419100
+// au bilan (voir Reports.tsx).
+export function useOutstandingDeposits() {
+  return useQuery({
+    queryKey: [...INVOICES_KEY, 'deposits', 'outstanding'],
+    queryFn:  fetchOutstandingDeposits,
+  });
+}
+
+// Documents (acompte/avoir) d'une réservation, pour le panneau "Historique des documents" — une
+// requête filtrée côté serveur sur bookingId, pas de nouvel endpoint dédié.
+export function useBookingDocuments(bookingId: string | null, kind: 'deposit' | 'credit_note') {
+  return useQuery({
+    queryKey: [...INVOICES_KEY, 'booking-documents', bookingId, kind],
+    queryFn:  () => fetchInvoices({ bookingId: bookingId!, kind, limit: 50 }),
+    enabled:  !!bookingId,
+  });
+}
+
+// Ces trois mutations font apparaître ou disparaître un document plutôt que de simplement modifier
+// celui déjà en cache : on invalide toute la clé plutôt que de cibler une seule entrée.
+export function useCreateDeposit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateDepositPayload) => createDeposit(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: INVOICES_KEY }),
+  });
+}
+
+export function useValidateInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => validateInvoice(id),
+    onSuccess: (inv) => {
+      qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+      if (inv.kind === 'standard') qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
+    },
+  });
+}
+
+export function useCancelInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, refundRatePercent }: { id: string; refundRatePercent?: number }) => cancelInvoice(id, refundRatePercent),
+    onSuccess: () => qc.invalidateQueries({ queryKey: INVOICES_KEY }),
+  });
+}
+
+// Suppression d'un brouillon jamais visé : le document disparaît, on invalide toute la clé.
+export function useDeleteDraftInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteDraftInvoice(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: INVOICES_KEY }),
   });
 }

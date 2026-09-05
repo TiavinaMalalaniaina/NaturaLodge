@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Download, Scale, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Download, Scale, TrendingUp, TrendingDown, AlertTriangle, PiggyBank } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useBalanceSheet, useIncomeStatement } from '../hooks/useLedger';
+import { useOutstandingDeposits } from '../hooks/useInvoices';
 import { exportLedgerCsv } from '../api/ledger';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { formatCurrency, dateToLocalStr, todayLocalStr, startOfDayIso, endOfDayIso } from '../lib/format';
+import { formatCurrency, formatDate, dateToLocalStr, todayLocalStr, startOfDayIso, endOfDayIso } from '../lib/format';
 
 const firstOfMonth = () => {
   const now = new Date();
@@ -50,6 +52,8 @@ export const Reports: React.FC = () => {
     dateFrom: dateFrom ? startOfDayIso(dateFrom) : undefined,
     dateTo:   dateTo   ? endOfDayIso(dateTo)     : undefined,
   });
+  const { data: outstandingDeposits } = useOutstandingDeposits();
+  const outstandingDepositsTotal = (outstandingDeposits ?? []).reduce((s, d) => s + d.totalAmount, 0);
 
   const handleExport = async () => {
     setExporting(true);
@@ -145,6 +149,39 @@ export const Reports: React.FC = () => {
           <div className="mx-6 mb-6 flex items-center gap-3 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <p className="text-xs font-medium">{t('reports.unbalanced')}</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Acomptes en cours — trace le solde du compte 419100 du bilan, réservation par
+          réservation ; disparaît une fois la facture définitive de la réservation visée. ── */}
+      <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
+        <div className="p-6 border-b border-stone-100 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <PiggyBank className="w-4 h-4 text-on-surface-variant/50" />
+            <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('reports.outstandingDeposits')}</h4>
+          </div>
+          {outstandingDeposits && outstandingDeposits.length > 0 && (
+            <span className="font-mono text-sm font-bold text-on-surface">{formatCurrency(outstandingDepositsTotal)}</span>
+          )}
+        </div>
+        {!outstandingDeposits || outstandingDeposits.length === 0 ? (
+          <div className="p-10 text-center text-xs text-on-surface-variant/40">{t('reports.noOutstandingDeposits')}</div>
+        ) : (
+          <div className="divide-y divide-stone-100">
+            {outstandingDeposits.map(d => (
+              <Link
+                key={d.id}
+                to={`/invoices/document/${d.id}`}
+                className="p-4 flex items-center justify-between gap-3 hover:bg-stone-50 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-on-surface truncate">{d.guest.name}</p>
+                  <p className="text-[10px] text-on-surface-variant/50 font-mono">{d.number} · {formatDate(d.validatedAt)}</p>
+                </div>
+                <span className="font-mono text-sm font-bold text-on-surface shrink-0">{formatCurrency(d.totalAmount)}</span>
+              </Link>
+            ))}
           </div>
         )}
       </div>

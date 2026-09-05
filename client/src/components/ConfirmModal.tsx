@@ -14,6 +14,8 @@ interface ConfirmModalProps {
   variant?: 'danger' | 'warning';
   isPending?: boolean;
   zIndexClassName?: string;
+  // Contenu optionnel inséré entre le message et les boutons (ex. champ de saisie complémentaire).
+  children?: React.ReactNode;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -23,6 +25,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   variant = 'danger',
   isPending = false,
   zIndexClassName = 'z-[110]',
+  children,
 }) => {
   const { t } = useTranslation();
   const resolvedConfirmLabel = confirmLabel ?? t('common.confirm');
@@ -47,6 +50,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
       <h3 className="font-display italic text-2xl text-on-surface mb-2">{title}</h3>
       <p className="text-sm text-on-surface-variant/70 leading-relaxed mb-8">{message}</p>
+
+      {children && <div className="mb-8">{children}</div>}
 
       <div className="flex gap-3">
         <button onClick={onClose}
