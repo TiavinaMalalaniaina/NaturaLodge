@@ -8,6 +8,10 @@ import { PrismaClient, PaymentMethod } from '@prisma/client'
 const CHART_OF_ACCOUNTS = [
   { code: '101000',  name: 'Capital / Apports propriétaire',        type: 'EQUITY',    isCashAccount: false, allowedMethods: [] },
   { code: '411000',  name: 'Clients',                               type: 'ASSET',     isCashAccount: false, allowedMethods: [] },
+  // Acompte encaissé avant la prestation : ce n'est pas encore du chiffre d'affaires (le séjour
+  // n'a pas eu lieu) — voir invoice.service.ts, écriture posée au visa d'une facture d'acompte,
+  // soldée contre 411000 au visa de la facture définitive.
+  { code: '419100',  name: 'Clients — avances et acomptes reçus',    type: 'LIABILITY', isCashAccount: false, allowedMethods: [] },
   { code: '401000',  name: 'Fournisseurs',                          type: 'LIABILITY', isCashAccount: false, allowedMethods: [] },
   { code: '4457000', name: 'TVA collectée',                         type: 'LIABILITY', isCashAccount: false, allowedMethods: [] },
   { code: '4456000', name: 'TVA déductible',                        type: 'ASSET',     isCashAccount: false, allowedMethods: [] },
@@ -41,6 +45,9 @@ const CHART_OF_ACCOUNTS = [
   { code: '706000',  name: 'Prestations d\'hébergement',            type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
   // Contra-produit : les remises accordées y sont débitées, pour rester lisibles à part du CA brut.
   { code: '709000',  name: 'Rabais, remises et ristournes accordés', type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
+  // Part d'un acompte encaissé qui reste acquise à l'hôtel quand l'annulation ne rembourse pas
+  // 100 % : elle quitte le passif 419100 pour devenir du revenu (voir invoice.service.ts).
+  { code: '708500',  name: 'Frais d\'annulation retenus',            type: 'REVENUE',   isCashAccount: false, allowedMethods: [] },
 ] as const satisfies readonly { code: string; name: string; type: string; isCashAccount: boolean; allowedMethods: PaymentMethod[] }[]
 
 export async function seedChartOfAccounts(prisma: PrismaClient) {

@@ -41,7 +41,12 @@ export const bookingListSchema = z.object({
   order:     z.enum(['asc', 'desc']).default('asc'),
 });
 
-export const bookingStatusSchema = z.object({ status: requestedBookingStatusSchema });
+export const bookingStatusSchema = z.object({
+  status: requestedBookingStatusSchema,
+  // Uniquement pris en compte quand status === 'CANCELLED' : taux de remboursement appliqué aux
+  // factures visées de la réservation (défaut côté service : DEFAULT_CANCELLATION_REFUND_RATE).
+  refundRatePercent: z.number().int().min(0).max(100).optional(),
+});
 
 export const reassignSchema = z.object({
   oldRoomId: z.string().min(1),
