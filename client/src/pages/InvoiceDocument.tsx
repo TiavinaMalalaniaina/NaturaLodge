@@ -10,6 +10,7 @@ import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
+import { INVOICE_STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -149,9 +150,13 @@ export const InvoiceDocument: React.FC = () => {
             <h2 className="font-display italic text-2xl md:text-3xl text-on-surface leading-none">{t(`invoice.kind_${invoice.kind}`)}</h2>
             <div className="flex items-center gap-3 mt-2 flex-wrap">
               <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 font-mono">{invoice.number ?? t('invoice.draft')}</p>
-              {isDraft && (
+              {isDraft ? (
                 <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200">
                   {t('invoice.draft')}
+                </span>
+              ) : (
+                <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', INVOICE_STATUS_CLASS[invoice.status])}>
+                  {t(invoiceStatusI18nKey(invoice.kind, invoice.status))}
                 </span>
               )}
             </div>

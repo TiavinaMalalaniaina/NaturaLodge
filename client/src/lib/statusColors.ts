@@ -1,5 +1,5 @@
 import { BookingStatus, PaymentStatus } from '../api/bookings';
-import { InvoiceStatus } from '../api/invoices';
+import { InvoiceStatus, InvoiceKind } from '../api/invoices';
 import { RoomStatus, StaffRole, StaffMember } from '../types';
 
 export const BOOKING_STATUS_CLASS: Record<BookingStatus, string> = {
@@ -20,6 +20,21 @@ export const INVOICE_STATUS_CLASS: Record<InvoiceStatus, string> = {
   refunded:       'bg-purple-50 text-purple-700 border-purple-200',
   cancelled:      'bg-stone-100 text-stone-500 border-stone-200',
 };
+
+// L'enum InvoiceStatus est pensé pour une créance. Sur un avoir (CREDIT_NOTE), c'est nous qui
+// devons de l'argent : "payé" y signifie "remboursé", "en attente" = "à rembourser", etc. On garde
+// le même enum en base et on ne traduit différemment que le libellé affiché.
+const CREDIT_NOTE_STATUS_I18N_KEY: Record<InvoiceStatus, string> = {
+  pending:        'invoice.status_cn_pending',
+  partially_paid: 'invoice.status_cn_partially_paid',
+  paid:           'invoice.status_cn_paid',
+  refunded:       'invoice.status_refunded',
+  cancelled:      'invoice.status_cancelled',
+};
+
+export function invoiceStatusI18nKey(kind: InvoiceKind, status: InvoiceStatus): string {
+  return kind === 'credit_note' ? CREDIT_NOTE_STATUS_I18N_KEY[status] : `invoice.status_${status}`;
+}
 
 // Même style que INVOICE_STATUS_CLASS (badge affiché directement sur la réservation), plus
 // 'no_invoice' — le cas le plus important à repérer après un check-out : aucune facture n'a
