@@ -14,7 +14,7 @@ import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader } from '../components/QueryLoader';
 import { formatDate as fmtDate, formatCurrency as fmtAmount, todayLocalStr } from '../lib/format';
-import { INVOICE_STATUS_CLASS as STATUS_CLASS } from '../lib/statusColors';
+import { INVOICE_STATUS_CLASS as STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
 
@@ -185,7 +185,10 @@ export const InvoiceView: React.FC = () => {
     createDeposit.mutate(
       { bookingId, amount, notes: depositNotes || undefined },
       {
-        onSuccess: () => { setDepositAmount(''); setDepositNotes(''); setShowDepositForm(false); },
+        onSuccess: (created) => {
+          setDepositAmount(''); setDepositNotes(''); setShowDepositForm(false);
+          navigate(`/invoices/document/${created.id}`);
+        },
         onError:   (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
       },
     );
@@ -403,7 +406,7 @@ export const InvoiceView: React.FC = () => {
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-on-surface font-mono truncate">{doc.number ?? t('invoice.draft')}</p>
                         <p className="text-[9px] uppercase tracking-widest text-on-surface-variant/40">
-                          {t(`invoice.kind_${doc.kind}`)} · {!doc.validatedAt ? t('invoice.draft') : t(`invoice.status_${doc.status}`)}
+                          {t(`invoice.kind_${doc.kind}`)} · {!doc.validatedAt ? t('invoice.draft') : t(invoiceStatusI18nKey(doc.kind, doc.status))}
                         </p>
                       </div>
                     </div>

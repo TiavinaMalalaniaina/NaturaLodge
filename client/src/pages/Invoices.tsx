@@ -8,6 +8,7 @@ import { useInvoices } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { InvoiceStatus } from '../api/invoices';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
+import { invoiceStatusI18nKey } from '../lib/statusColors';
 
 type StatusFilter = 'all' | InvoiceStatus;
 
@@ -174,7 +175,7 @@ export const Invoices: React.FC = () => {
                         </span>
                       )}
                       <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', STATUS_CLASS[inv.status])}>
-                        {t(`invoice.status_${inv.status}`)}
+                        {t(invoiceStatusI18nKey(inv.kind, inv.status))}
                       </span>
                       {inv.booking.effectiveStatus && (
                         <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[inv.booking.effectiveStatus])}>
