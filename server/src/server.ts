@@ -29,7 +29,7 @@ app.use(express.json());
 // chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
 app.use(auditLogger);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.4' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.0.0' }));
 
 app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
