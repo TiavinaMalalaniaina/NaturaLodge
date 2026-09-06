@@ -337,6 +337,53 @@ export const InvoiceView: React.FC = () => {
         </div>
       )}
 
+      {/* Pas de facture STANDARD : le formulaire de génération est l'action principale, affiché
+          avant la section acompte / documents (secondaire). */}
+      {noInvoice && (
+        <div className="bg-white rounded-3xl border border-stone-200 p-10 text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8 text-on-surface-variant/30" />
+          </div>
+          <div>
+            <p className="font-semibold text-on-surface">{t('invoice.noInvoice')}</p>
+            <p className="text-xs text-on-surface-variant/50 mt-1">{t('invoice.noInvoiceHint')}</p>
+          </div>
+
+          {canGenerate && (
+            <div className="max-w-sm mx-auto space-y-4 text-left">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.taxRate')}</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={taxRate}
+                  onChange={e => setTaxRate(Number(e.target.value))}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">Notes</label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+                />
+              </div>
+              <button
+                onClick={handleGenerate}
+                disabled={generateInvoice.isPending}
+                className="w-full py-3 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {generateInvoice.isPending ? t('invoice.generating') : t('invoice.generate')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Acompte + liste des documents de la réservation — un acompte se prend typiquement avant
           même de générer la facture, d'où l'indépendance vis-à-vis de la facture STANDARD. */}
       {(canIssueDeposit || (documentsList?.data.length ?? 0) > 0) && (
@@ -422,54 +469,9 @@ export const InvoiceView: React.FC = () => {
         </div>
       )}
 
-      {/* No invoice – generate form */}
-      {noInvoice && (
-        <div className="bg-white rounded-3xl border border-stone-200 p-10 text-center space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-center mx-auto">
-            <AlertCircle className="w-8 h-8 text-on-surface-variant/30" />
-          </div>
-          <div>
-            <p className="font-semibold text-on-surface">{t('invoice.noInvoice')}</p>
-            <p className="text-xs text-on-surface-variant/50 mt-1">{t('invoice.noInvoiceHint')}</p>
-          </div>
-
-          {canGenerate && (
-            <div className="max-w-sm mx-auto space-y-4 text-left">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.taxRate')}</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  value={taxRate}
-                  onChange={e => setTaxRate(Number(e.target.value))}
-                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">Notes</label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
-                />
-              </div>
-              <button
-                onClick={handleGenerate}
-                disabled={generateInvoice.isPending}
-                className="w-full py-3 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {generateInvoice.isPending ? t('invoice.generating') : t('invoice.generate')}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Invoice document */}
-      {invoice && (
+      {/* Invoice document — jamais rendu si la requête est en erreur (404 = pas de facture STANDARD),
+          même si `invoice` porte encore une valeur périmée en cache. */}
+      {!noInvoice && invoice && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
           {/* ── Document (2/3) ── */}

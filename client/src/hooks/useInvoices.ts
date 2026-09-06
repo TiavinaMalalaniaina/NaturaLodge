@@ -38,14 +38,22 @@ export function useGenerateInvoice() {
   });
 }
 
+// La clé ['invoices','booking',<bookingId>] (useInvoiceByBooking) ne contient QUE la facture
+// STANDARD de la réservation. Un mutation sur un acompte ou un avoir ne doit jamais l'y écrire —
+// sinon /invoices/:bookingId affiche l'acompte au lieu du formulaire de génération.
+function writeInvoiceCaches(qc: ReturnType<typeof useQueryClient>, inv: Awaited<ReturnType<typeof recordPayment>>) {
+  qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+  if (inv.kind === 'standard') qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
+  qc.invalidateQueries({ queryKey: INVOICES_KEY });
+}
+
 export function useRecordPayment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ invoiceId, ...payload }: { invoiceId: string } & PaymentPayload) =>
       recordPayment(invoiceId, payload),
     onSuccess: (inv) => {
-      qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
-      qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+      writeInvoiceCaches(qc, inv);
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
     },
   });
@@ -57,8 +65,7 @@ export function useVoidPayment() {
     mutationFn: ({ invoiceId, paymentId }: { invoiceId: string; paymentId: string }) =>
       voidPayment(invoiceId, paymentId),
     onSuccess: (inv) => {
-      qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
-      qc.setQueryData([...INVOICES_KEY, inv.id], inv);
+      writeInvoiceCaches(qc, inv);
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
     },
   });
@@ -69,10 +76,7 @@ export function useUpdateInvoice() {
   return useMutation({
     mutationFn: ({ id, ...payload }: { id: string } & Parameters<typeof updateInvoice>[1]) =>
       updateInvoice(id, payload),
-    onSuccess: (inv) => {
-      qc.setQueryData([...INVOICES_KEY, 'booking', inv.bookingId], inv);
-      qc.setQueryData([...INVOICES_KEY, inv.id], inv);
-    },
+    onSuccess: (inv) => writeInvoiceCaches(qc, inv),
   });
 }
 
