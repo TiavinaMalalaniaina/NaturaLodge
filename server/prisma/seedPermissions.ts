@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 
 // Catalogue des permissions — une entrée par action logique de l'API, parfois plusieurs routes
 // derrière une même clé quand elles partagent toujours le même ensemble de rôles (ex:
@@ -13,12 +13,15 @@ import { PrismaClient, Role } from '@prisma/client'
 //
 // `auth.ts` (login, /me) n'a volontairement aucune permission : login est public,
 // /me est un accès à ses propres infos, pas une action à autoriser par rôle.
-const ALL_STAFF: Role[]    = ['ADMIN', 'MANAGER', 'GERANT', 'HOUSEKEEPING']
-const ADMIN_MANAGER: Role[] = ['ADMIN', 'MANAGER']
-const FRONT_DESK: Role[]    = ['ADMIN', 'MANAGER', 'GERANT']
-const ADMIN_ONLY: Role[]    = ['ADMIN']
+// Noms de rôle (pas l'enum Prisma — Role est désormais une table configurable, voir seedRoles.ts).
+// Ces constantes ne servent qu'à amorcer les 4 rôles historiques ; un rôle custom créé plus tard
+// via l'écran Permissions démarre sans aucune association et n'a pas besoin d'être connu ici.
+const ALL_STAFF: string[]    = ['ADMIN', 'MANAGER', 'GERANT', 'HOUSEKEEPING']
+const ADMIN_MANAGER: string[] = ['ADMIN', 'MANAGER']
+const FRONT_DESK: string[]    = ['ADMIN', 'MANAGER', 'GERANT']
+const ADMIN_ONLY: string[]    = ['ADMIN']
 
-type PermissionSeed = { key: string; domain: string; description: string; roles: Role[] }
+type PermissionSeed = { key: string; domain: string; description: string; roles: string[] }
 
 const PERMISSIONS: PermissionSeed[] = [
   // ── rooms ──
@@ -35,8 +38,11 @@ const PERMISSIONS: PermissionSeed[] = [
   // ── invoices ──
   { key: 'invoices.view',            domain: 'invoices', description: 'Consulter les factures',                                          roles: ALL_STAFF },
   { key: 'invoices.generate',        domain: 'invoices', description: 'Générer une facture depuis une réservation',                      roles: FRONT_DESK },
-  { key: 'invoices.update',          domain: 'invoices', description: 'Modifier une facture (notes, échéance, TVA)',                     roles: ADMIN_MANAGER },
+  { key: 'invoices.issue_deposit',   domain: 'invoices', description: 'Créer une facture d\'acompte',                                    roles: FRONT_DESK },
+  { key: 'invoices.validate',        domain: 'invoices', description: 'Viser un document (acompte, facture ou avoir) — l\'assigne un numéro et le poste au grand livre', roles: ADMIN_MANAGER },
+  { key: 'invoices.update',          domain: 'invoices', description: 'Modifier une facture (notes, échéance, TVA, lignes personnalisées)', roles: ADMIN_MANAGER },
   { key: 'invoices.cancel',          domain: 'invoices', description: 'Annuler une facture',                                             roles: ADMIN_MANAGER },
+  { key: 'invoices.delete_draft',    domain: 'invoices', description: 'Supprimer un brouillon jamais visé',                             roles: FRONT_DESK },
   { key: 'invoices.record_payment',  domain: 'invoices', description: 'Enregistrer un paiement',                                         roles: FRONT_DESK },
   { key: 'invoices.void_payment',    domain: 'invoices', description: 'Annuler un paiement',                                             roles: ADMIN_MANAGER },
 
@@ -66,6 +72,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'staff.create',           domain: 'staff', description: 'Créer un compte staff',                                                roles: ADMIN_ONLY },
   { key: 'staff.update',           domain: 'staff', description: 'Modifier un compte staff',                                             roles: ADMIN_MANAGER },
   { key: 'staff.manage_password',  domain: 'staff', description: 'Réinitialiser le mot de passe d\'un membre du personnel',               roles: ADMIN_ONLY },
+  { key: 'staff.assign_role',      domain: 'staff', description: 'Modifier le rôle ou le statut d\'un membre du personnel',                roles: ADMIN_ONLY },
   { key: 'staff.delete',           domain: 'staff', description: 'Supprimer un compte staff',                                            roles: ADMIN_ONLY },
 
   // ── extras ──
@@ -76,14 +83,17 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'payments.view', domain: 'payments', description: 'Consulter l\'historique des paiements',                                      roles: ALL_STAFF },
 
   // ── ledger / trésorerie ── (rapports déjà restreints ADMIN/MANAGER aujourd'hui)
-  { key: 'ledger.view_cash_accounts', domain: 'ledger', description: 'Consulter les comptes de trésorerie et leur solde',                roles: ALL_STAFF },
-  { key: 'ledger.view_reports',       domain: 'ledger', description: 'Consulter relevés, résumé, bilan, compte de résultat, export CSV', roles: ADMIN_MANAGER },
-  { key: 'ledger.transfer',           domain: 'ledger', description: 'Effectuer un virement entre comptes de trésorerie',                roles: ADMIN_MANAGER },
-  { key: 'ledger.contribute',         domain: 'ledger', description: 'Enregistrer un apport externe (capital propriétaire...)',          roles: ADMIN_MANAGER },
+  { key: 'ledger.view_cash_accounts',  domain: 'ledger', description: 'Consulter les comptes de trésorerie et leur solde',                roles: FRONT_DESK },
+  { key: 'ledger.access_all_accounts', domain: 'ledger', description: 'Voir tous les comptes de trésorerie et transférer sans restriction de compte', roles: ADMIN_MANAGER },
+  { key: 'ledger.view_reports',        domain: 'ledger', description: 'Consulter relevés, résumé, bilan, compte de résultat, export CSV', roles: ADMIN_MANAGER },
+  { key: 'ledger.transfer',            domain: 'ledger', description: 'Effectuer un virement entre comptes de trésorerie',                roles: ADMIN_MANAGER },
+  { key: 'ledger.contribute',          domain: 'ledger', description: 'Enregistrer un apport externe (capital propriétaire...)',          roles: ADMIN_MANAGER },
+  { key: 'ledger.manage_accounts',     domain: 'ledger', description: 'Créer, modifier un compte du plan comptable et gérer les accès trésorerie', roles: ADMIN_ONLY },
 
   // ── expenses ──
   { key: 'expenses.view',   domain: 'expenses', description: 'Consulter les dépenses',                                                   roles: ALL_STAFF },
   { key: 'expenses.create', domain: 'expenses', description: 'Enregistrer une dépense',                                                  roles: ADMIN_MANAGER },
+  { key: 'expenses.manage_categories', domain: 'expenses', description: 'Créer, modifier ou désactiver une catégorie de dépense',        roles: ADMIN_ONLY },
 
   // ── audit ──
   { key: 'auditLogs.view', domain: 'auditLogs', description: 'Consulter le journal d\'audit',                                            roles: ADMIN_ONLY },
@@ -97,6 +107,10 @@ const PERMISSIONS: PermissionSeed[] = [
 // customisation faite plus tard via un futur écran d'administration (Phase 3) doit survivre à un
 // reseed — même leçon que seedChartOfAccounts.ts avec la dérive des noms de comptes.
 export async function seedPermissions(prisma: PrismaClient) {
+  // Doit tourner après seedRoles() : résout chaque nom de rôle littéral ci-dessus vers son id réel.
+  const roles = await prisma.role.findMany({ select: { id: true, name: true } })
+  const roleIdByName = new Map(roles.map(r => [r.name, r.id]))
+
   let linkCount = 0
   for (const p of PERMISSIONS) {
     const permission = await prisma.permission.upsert({
@@ -104,9 +118,10 @@ export async function seedPermissions(prisma: PrismaClient) {
       update: { domain: p.domain, description: p.description },
       create: { key: p.key, domain: p.domain, description: p.description },
     })
-    if (p.roles.length > 0) {
+    const roleIds = p.roles.map(name => roleIdByName.get(name)).filter((id): id is string => !!id)
+    if (roleIds.length > 0) {
       const result = await prisma.rolePermission.createMany({
-        data: p.roles.map(role => ({ role, permissionId: permission.id })),
+        data: roleIds.map(roleId => ({ roleId, permissionId: permission.id })),
         skipDuplicates: true,
       })
       linkCount += result.count

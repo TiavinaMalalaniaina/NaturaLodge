@@ -40,11 +40,12 @@ export function useCreateBooking() {
 export function useUpdateBookingStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      updateBookingStatus(id, status),
+    mutationFn: ({ id, status, refundRatePercent }: { id: string; status: string; refundRatePercent?: number }) =>
+      updateBookingStatus(id, status, refundRatePercent),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: BOOKINGS_KEY });
       qc.invalidateQueries({ queryKey: ROOMS_KEY });
+      qc.invalidateQueries({ queryKey: INVOICES_KEY });
     },
   });
 }

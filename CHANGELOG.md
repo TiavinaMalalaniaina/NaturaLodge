@@ -3,7 +3,139 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
-## [1.0.4] — Non publié
+## [2.0.0] — 2026-09-06
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.0.0`.
+>
+> Version **majeure** : la mise à niveau n'est pas transparente — migrations de schéma **et** reseed
+> des permissions obligatoires (voir *Rupture* et *Notes de déploiement*) — et le cycle de vie de la
+> facturation change pour le personnel (brouillon → visé avant toute écriture comptable).
+
+### Ajouté
+
+**Cycle de vie des documents de facturation (brouillon → visé)**
+- Une facture, un acompte ou un avoir naît en **brouillon** (`Invoice.validatedAt` nul) : librement
+  modifiable, sans numéro, invisible du grand livre. `POST /invoices/:id/validate`
+  (`can('invoices.validate')`) lui assigne son numéro définitif, cale sa date d'émission sur le visa
+  et poste l'écriture comptable — seul et unique moment où un document touche le grand livre.
+- `Invoice.number` devient nullable (attribué au visa) ; séquence propre par type — `INV-` / `ACO-`
+  / `AVO-` —, comptée uniquement sur les documents déjà visés (aucun trou en cas de brouillon
+  abandonné).
+- Suppression d'un brouillon jamais visé — `DELETE /invoices/:id` (`can('invoices.delete_draft')`),
+  aucun impact comptable.
+- Modification du montant d'un brouillon d'acompte — `PATCH /invoices/:id` avec `amount`.
+- Filtre « Brouillons uniquement » sur `/invoices`.
+
+**Factures d'acompte (`DEPOSIT` / `ACO-`)**
+- `POST /invoices/deposit` (`can('invoices.issue_deposit')`) — crée un brouillon d'acompte pour une
+  réservation, indépendamment de la facture définitive ; montant et notes éditables tant qu'il n'est
+  pas visé.
+- Au visa : `411000` créance / `419100` « Clients — avances et acomptes reçus » (nouveau compte de
+  passif) — aucun produit tant que le séjour n'a pas eu lieu.
+- Au visa de la facture définitive : les acomptes visés de la réservation viennent en déduction
+  (lignes négatives) et `419100` est soldé contre `411000`.
+- Encaissement d'un acompte visé depuis sa page dédiée (`/invoices/document/:id`).
+- Panneau « Acomptes en cours » sur `/reports` — acomptes visés pas encore absorbés par une facture
+  définitive, pour tracer le solde `419100` réservation par réservation.
+
+**Factures d'avoir (`CREDIT_NOTE` / `AVO-`)**
+- Émises automatiquement à l'annulation d'un document **déjà visé** (jamais en modifiant l'original)
+  — brouillon, `relatesToInvoiceId` vers le document crédité, montant = `refundRatePercent` % du
+  total (défaut 70 %), le reste retenu comme frais d'annulation. Le personnel doit encore viser
+  l'avoir pour qu'il produise ses effets.
+- Taux de remboursement ajustable au moment du geste — champ dans la modale d'annulation de
+  réservation (`refundRatePercent` sur `PATCH /bookings/:id/status`) et sur `POST /invoices/:id/cancel`.
+- Visa d'un avoir sur **facture** : extourne produit / TVA / créance au prorata.
+- Visa d'un avoir sur **acompte** : solde `419100` en entier — part remboursée vers `411000`, part
+  retenue vers `708500` « Frais d'annulation retenus » (nouveau compte de produit).
+- Remboursement d'un avoir visé : mouvement de trésorerie sortant depuis sa page (`411000` débit /
+  compte de trésorerie crédit), borné à ce qui a réellement été encaissé sur le document crédité.
+- Statut d'un avoir affiché avec le vocabulaire adapté (« À rembourser » / « Part. remboursé » /
+  « Remboursé ») plutôt que « Payé ».
+
+**Lignes de facture personnalisées et remises**
+- Ligne libre (`InvoiceItem.source = MANUAL`) — charge exceptionnelle (prix unitaire positif) ou
+  geste commercial ponctuel (négatif) : `POST /invoices/:id/items` + `PATCH` / `DELETE` associés
+  (`can('invoices.update')`). Préservées lors des resynchronisations avec la réservation, qui ne
+  réécrivent que les lignes `BOOKING`.
+- Remises sur facture — `POST /invoices/:id/discounts` : en pourcentage (recalculée à chaque
+  resynchronisation) ou en montant fixe, portées en contra-produit `709000`.
+
+**Contrôle d'accès à la trésorerie par rôle**
+- `RoleLedgerAccount` (`roleId × accountId` + `canTransferFrom` / `canTransferTo` /
+  `canPayExpenses`) — l'administrateur décide, compte de trésorerie par compte de trésorerie, quels
+  rôles le voient, peuvent le mettre en source ou en arrivée d'un virement, ou régler des charges
+  depuis.
+- Écran d'administration `/treasury-access` (ADMIN, `ledger.manage_accounts`).
+- `ledger.access_all_accounts` (ADMIN / MANAGER) — voit tous les comptes et transfère sans
+  restriction ; les rôles sans cette clé sont soumis aux grants `RoleLedgerAccount`.
+- Contrôles `assertCanViewCashAccount` / `assertCanTransfer` / `assertCanPayExpenseFrom` appliqués
+  sur l'encaissement, les virements et les dépenses.
+- Accès à la page Trésorerie (`ledger.view_cash_accounts`) distinct de l'accès aux Rapports
+  (`ledger.view_reports`).
+
+**Configuration comptable (administration)**
+- Plan comptable éditable depuis l'UI (création / modification de compte), types de dépense
+  configurables.
+
+**Réservation**
+- La page réservation liste tous les documents de facturation (facture, acomptes, avoirs) avec accès
+  direct à chacun, et permet de créer un acompte — la création redirige vers le document produit.
+
+### Modifié
+- `POST /invoices/generate` crée un **brouillon** — ne poste plus au grand livre (voir *Rupture*).
+- `POST /invoices/:id/payments` refuse (409) un document non visé et devient directionnel :
+  encaissement pour une facture / un acompte, remboursement pour un avoir.
+- `DELETE /invoices/:id/payments/:paymentId` (`voidPayment`) — contre-écriture directionnelle selon
+  le type de document.
+- `syncInvoiceStatus` ne recalcule plus un statut terminal (`CANCELLED` / `REFUNDED`) à partir des
+  seuls paiements.
+- L'annulation d'une réservation produit une facture d'avoir **par document visé** (facture ET
+  acompte) au lieu d'une extourne immédiate unique.
+- `PATCH /invoices/:id` accepte `amount` (brouillon d'acompte uniquement).
+- `ledger.manage_accounts` couvre désormais aussi la gestion des accès trésorerie.
+
+### Corrigé
+- Avoir sur un acompte jamais transformé en facture : l'extourne fabriquait un produit `706000`
+  inexistant et laissait `419100` bloqué au bilan indéfiniment — désormais routée `419100` /
+  `708500`, le passif soldé en entier.
+- Une facture annulée repassait en « non payée » après annulation de son paiement (`voidPayment` →
+  `syncInvoiceStatus` recalculait le statut à partir des seuls paiements) — les statuts terminaux
+  sont maintenant préservés.
+- Corrections d'affichage de la vue Trésorerie.
+
+### Rupture
+- **`POST /invoices/generate` ne poste plus au grand livre.** Le document créé est un brouillon ; il
+  faut `POST /invoices/:id/validate` pour qu'il constate créance / produit / TVA. Toute automatisation
+  qui supposait une facture immédiatement « vivante » doit ajouter cette étape.
+- **`POST /invoices/:id/payments` renvoie 409 sur un document non visé.**
+- **L'annulation d'une réservation ne solde plus la facture immédiatement** : elle crée des avoirs en
+  brouillon, à viser puis à rembourser pour que le grand livre bouge.
+- **`Invoice.number` est nullable** — tout code qui le lisait comme toujours défini doit gérer le cas
+  brouillon.
+
+### Notes de déploiement
+```bash
+cd server
+npx prisma migrate deploy         # migrations 20260903* et 20260905* : InvoiceKind, Invoice.validatedAt,
+                                  # number nullable, relatesToInvoiceId, InvoiceItem.source/discountRate,
+                                  # RoleLedgerAccount, comptes 419100 / 708500, enum JournalSource CREDIT_NOTE
+npx tsx prisma/seed.init.ts        # nouvelles clés de permission (invoices.issue_deposit, invoices.validate,
+                                  # invoices.update, invoices.cancel, invoices.delete_draft,
+                                  # ledger.access_all_accounts…) + comptes 419100 / 708500 — idempotent, additif
+```
+Puis **redémarrer le serveur** : le cache mémoire de la matrice de permissions (`lib/permissions.ts`)
+n'est pas rafraîchi par un seed exécuté hors du process. Sans reseed + redémarrage, les nouvelles
+fonctionnalités (création d'acompte, visa, suppression de brouillon…) restent masquées, sans erreur.
+
+Recommandé : câbler le seed dans la commande de démarrage du conteneur —
+`npx prisma migrate deploy && npm run db:seed:init && node dist/server.js` — `seed:init` étant
+idempotent, rôles / permissions / plan comptable se resynchronisent à chaque déploiement.
+
+⚠️ `DATABASE_SSL=false` ne vaut que pour une Postgres strictement locale : le laisser alors que
+`DATABASE_URL` pointe une base gérée (Render…) coupe le SSL et la connexion échoue (`P1017`).
+
+## [1.0.4] — 2026-08-30
 
 > `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` (build
 > identifier) bumpés à `1.0.4`, cohérents avec le nom de la branche `release/V1.0.4`.

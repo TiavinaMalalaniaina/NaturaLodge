@@ -1,4 +1,4 @@
-import { BookingStatus, Role, Prisma } from '@prisma/client';
+import { BookingStatus, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { applyRoomStatuses } from '../lib/roomStatus';
 import { TERMINAL_STATUSES } from '../lib/bookingStatus';
@@ -21,7 +21,11 @@ const roomSelect  = {
 };
 // Sélectionné dans les deux formes pour calculer `paymentStatus` côté serveur (computePaymentStatus),
 // mais jamais renvoyé tel quel au client (voir la déstructuration `{ invoices, ...rest }` dans `list`).
+// Filtre `kind: STANDARD` : une réservation peut désormais porter aussi un acompte et/ou un avoir
+// (voir invoice.service.ts) — sans ce filtre, l'un de ces documents plus récent que la vraie
+// facture fausserait le statut de paiement affiché et le contrôle d'accès au check-out.
 const invoicesForStatus = {
+  where:   { kind: 'STANDARD' as const },
   select:  { status: true, totalAmount: true },
   orderBy: { issuedAt: 'desc' as const },
   take:    1,
@@ -263,7 +267,7 @@ export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | '
 // Transactionnelle : le passage en CANCELLED annule aussi la facture de la réservation s'il y en
 // a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
 // ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
-export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: Role, actingUserId?: string) {
+export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: string, actingUserId?: string, refundRatePercent?: number) {
   return prisma.$transaction(async (tx) => {
     let status: BookingStatus = requestedStatus;
     if (requestedStatus === 'CHECKED_OUT') {
@@ -310,7 +314,7 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
     }
 
     if (status === 'CANCELLED') {
-      await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx);
+      await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx, refundRatePercent);
     }
 
     return { ...booking, paymentStatus: computePaymentStatus(booking) };
@@ -376,7 +380,7 @@ async function recomputeBookingAggregate(tx: Prisma.TransactionClient, bookingId
 // Permissions) — pas un contrôle de rôle codé en dur, comme le reste du système d'autorisation.
 const CHECKED_OUT_NOT_CLOSED: BookingStatus[] = ['CHECKED_OUT', 'CHECKED_OUT_UNPAID', 'CHECKED_OUT_PAID'];
 
-async function assertBookingModifiable(status: BookingStatus, actingUserRole: Role): Promise<void> {
+async function assertBookingModifiable(status: BookingStatus, actingUserRole: string): Promise<void> {
   if (status === 'CANCELLED' || status === 'CLOSED') {
     throw new ConflictError('Impossible de modifier une réservation clôturée');
   }
@@ -385,7 +389,7 @@ async function assertBookingModifiable(status: BookingStatus, actingUserRole: Ro
   }
 }
 
-export async function reassign(bookingId: string, data: ReassignInput, actingUserRole: Role) {
+export async function reassign(bookingId: string, data: ReassignInput, actingUserRole: string) {
   const { oldRoomId, newRoomId } = data;
 
   // Vérification de conflit + mise à jour de la ligne + recalcul du total/dates + recalcul des
@@ -449,7 +453,7 @@ export async function reassign(bookingId: string, data: ReassignInput, actingUse
   });
 }
 
-export async function addRoom(bookingId: string, data: AddBookingRoomInput, actingUserRole: Role) {
+export async function addRoom(bookingId: string, data: AddBookingRoomInput, actingUserRole: string) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
@@ -495,7 +499,7 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput, acti
   });
 }
 
-export async function removeRoom(bookingId: string, roomId: string, actingUserRole: Role) {
+export async function removeRoom(bookingId: string, roomId: string, actingUserRole: string) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
@@ -518,7 +522,7 @@ export async function removeRoom(bookingId: string, roomId: string, actingUserRo
   });
 }
 
-export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput, actingUserRole: Role) {
+export async function addExtraToRoom(bookingId: string, roomId: string, data: AddBookingRoomExtraInput, actingUserRole: string) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
@@ -557,7 +561,7 @@ export async function addExtraToRoom(bookingId: string, roomId: string, data: Ad
   });
 }
 
-export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput, actingUserRole: Role) {
+export async function updateExtraQuantity(bookingId: string, roomId: string, extraId: string, data: UpdateBookingRoomExtraInput, actingUserRole: string) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');
@@ -578,7 +582,7 @@ export async function updateExtraQuantity(bookingId: string, roomId: string, ext
   });
 }
 
-export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string, actingUserRole: Role) {
+export async function removeExtraFromRoom(bookingId: string, roomId: string, extraId: string, actingUserRole: string) {
   return prisma.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({ where: { id: bookingId }, include: detailInclude });
     if (!booking) throw new NotFoundError('Réservation');

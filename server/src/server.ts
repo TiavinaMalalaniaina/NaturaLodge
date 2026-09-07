@@ -14,6 +14,7 @@ import { ledgerRouter } from './routes/ledger';
 import { expensesRouter } from './routes/expenses';
 import { auditLogsRouter } from './routes/auditLogs';
 import { permissionsRouter } from './routes/permissions';
+import { rolesRouter } from './routes/roles';
 import { startScheduler } from './lib/scheduler';
 import { errorHandler } from './middleware/errorHandler';
 import { auditLogger } from './middleware/auditLog';
@@ -28,7 +29,7 @@ app.use(express.json());
 // chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
 app.use(auditLogger);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.4' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.0.0' }));
 
 app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
@@ -43,6 +44,7 @@ app.use('/api/ledger', ledgerRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/permissions', permissionsRouter);
+app.use('/api/roles', rolesRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 

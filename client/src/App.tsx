@@ -22,12 +22,15 @@ const Staff          = lazy(() => import('./pages/Staff').then(m => ({ default: 
 const Invoices        = lazy(() => import('./pages/Invoices').then(m => ({ default: m.Invoices })));
 const Payments        = lazy(() => import('./pages/Payments').then(m => ({ default: m.Payments })));
 const InvoiceView     = lazy(() => import('./pages/InvoiceView').then(m => ({ default: m.InvoiceView })));
+const InvoiceDocument = lazy(() => import('./pages/InvoiceDocument').then(m => ({ default: m.InvoiceDocument })));
 const Settings        = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Expenses         = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
 const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ default: m.Treasury })));
 const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 const AuditLog            = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLog })));
 const Permissions          = lazy(() => import('./pages/Permissions').then(m => ({ default: m.Permissions })));
+const Accounts              = lazy(() => import('./pages/Accounts').then(m => ({ default: m.Accounts })));
+const TreasuryAccess        = lazy(() => import('./pages/TreasuryAccess').then(m => ({ default: m.TreasuryAccess })));
 
 const App: React.FC = () => {
   return (
@@ -56,6 +59,7 @@ const App: React.FC = () => {
                   <Route path="invoices" element={<Invoices />} />
                   <Route path="payments" element={<Payments />} />
                   <Route path="invoices/:bookingId" element={<InvoiceView />} />
+                  <Route path="invoices/document/:invoiceId" element={<InvoiceDocument />} />
                   <Route path="settings" element={<Settings />} />
 
                   <Route element={<ProtectedRoute permission="staff.view" />}>
@@ -64,9 +68,15 @@ const App: React.FC = () => {
                   <Route element={<ProtectedRoute permission="expenses.view" />}>
                     <Route path="expenses" element={<Expenses />} />
                   </Route>
-                  <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
+                  <Route element={<ProtectedRoute permission="ledger.view_cash_accounts" />}>
                     <Route path="treasury" element={<Treasury />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
                     <Route path="reports" element={<Reports />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="ledger.manage_accounts" />}>
+                    <Route path="accounts" element={<Accounts />} />
+                    <Route path="treasury-access" element={<TreasuryAccess />} />
                   </Route>
                   <Route element={<ProtectedRoute permission="auditLogs.view" />}>
                     <Route path="audit-log" element={<AuditLog />} />

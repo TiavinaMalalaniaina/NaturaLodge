@@ -213,8 +213,11 @@ export const fetchBookings = async (params?: BookingParams): Promise<PaginatedBo
   return { data: data.data.map(normalizeBooking), meta: data.meta };
 };
 
-export const updateBookingStatus = async (id: string, status: string): Promise<RichBooking> => {
-  const { data } = await api.patch<ApiBooking>(`/bookings/${id}/status`, { status });
+export const updateBookingStatus = async (id: string, status: string, refundRatePercent?: number): Promise<RichBooking> => {
+  const { data } = await api.patch<ApiBooking>(`/bookings/${id}/status`, {
+    status,
+    ...(refundRatePercent !== undefined && { refundRatePercent }),
+  });
   return normalizeBooking(data);
 };
 

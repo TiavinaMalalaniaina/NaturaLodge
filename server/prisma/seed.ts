@@ -4,6 +4,8 @@ import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import { config } from 'dotenv'
 import { seedChartOfAccounts } from './seedChartOfAccounts'
+import { seedExpenseCategories } from './seedExpenseCategories'
+import { seedRoles } from './seedRoles'
 import { seedPermissions } from './seedPermissions'
 
 config()
@@ -229,6 +231,8 @@ const STAFF_DATA = [
 
 async function main() {
   await seedChartOfAccounts(prisma)
+  await seedExpenseCategories(prisma)
+  await seedRoles(prisma)
   await seedPermissions(prisma)
 
   // ── Room Features (upsert by fixed id) ────────────────────────────────────
@@ -295,17 +299,21 @@ async function main() {
   const adminPwd = await bcrypt.hash('Admin@1234', 12)
   const staffPwd = await bcrypt.hash('Staff@1234', 12)
 
+  const roles = await prisma.role.findMany({ select: { id: true, name: true } })
+  const roleIdByName = new Map(roles.map(r => [r.name, r.id]))
+
   const staff = await Promise.all(
     STAFF_DATA.map((s, i) => {
       const username = s.email.split('@')[0]
+      const roleId = roleIdByName.get(s.role)!
       return prisma.user.upsert({
         where:  { username },
-        update: { name: s.name, role: s.role, status: s.status },
+        update: { name: s.name, roleId, status: s.status },
         create: {
           username,
           email:     s.email,
           name:      s.name,
-          role:      s.role,
+          roleId,
           status:    s.status,
           password:  i === 0 ? adminPwd : staffPwd,
           joinedDate: new Date(`${rand(2020, 2024)}-${String(rand(1, 12)).padStart(2, '0')}-01`),

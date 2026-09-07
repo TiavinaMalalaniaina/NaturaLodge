@@ -14,12 +14,12 @@ import {
   useAddBookingNote,
 } from '../hooks/useBookings';
 import { useExtras } from '../hooks/useExtras';
-import { useInvoiceByBooking } from '../hooks/useInvoices';
+import { useInvoiceByBooking, useInvoices } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking as computeCanModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
-import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
+import { PAYMENT_STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
@@ -35,6 +35,7 @@ export const BookingDetail: React.FC = () => {
 
   const { data: booking, isLoading, isError } = useBooking(id!);
   const { data: invoice } = useInvoiceByBooking(id ?? null);
+  const { data: documentsList } = useInvoices(id ? { bookingId: id, limit: 50 } : undefined);
   const updateStatus = useUpdateBookingStatus();
   const closeBooking = useCloseBooking();
   const { data: extrasCatalog = [] } = useExtras();
@@ -45,6 +46,7 @@ export const BookingDetail: React.FC = () => {
 
   const [reassignOpen, setReassignOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelRefundRate, setCancelRefundRate] = useState('70');
   const [closeOpen, setCloseOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<StatusActionKey | null>(null);
   const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
@@ -75,9 +77,8 @@ export const BookingDetail: React.FC = () => {
   const canClose = can('bookings.close') && es === 'checked_out_paid';
   const canModifyBooking = computeCanModifyBooking(es, can);
 
-  const handleStatus = (status: string) => {
-    updateStatus.mutate({ id: booking.id, status }, {
-      onSuccess: () => console.log(`Status changed to ${status}`),
+  const handleStatus = (status: string, refundRatePercent?: number) => {
+    updateStatus.mutate({ id: booking.id, status, refundRatePercent }, {
       onError: (err) => addNotification({
         source: 'system', title: 'Action failed',
         subtitle: getApiErrorMessage(err), amount: '--',
@@ -420,26 +421,29 @@ export const BookingDetail: React.FC = () => {
               {invoice && (
                 <span className={cn(
                   'px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border',
-                  invoice.status === 'paid' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                    invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200',
+                  !invoice.validatedAt ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                    invoice.status === 'paid' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                      invoice.status === 'partially_paid' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        invoice.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200',
                 )}>
-                  {t(`invoice.status_${invoice.status}`)}
+                  {!invoice.validatedAt ? t('invoice.draft') : t(`invoice.status_${invoice.status}`)}
                 </span>
               )}
             </div>
 
             {!invoice ? (
-              <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 p-6 text-center text-sm text-on-surface-variant/50">
-                {t('invoice.noInvoice')}
-              </div>
+              (documentsList?.data.length ?? 0) === 0 && (
+                <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/70 p-6 text-center text-sm text-on-surface-variant/50">
+                  {t('invoice.noInvoice')}
+                </div>
+              )
             ) : (
               <div className="space-y-4">
                 <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.number')}</span>
-                    <span className="text-sm font-semibold text-on-surface">{invoice.number}</span>
+                    <span className="text-sm font-semibold text-on-surface">{invoice.number ?? t('invoice.draft')}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.total')}</span>
@@ -462,6 +466,35 @@ export const BookingDetail: React.FC = () => {
                   {t('invoice.title')}
                   <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
                 </button>
+              </div>
+            )}
+
+            {(documentsList?.data.length ?? 0) > 0 && (
+              <div className="mt-5 pt-5 border-t border-stone-100">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-3">{t('bookingDetail.allDocuments')}</p>
+                <div className="space-y-2">
+                  {documentsList!.data.map(doc => (
+                    <button
+                      key={doc.id}
+                      onClick={() => navigate(doc.kind === 'standard' ? `/invoices/${doc.bookingId}` : `/invoices/document/${doc.id}`)}
+                      className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-stone-100 bg-stone-50/70 hover:bg-stone-100 transition-colors text-left group"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-3.5 h-3.5 text-on-surface-variant/40 shrink-0" />
+                        <span className="min-w-0">
+                          <span className="block text-xs font-semibold text-on-surface font-mono truncate">{doc.number ?? t('invoice.draft')}</span>
+                          <span className="block text-[9px] uppercase tracking-widest text-on-surface-variant/40">
+                            {t(`invoice.kind_${doc.kind}`)} · {!doc.validatedAt ? t('invoice.draft') : t(invoiceStatusI18nKey(doc.kind, doc.status))}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-mono font-semibold text-on-surface">{fmtAmount(doc.totalAmount)}</span>
+                        <ChevronRight className="w-4 h-4 text-on-surface-variant/30 group-hover:text-primary transition-colors" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -530,12 +563,28 @@ export const BookingDetail: React.FC = () => {
       <ConfirmModal
         isOpen={cancelOpen}
         onClose={() => setCancelOpen(false)}
-        onConfirm={() => { handleStatus('CANCELLED'); setCancelOpen(false); }}
+        onConfirm={() => {
+          const rate = parseInt(cancelRefundRate, 10);
+          handleStatus('CANCELLED', Number.isFinite(rate) ? Math.min(100, Math.max(0, rate)) : undefined);
+          setCancelOpen(false);
+        }}
         title={t('reservations.cancelTitle')}
         message={t('reservations.cancelMessage')}
         confirmLabel={t('reservations.confirmCancel')}
         isPending={updateStatus.isPending}
-      />
+      >
+        <label className="block">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">
+            {t('reservations.refundRate')}
+          </span>
+          <input
+            type="number" min={0} max={100} value={cancelRefundRate}
+            onChange={e => setCancelRefundRate(e.target.value)}
+            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+          />
+          <span className="text-[10px] text-on-surface-variant/40 mt-1.5 block">{t('reservations.refundRateHint')}</span>
+        </label>
+      </ConfirmModal>
       <ConfirmModal
         isOpen={closeOpen}
         onClose={() => setCloseOpen(false)}
