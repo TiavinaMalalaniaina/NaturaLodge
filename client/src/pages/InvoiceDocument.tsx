@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Printer, ShieldCheck, AlertCircle, Plus, CreditCard, RotateCcw, Trash2, SquarePen } from 'lucide-react';
+import { ArrowLeft, Printer, ShieldCheck, AlertCircle, Plus, Trash2, SquarePen } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
@@ -9,10 +9,13 @@ import { useCashAccounts } from '../hooks/useLedger';
 import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader, PageError } from '../components/QueryLoader';
-import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
+import { formatCurrency as fmtAmount } from '../lib/format';
 import { INVOICE_STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { InvoiceDocumentCard, MoneyRow } from '../components/invoice/InvoiceDocumentCard';
+import { InvoicePaymentForm } from '../components/invoice/InvoicePaymentForm';
+import { InvoicePaymentHistory } from '../components/invoice/InvoicePaymentHistory';
 
 // Vue d'un document de facturation adressé par son propre id (acompte ou avoir — une facture
 // STANDARD reste consultée via /invoices/:bookingId, voir InvoiceView.tsx). Pas d'édition de
@@ -58,7 +61,6 @@ export const InvoiceDocument: React.FC = () => {
 
   const isDraft = !invoice.validatedAt;
   const isRefundDoc = invoice.kind === 'credit_note';
-  const subtotal = invoice.totalAmount - invoice.taxAmount;
   const totalPaid = invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
   // Pour un avoir : on ne peut rembourser que ce qui a réellement été encaissé sur le document
   // crédité, borné au montant de l'avoir (le serveur applique la même règle, voir addPayment).
@@ -200,7 +202,7 @@ export const InvoiceDocument: React.FC = () => {
             className="p-3 border border-stone-200 rounded-xl hover:bg-stone-50 text-on-surface-variant transition-all flex items-center gap-2 bg-white"
           >
             <Printer className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">Print</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">{t('common.print')}</span>
           </button>
         </div>
       </div>
@@ -230,7 +232,7 @@ export const InvoiceDocument: React.FC = () => {
             />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">Notes</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('common.notes')}</label>
             <input
               type="text" value={editNotes}
               onChange={e => setEditNotes(e.target.value)}
@@ -253,254 +255,69 @@ export const InvoiceDocument: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div
-        id="invoice-print-area"
-        className="lg:col-span-2 bg-white p-8 md:p-14 rounded-3xl shadow-sm border border-stone-200 flex flex-col gap-10"
-      >
-        <div className="flex justify-between items-start">
-          <div className="space-y-3">
-            <div className="w-24 h-24 flex items-center justify-center">
-              <img src='/logo.png' alt='Natura Lodge Logo' />
-            </div>
-          </div>
-          <div className="text-right space-y-1">
-            <p className="text-xs font-bold uppercase tracking-widest">Natura Lodge</p>
-            <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">Madagascar - Manambato</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:block">
+        <InvoiceDocumentCard
+          invoice={invoice}
+          isDraft={isDraft}
+          movementRows={[
+            ...((invoice.kind === 'deposit' || isRefundDoc) && totalPaid > 0
+              ? [{ label: isRefundDoc ? t('invoice.refunded') : t('invoice.status_paid'), value: `-${fmtAmount(totalPaid)}`, accent: 'pos' as const }]
+              : []),
+            ...((invoice.kind === 'deposit' || isRefundDoc) && remaining > 0 && !isDraft
+              ? [{ label: isRefundDoc ? t('invoice.remainingToRefund') : t('invoice.remaining'), value: fmtAmount(remaining), accent: 'neg' as const }]
+              : []),
+          ] satisfies MoneyRow[]}
+        />
 
-        <div className="grid grid-cols-2 gap-10">
-          <div>
-            <h5 className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-3 pb-2 border-b border-stone-100">{t('invoice.billTo')}</h5>
-            <p className="text-base font-bold text-on-surface">{invoice.booking.guest.name}</p>
-            <p className="text-[10px] text-on-surface-variant/60 mt-1">{invoice.booking.guest.email}</p>
-          </div>
-          <div>
-            <h5 className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-3 pb-2 border-b border-stone-100">{t('invoice.documentDetail')}</h5>
-            <div className="grid grid-cols-2 gap-y-3 text-[10px]">
-              <div>
-                <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.issued')}</p>
-                <p className="font-mono mt-1">{isDraft ? '—' : fmtDate(invoice.issuedAt)}</p>
-              </div>
-              <div>
-                <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.registrationRef')}</p>
-                <p className="font-mono mt-1">#{invoice.bookingId.slice(-8).toUpperCase()}</p>
-              </div>
-              <div>
-                <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.number')}</p>
-                <p className="font-mono mt-1">{invoice.number ?? t('invoice.draft')}</p>
-              </div>
-              {invoice.relatesToInvoice && (
-                <div>
-                  <p className="font-bold opacity-40 uppercase tracking-widest">{t('invoice.relatesTo')}</p>
-                  <p className="font-mono mt-1">{invoice.relatesToInvoice.number ?? '—'}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h5 className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-4 pb-2 border-b border-stone-100">{t('invoice.items')}</h5>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-stone-200">
-                {['Description', 'Qté', 'P.U.', t('invoice.total')].map((h, i) => (
-                  <th key={i} className={cn('py-3 text-[10px] font-bold uppercase tracking-widest opacity-40', i > 0 && 'text-right', i === 1 && 'text-center')}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {invoice.items.map(item => (
-                <tr key={item.id}>
-                  <td className="py-4 text-sm font-medium text-on-surface">{item.description}</td>
-                  <td className="py-4 text-center text-xs font-mono">{item.quantity}</td>
-                  <td className="py-4 text-right text-xs font-mono">{fmtAmount(item.unitPrice)}</td>
-                  <td className="py-4 text-right text-sm font-bold">{fmtAmount(item.total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex flex-col items-end gap-3 pt-6 border-t-2 border-stone-900">
-          <div className="flex items-center gap-16 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-            <span>{t('invoice.subtotal')}</span>
-            <span className="font-mono text-on-surface">{fmtAmount(subtotal)}</span>
-          </div>
-          {invoice.taxAmount > 0 && (
-            <div className="flex items-center gap-16 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">
-              <span>{t('invoice.tax')}</span>
-              <span className="font-mono text-on-surface">{fmtAmount(invoice.taxAmount)}</span>
-            </div>
-          )}
-          <div className="flex items-center gap-16 pt-4 border-t border-stone-100">
-            <span className="text-xs font-bold uppercase tracking-[0.3em] text-on-surface-variant">{t('invoice.total')}</span>
-            <span className="text-3xl font-display italic text-primary leading-none">{fmtAmount(invoice.totalAmount)}</span>
-          </div>
-          {(invoice.kind === 'deposit' || isRefundDoc) && totalPaid > 0 && (
-            <div className="flex items-center gap-16 text-[10px] font-bold uppercase tracking-widest text-teal-600">
-              <span>{isRefundDoc ? t('invoice.refunded') : t('invoice.status_paid')}</span>
-              <span className="font-mono">-{fmtAmount(totalPaid)}</span>
-            </div>
-          )}
-          {(invoice.kind === 'deposit' || isRefundDoc) && remaining > 0 && !isDraft && (
-            <div className="flex items-center gap-16 text-[10px] font-bold uppercase tracking-widest text-red-600">
-              <span>{isRefundDoc ? t('invoice.remainingToRefund') : t('invoice.remaining')}</span>
-              <span className="font-mono">{fmtAmount(remaining)}</span>
-            </div>
-          )}
-        </div>
-
-        {invoice.notes && (
-          <p className="text-[10px] text-on-surface-variant/50 italic border-t border-stone-100 pt-4">{invoice.notes}</p>
-        )}
-      </div>
-
-      {/* ── Sidebar : mouvement d'argent — encaissement pour un acompte, remboursement pour un
-          avoir visé (hidden on print) ── */}
-      {(invoice.kind === 'deposit' || isRefundDoc) && (
-        <div className="no-print space-y-6">
-          {nothingToRefund && (
-            <div className="bg-white rounded-3xl border border-stone-200 p-6 flex items-start gap-3 text-on-surface-variant/70">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <p className="text-xs leading-relaxed">{t('invoice.nothingToRefund')}</p>
-            </div>
-          )}
-          {canReceivePayment && canRecordPayment && (
-            <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
-              <div className="p-6 border-b border-stone-100 flex justify-between items-center flex-wrap gap-3">
-                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{isRefundDoc ? t('invoice.recordRefund') : t('invoice.recordPayment')}</h4>
-                <button
-                  onClick={() => setShowPayForm(v => !v)}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/10 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {isRefundDoc ? t('invoice.recordRefund') : t('invoice.recordPayment')}
-                </button>
-              </div>
-              {showPayForm && (
-                <div className="p-6 grid grid-cols-1 gap-4 border-b border-stone-100">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.amount')}</label>
-                    <input
-                      type="number" min={1} value={payAmount}
-                      onChange={e => setPayAmount(e.target.value)}
-                      placeholder={String(remaining)}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.method')}</label>
-                    <select
-                      value={payMethod}
-                      onChange={e => { setPayMethod(e.target.value as PaymentMethod); setPayAccountId(''); }}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    >
-                      {(['cash', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
-                        <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.account')}</label>
-                    <select
-                      value={selectedAccountId}
-                      onChange={e => setPayAccountId(e.target.value)}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    >
-                      {availableAccounts.map(a => (
-                        <option key={a.id} value={a.id}>{a.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.reference')}</label>
-                    <input
-                      type="text" value={payReference}
-                      onChange={e => setPayReference(e.target.value)}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">Notes</label>
-                    <input
-                      type="text" value={payNotes}
-                      onChange={e => setPayNotes(e.target.value)}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowPayForm(false)}
-                      className="px-4 py-2.5 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-50 transition-colors">
-                      {t('common.cancel')}
-                    </button>
-                    <button
-                      onClick={handleRecordPayment}
-                      disabled={!payAmount || !selectedAccountId || recordPayment.isPending || (isRefundDoc && parseInt(payAmount, 10) > remaining)}
-                      className="px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
-                    >
-                      {recordPayment.isPending ? t('common.saving') : t('common.confirm')}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
-            <div className="p-6 border-b border-stone-100">
-              <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{isRefundDoc ? t('invoice.refundHistory') : t('invoice.paymentHistory')}</h4>
-            </div>
-            {invoice.payments.length === 0 ? (
-              <div className="p-10 text-center text-xs text-on-surface-variant/40">{isRefundDoc ? t('invoice.noRefunds') : t('invoice.noPayments')}</div>
-            ) : (
-              <div className="divide-y divide-stone-100">
-                {invoice.payments.map(p => (
-                  <div key={p.id} className="p-5 flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      <div className="w-10 h-10 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                        <CreditCard className="w-4 h-4 text-stone-500" />
-                      </div>
-                      <div className="min-w-0 flex-1 flex flex-col gap-1">
-                        <p className="text-sm font-bold text-stone-900 tracking-tight">{fmtAmount(p.amount)}</p>
-                        <div className="flex items-center gap-1.5 text-[11px] text-stone-500 flex-wrap leading-relaxed">
-                          <span className="font-medium text-stone-700">{t(`invoice.method_${p.method}`)}</span>
-                          <span className="text-stone-300">•</span>
-                          <span>{p.account.name}</span>
-                          <span className="text-stone-300">•</span>
-                          <span>{fmtDate(p.paidAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 pt-0.5">
-                      <span className={cn(
-                        'px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border',
-                        p.status === 'completed' ? 'bg-teal-50 text-teal-700 border-teal-200' :
-                          p.status === 'refunded' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                            'bg-stone-100 text-stone-500 border-stone-200',
-                      )}>
-                        {p.status}
-                      </span>
-                      {canVoid && p.status === 'completed' && (
-                        <button
-                          onClick={() => { setSelectedPaymentId(p.id); setConfirmRefundModalOpen(true); }}
-                          disabled={voidPayment.isPending}
-                          className="p-2 rounded-xl text-on-surface-variant/40 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                          title={t('invoice.voidPayment')}
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+        {/* ── Sidebar : mouvement d'argent — encaissement pour un acompte, remboursement pour un
+            avoir visé (hidden on print) ── */}
+        {(invoice.kind === 'deposit' || isRefundDoc) && (
+          <div className="no-print space-y-6">
+            {nothingToRefund && (
+              <div className="bg-white rounded-3xl border border-stone-200 p-6 flex items-start gap-3 text-on-surface-variant/70">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p className="text-xs leading-relaxed">{t('invoice.nothingToRefund')}</p>
               </div>
             )}
+            {canReceivePayment && canRecordPayment && (
+              <div className="bg-white rounded-3xl border border-stone-200 overflow-hidden">
+                <div className="p-6 border-b border-stone-100 flex justify-between items-center flex-wrap gap-3">
+                  <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{isRefundDoc ? t('invoice.recordRefund') : t('invoice.recordPayment')}</h4>
+                  <button
+                    onClick={() => setShowPayForm(v => !v)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/10 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {isRefundDoc ? t('invoice.recordRefund') : t('invoice.recordPayment')}
+                  </button>
+                </div>
+                {showPayForm && (
+                  <InvoicePaymentForm
+                    amount={payAmount} onAmountChange={setPayAmount} amountPlaceholder={String(remaining)}
+                    method={payMethod} onMethodChange={m => { setPayMethod(m); setPayAccountId(''); }}
+                    accountId={selectedAccountId} onAccountChange={setPayAccountId}
+                    availableAccounts={availableAccounts}
+                    reference={payReference} onReferenceChange={setPayReference}
+                    notes={payNotes} onNotesChange={setPayNotes}
+                    onCancel={() => setShowPayForm(false)}
+                    onSubmit={handleRecordPayment}
+                    isPending={recordPayment.isPending}
+                    submitDisabled={!payAmount || !selectedAccountId || (isRefundDoc && parseInt(payAmount, 10) > remaining)}
+                  />
+                )}
+              </div>
+            )}
+
+            <InvoicePaymentHistory
+              title={isRefundDoc ? t('invoice.refundHistory') : t('invoice.paymentHistory')}
+              emptyText={isRefundDoc ? t('invoice.noRefunds') : t('invoice.noPayments')}
+              payments={invoice.payments}
+              canVoid={canVoid}
+              onVoidRequest={id => { setSelectedPaymentId(id); setConfirmRefundModalOpen(true); }}
+              isVoiding={voidPayment.isPending}
+            />
           </div>
-        </div>
-      )}
+        )}
       </div>
 
       <ConfirmModal

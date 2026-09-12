@@ -99,6 +99,7 @@ export type EffectiveStatus =
   | 'upcoming'
   | 'due_checkin'
   | 'in_progress'
+  | 'due_checkout'
   | 'overdue'
   | 'awaiting'
   | 'checked_out_unpaid'
@@ -134,7 +135,10 @@ function deriveEffectiveStatus(arrival: string, departure: string, status: Booki
   if (status === 'checked-out-paid')   return 'checked_out_paid';
   if (status === 'checked-out-unpaid') return 'checked_out_unpaid';
   if (status === 'checked-out')        return 'checked_out_unpaid'; // legacy, défensif
-  if (status === 'checked-in')         return now > dep ? 'overdue' : 'in_progress';
+  if (status === 'checked-in') {
+    if (now.toDateString() === dep.toDateString()) return 'due_checkout';
+    return now > dep ? 'overdue' : 'in_progress';
+  }
   if (status === 'awaiting')           return 'awaiting';
   if (now < arr) return arr.toDateString() === now.toDateString() ? 'due_checkin' : 'upcoming';
   if (now >= arr && now <= dep) return 'due_checkin';

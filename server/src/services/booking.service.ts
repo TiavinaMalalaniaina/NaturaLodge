@@ -61,6 +61,7 @@ export type EffectiveStatus =
   | 'upcoming'
   | 'due_checkin'
   | 'in_progress'
+  | 'due_checkout'
   | 'overdue'
   | 'awaiting'
   | 'checked_out_unpaid'
@@ -84,6 +85,9 @@ export function computeEffectiveStatus(b: { arrival: Date; departure: Date; stat
   if (b.status === 'CHECKED_OUT_UNPAID') return 'checked_out_unpaid';
   if (b.status === 'CHECKED_OUT')        return 'checked_out_unpaid'; // legacy — défensif, ne devrait plus survenir après le backfill
   if (b.status === 'CHECKED_IN') {
+    // Jour du départ prévu = doit quitter (statut d'alerte, sans impact facturation) ; le
+    // lendemain sans check-out réel = en retard (permet un check-out forcé, voir updateStatus).
+    if (now.toDateString() === b.departure.toDateString()) return 'due_checkout';
     return now > b.departure ? 'overdue' : 'in_progress';
   }
   if (b.status === 'AWAITING') return 'awaiting';
@@ -283,14 +287,24 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
       status = isPaid ? 'CHECKED_OUT_PAID' : 'CHECKED_OUT_UNPAID';
     }
 
+    const isCheckout = status === 'CHECKED_OUT_UNPAID' || status === 'CHECKED_OUT_PAID';
+
+    // Horodatage réel du geste, distinct des dates prévues arrival/departure (imprimé sur la
+    // facture — voir invoice.service.ts). Un retour en arrière (revert CONFIRMED/AWAITING) efface
+    // l'horodatage : il ne doit pas survivre à l'action qui l'a produit.
+    const timestamps: Prisma.BookingUpdateInput =
+      status === 'CHECKED_IN' ? { checkedInAt: new Date() } :
+      isCheckout              ? { checkedOutAt: new Date() } :
+      (status === 'CONFIRMED' || status === 'AWAITING') ? { checkedInAt: null, checkedOutAt: null } :
+      {};
+
     const booking = await tx.booking.update({
       where: { id },
-      data:  { status },
+      data:  { status, ...timestamps },
       include: detailInclude,
     });
 
     const roomIds = booking.rooms.map(br => br.roomId);
-    const isCheckout = status === 'CHECKED_OUT_UNPAID' || status === 'CHECKED_OUT_PAID';
 
     if (status === 'CHECKED_IN') {
       // Check-in direct → OCCUPIED immédiat

@@ -1,1 +1,8 @@
 TODO.md
+
+# Claude Code — artefacts locaux / contenu de plugin téléchargé, pas partagé avec l'équipe.
+# Une skill écrite spécifiquement pour ce projet peut être committée à part (retirer sa ligne
+# ci-dessous ou ajouter une exception `!.claude/skills/<nom>/`).
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+.claude/skills/

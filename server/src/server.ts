@@ -11,6 +11,7 @@ import { staffRouter } from './routes/staff';
 import { extrasRouter } from './routes/extras';
 import { paymentsRouter } from './routes/payments';
 import { ledgerRouter } from './routes/ledger';
+import { kpiRouter } from './routes/kpi';
 import { expensesRouter } from './routes/expenses';
 import { auditLogsRouter } from './routes/auditLogs';
 import { permissionsRouter } from './routes/permissions';
@@ -29,7 +30,7 @@ app.use(express.json());
 // chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
 app.use(auditLogger);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.0.0' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.1.0' }));
 
 app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
@@ -41,6 +42,7 @@ app.use('/api/staff', staffRouter);
 app.use('/api/extras', extrasRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/ledger', ledgerRouter);
+app.use('/api/kpi', kpiRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/permissions', permissionsRouter);

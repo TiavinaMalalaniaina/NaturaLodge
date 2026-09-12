@@ -86,6 +86,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'ledger.view_cash_accounts',  domain: 'ledger', description: 'Consulter les comptes de trésorerie et leur solde',                roles: FRONT_DESK },
   { key: 'ledger.access_all_accounts', domain: 'ledger', description: 'Voir tous les comptes de trésorerie et transférer sans restriction de compte', roles: ADMIN_MANAGER },
   { key: 'ledger.view_reports',        domain: 'ledger', description: 'Consulter relevés, résumé, bilan, compte de résultat, export CSV', roles: ADMIN_MANAGER },
+  { key: 'kpi.manage_target',          domain: 'ledger', description: 'Définir l\'objectif d\'occupation mensuel affiché sur le dashboard KPI', roles: ADMIN_MANAGER },
   { key: 'ledger.transfer',            domain: 'ledger', description: 'Effectuer un virement entre comptes de trésorerie',                roles: ADMIN_MANAGER },
   { key: 'ledger.contribute',          domain: 'ledger', description: 'Enregistrer un apport externe (capital propriétaire...)',          roles: ADMIN_MANAGER },
   { key: 'ledger.manage_accounts',     domain: 'ledger', description: 'Créer, modifier un compte du plan comptable et gérer les accès trésorerie', roles: ADMIN_ONLY },
