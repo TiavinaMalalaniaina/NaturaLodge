@@ -3,7 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { Invoice } from '../../api/invoices';
-import { formatDate as fmtDate, formatDateTime as fmtDateTime, formatCurrency as fmtAmount } from '../../lib/format';
+import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../../lib/format';
 
 export interface MoneyRow {
   label:  string;
@@ -47,8 +47,8 @@ export const InvoiceDocumentCard: React.FC<Props> = ({
         </>
       ),
     },
-    { label: t('invoice.stayCheckIn'), value: invoice.booking.checkedInAt ? fmtDateTime(invoice.booking.checkedInAt) : fmtDate(invoice.booking.arrival) },
-    { label: t('invoice.stayCheckOut'), value: invoice.booking.checkedOutAt ? fmtDateTime(invoice.booking.checkedOutAt) : fmtDate(invoice.booking.departure) },
+    { label: t('invoice.stayCheckIn'), value: invoice.booking.checkedInAt ? fmtDate(invoice.booking.checkedInAt) : fmtDate(invoice.booking.arrival) },
+    { label: t('invoice.stayCheckOut'), value: invoice.booking.checkedOutAt ? fmtDate(invoice.booking.checkedOutAt) : fmtDate(invoice.booking.departure) },
     { label: t('invoice.registrationRef'), value: `#${invoice.bookingId.slice(-8).toUpperCase()}` },
     ...(invoice.relatesToInvoice ? [{ label: t('invoice.relatesTo'), value: invoice.relatesToInvoice.number ?? '—' }] : []),
   ];
