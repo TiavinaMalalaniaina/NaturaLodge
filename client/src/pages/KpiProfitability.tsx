@@ -2,7 +2,7 @@ import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../lib/format';
-import { Hero, Highlight, Stat, pct } from '../components/kpi/KpiWidgets';
+import { DeltaBadge, Hero, Highlight, Stat, pct } from '../components/kpi/KpiWidgets';
 import type { KpiOutletContext } from './KpiLayout';
 
 // Héros = résultat net (le verdict de rentabilité du mois) ; la marge nette d'exploitation et le
@@ -10,8 +10,10 @@ import type { KpiOutletContext } from './KpiLayout';
 // total) sont du détail explicatif, lus ensuite.
 export const KpiProfitability: React.FC = () => {
   const { t } = useTranslation();
-  const { data } = useOutletContext<KpiOutletContext>();
+  const { data, prevData } = useOutletContext<KpiOutletContext>();
   const { profitability: p } = data;
+  const prevP = prevData?.profitability;
+  const vsPrevMonth = t('kpi.vsPreviousMonth');
 
   return (
     <div className="space-y-8">
@@ -20,14 +22,20 @@ export const KpiProfitability: React.FC = () => {
           label={t('kpi.netIncome')}
           value={formatCurrency(p.netIncome)}
           accent={p.netIncome >= 0 ? 'pos' : 'neg'}
+          trend={<DeltaBadge current={p.netIncome} previous={prevP?.netIncome} kind="percent" variant="dark" title={vsPrevMonth} />}
         />
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
           <Highlight
             label={t('kpi.netOperatingMargin')}
             value={pct(p.netOperatingMargin)}
             accent={(p.netOperatingMargin ?? 0) >= 0 ? 'pos' : 'neg'}
+            trend={<DeltaBadge current={p.netOperatingMargin} previous={prevP?.netOperatingMargin} kind="points" title={vsPrevMonth} />}
           />
-          <Highlight label={t('kpi.revenue')} value={formatCurrency(p.revenue)} />
+          <Highlight
+            label={t('kpi.revenue')}
+            value={formatCurrency(p.revenue)}
+            trend={<DeltaBadge current={p.revenue} previous={prevP?.revenue} kind="percent" title={vsPrevMonth} />}
+          />
         </div>
       </div>
 

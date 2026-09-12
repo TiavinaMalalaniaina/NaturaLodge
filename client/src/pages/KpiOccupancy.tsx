@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { formatCurrency } from '../lib/format';
-import { Hero, Highlight, Stat, pct, num } from '../components/kpi/KpiWidgets';
+import { DeltaBadge, Hero, Highlight, Stat, pct, num } from '../components/kpi/KpiWidgets';
 import { OccupancyTargetCard } from '../components/kpi/OccupancyTargetCard';
 import type { KpiOutletContext } from './KpiLayout';
 
@@ -16,8 +16,10 @@ const ratio = (a: number, b: number) => (b === 0 ? null : a / b);
 // détail, lu ensuite de haut en bas.
 export const KpiOccupancy: React.FC = () => {
   const { t } = useTranslation();
-  const { data } = useOutletContext<KpiOutletContext>();
+  const { data, prevData } = useOutletContext<KpiOutletContext>();
   const { occupancy: o, byRoomType, byRoom, period } = data;
+  const prevO = prevData?.occupancy;
+  const vsPrevMonth = t('kpi.vsPreviousMonth');
 
   return (
     <div className="space-y-8">
@@ -27,11 +29,16 @@ export const KpiOccupancy: React.FC = () => {
             label={t('kpi.occupancyRate')}
             value={pct(o.occupancyRate)}
             caption={`${num(o.roomNightsSold)} / ${num(o.roomNightsAvailable)} ${t('kpi.roomNightsAvailable').toLowerCase()}`}
+            trend={<DeltaBadge current={o.occupancyRate} previous={prevO?.occupancyRate} kind="points" variant="dark" title={vsPrevMonth} />}
           />
           <OccupancyTargetCard month={period.month} targetRate={o.occupancyTargetRate} gap={o.occupancyGapToTarget} />
         </div>
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <Highlight label={t('kpi.accommodationRevenueNet')} value={formatCurrency(o.accommodationRevenueNet)} />
+          <Highlight
+            label={t('kpi.accommodationRevenueNet')}
+            value={formatCurrency(o.accommodationRevenueNet)}
+            trend={<DeltaBadge current={o.accommodationRevenueNet} previous={prevO?.accommodationRevenueNet} kind="percent" title={vsPrevMonth} />}
+          />
           <Highlight
             label={t('kpi.revenueVariance')}
             value={formatCurrency(o.revenueVariance)}

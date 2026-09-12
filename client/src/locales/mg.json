@@ -571,6 +571,7 @@
     "revenueVariance":         "Elanelana tena izy / teorika",
     "occupancyTarget":         "Tanjona fibobohana",
     "invalidTarget":           "Tanjona tsy mety (0 ka hatramin'ny 150 %)",
+    "vsPreviousMonth":         "raha oharina amin'ny volana teo aloha",
     "roomType":                "Karazana efitrano",
     "byRoomTitle":             "Antsipiriany isaky ny efitrano",
     "room":                    "Efitrano",

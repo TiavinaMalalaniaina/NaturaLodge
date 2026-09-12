@@ -571,6 +571,7 @@
     "revenueVariance":         "Écart CA réel / théorique",
     "occupancyTarget":         "Objectif d'occupation",
     "invalidTarget":           "Objectif invalide (0 à 150 %)",
+    "vsPreviousMonth":         "vs mois précédent",
     "roomType":                "Type de chambre",
     "byRoomTitle":             "Détail par chambre",
     "room":                    "Chambre",

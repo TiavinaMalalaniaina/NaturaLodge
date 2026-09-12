@@ -82,9 +82,10 @@ export interface HotelKpis {
   };
 }
 
-// month au format "AAAA-MM"
-export const fetchHotelKpis = async (month: string): Promise<HotelKpis> => {
-  const { data } = await api.get<HotelKpis>('/kpi', { params: { month } });
+// month au format "AAAA-MM". `detail: false` (mois de comparaison "vs mois précédent") saute les
+// requêtes de détail par chambre côté serveur — byRoomType/byRoom reviennent vides.
+export const fetchHotelKpis = async (month: string, detail = true): Promise<HotelKpis> => {
+  const { data } = await api.get<HotelKpis>('/kpi', { params: { month, detail: detail ? undefined : '0' } });
   return data;
 };
 

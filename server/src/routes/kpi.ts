@@ -13,7 +13,7 @@ kpiRouter.use(authenticate);
 kpiRouter.get('/', can('ledger.view_reports'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = kpiQuerySchema.safeParse(req.query);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.json(await kpiService.getHotelKpis(parsed.data));
+  res.json(await kpiService.getHotelKpis({ month: parsed.data.month, detail: parsed.data.detail !== '0' }));
 }));
 
 // PUT /kpi/occupancy-target  ──  définit/modifie l'objectif d'occupation d'un mois (ex: prévision

@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
 // Le tableau de bord KPI raisonne toujours par mois calendaire.
+// `detail=0` saute les 2 requêtes de détail par chambre (byRoomAgg + rooms), inutiles pour un mois
+// de comparaison ("vs mois précédent") où seuls les agrégats globaux servent aux DeltaBadge.
 export const kpiQuerySchema = z.object({
-  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Format attendu : AAAA-MM'),
+  month:  z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Format attendu : AAAA-MM'),
+  detail: z.enum(['0', '1']).optional(),
 });
 
 export type KpiQueryParams = z.infer<typeof kpiQuerySchema>;

@@ -3,11 +3,12 @@ import { fetchHotelKpis, setOccupancyTarget } from '../api/kpi';
 
 export const KPI_KEY = ['kpi'] as const;
 
-// month : "AAAA-MM"
-export function useHotelKpis(month: string) {
+// month : "AAAA-MM". `detail: false` pour un mois de simple comparaison (pas affiché, juste les
+// agrégats globaux pour les DeltaBadge) — clé de cache distincte du fetch complet du même mois.
+export function useHotelKpis(month: string, detail = true) {
   return useQuery({
-    queryKey: [...KPI_KEY, month],
-    queryFn:  () => fetchHotelKpis(month),
+    queryKey: [...KPI_KEY, month, detail],
+    queryFn:  () => fetchHotelKpis(month, detail),
     placeholderData: (prev) => prev,
   });
 }

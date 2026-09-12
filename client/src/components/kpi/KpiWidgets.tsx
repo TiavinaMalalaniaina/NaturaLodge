@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 // Formatage partagé par les 3 dashboards KPI (occupation, facturation, rentabilité).
@@ -9,11 +10,53 @@ export const num = (v: number | null) =>
 
 type Accent = 'pos' | 'neg';
 
+// Écart par rapport au mois précédent, affiché en haut à droite d'un Hero/Highlight — jamais sur
+// les Stat (bruit inutile sur du détail). `points` : différence brute ×100, pour des ratios déjà
+// en fraction (occupancyRate, netOperatingMargin...). `percent` : variation relative, pour des
+// montants (CA, encaissement...) — masqué si le mois précédent vaut 0 (division impossible) ou est
+// indisponible (pas encore chargé, ou hors période couverte par les vues KPI).
+export const DeltaBadge: React.FC<{
+  current: number | null;
+  previous: number | null | undefined;
+  kind: 'points' | 'percent';
+  invert?: boolean;
+  variant?: 'light' | 'dark';
+  title?: string;
+}> = ({ current, previous, kind, invert, variant = 'light', title }) => {
+  if (current == null || previous == null) return null;
+  const delta = kind === 'percent'
+    ? (previous === 0 ? null : ((current - previous) / Math.abs(previous)) * 100)
+    : (current - previous) * 100;
+  if (delta == null) return null;
+
+  const isFlat = Math.abs(delta) < 0.05;
+  const isGood = invert ? delta < 0 : delta > 0;
+  const Icon = isFlat ? Minus : isGood ? ArrowUpRight : ArrowDownRight;
+  const label = `${delta > 0 ? '+' : ''}${delta.toLocaleString('fr-MG', { maximumFractionDigits: 1 })}${kind === 'points' ? ' pts' : ' %'}`;
+
+  return (
+    <span
+      title={title}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-0.5 px-2 py-1 rounded-full text-[10px] font-bold tracking-wide whitespace-nowrap',
+        variant === 'dark'
+          ? isFlat ? 'bg-white/10 text-white/50' : isGood ? 'bg-teal-400/20 text-teal-300' : 'bg-red-400/20 text-red-300'
+          : isFlat ? 'bg-stone-100 text-on-surface-variant/50' : isGood ? 'bg-teal-50 text-teal-700' : 'bg-red-50 text-red-600',
+      )}
+    >
+      <Icon className="w-3 h-3" /> {label}
+    </span>
+  );
+};
+
 // Chiffre héros — un seul par page, en haut à gauche (repère Z/F), la plus grande taille de texte
 // du dashboard. Réservé à LA métrique qui résume la page à elle seule.
-export const Hero: React.FC<{ label: string; value: React.ReactNode; caption?: string; accent?: Accent }> = ({ label, value, caption, accent }) => (
+export const Hero: React.FC<{ label: string; value: React.ReactNode; caption?: string; accent?: Accent; trend?: React.ReactNode }> = ({ label, value, caption, accent, trend }) => (
   <div className="bg-stone-900 text-white rounded-[2rem] p-8 md:p-10 flex flex-col justify-between min-h-[220px] organic-shadow">
-    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/50">{label}</p>
+    <div className="flex items-start justify-between gap-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/50">{label}</p>
+      {trend}
+    </div>
     <p className={cn(
       'font-display italic text-5xl md:text-6xl leading-none mt-4',
       accent === 'pos' ? 'text-teal-300' : accent === 'neg' ? 'text-red-300' : 'text-white',
@@ -23,9 +66,12 @@ export const Hero: React.FC<{ label: string; value: React.ReactNode; caption?: s
 );
 
 // 2-3 métriques de second plan, à côté du héros — plus petites que lui, plus grandes que les Stat.
-export const Highlight: React.FC<{ label: string; value: React.ReactNode; caption?: string; accent?: Accent }> = ({ label, value, caption, accent }) => (
+export const Highlight: React.FC<{ label: string; value: React.ReactNode; caption?: string; accent?: Accent; trend?: React.ReactNode }> = ({ label, value, caption, accent, trend }) => (
   <div className="bg-white rounded-3xl border border-stone-200/60 organic-shadow p-6 flex flex-col justify-between min-h-[104px]">
-    <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">{label}</p>
+    <div className="flex items-start justify-between gap-3">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">{label}</p>
+      {trend}
+    </div>
     <p className={cn(
       'font-mono text-2xl md:text-3xl font-bold mt-2',
       accent === 'pos' ? 'text-teal-700' : accent === 'neg' ? 'text-red-600' : 'text-on-surface',

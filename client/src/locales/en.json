@@ -571,6 +571,7 @@
     "revenueVariance":         "Real vs theoretical variance",
     "occupancyTarget":         "Occupancy target",
     "invalidTarget":           "Invalid target (0 to 150%)",
+    "vsPreviousMonth":         "vs previous month",
     "roomType":                "Room type",
     "byRoomTitle":             "Per-room detail",
     "room":                    "Room",

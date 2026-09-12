@@ -8,7 +8,10 @@ import { prisma } from '../lib/prisma';
 // Convention de signe (reprise de ledger.service.ts:normalBalance) :
 //   REVENUE / LIABILITY / EQUITY → Σ(credit − debit)   |   ASSET / EXPENSE → Σ(debit − credit)
 
-export type KpiParams = { month: string }; // "AAAA-MM"
+// detail=false saute les 2 requêtes de détail par chambre (byRoomAgg + rooms) — utilisé pour le
+// mois de comparaison ("vs mois précédent"), où seuls les agrégats globaux servent aux DeltaBadge
+// du dashboard ; byRoomType/byRoom reviennent alors vides plutôt que d'être recalculés pour rien.
+export type KpiParams = { month: string; detail?: boolean }; // "AAAA-MM"
 
 const num = (v: bigint | number | null | undefined): number => Number(v ?? 0);
 const ratio = (a: number, b: number): number | null => (b === 0 ? null : a / b);
@@ -17,7 +20,7 @@ type SumDC = { _sum: { debit: bigint | null; credit: bigint | null } };
 const revenueSide = (r: SumDC) => num(r._sum.credit) - num(r._sum.debit);
 const expenseSide = (r: SumDC) => num(r._sum.debit) - num(r._sum.credit);
 
-export async function getHotelKpis({ month }: KpiParams) {
+export async function getHotelKpis({ month, detail = true }: KpiParams) {
   const [y, m] = month.split('-').map(Number);
   const monthStart = new Date(Date.UTC(y, m - 1, 1));
   const lastOfMonth = new Date(Date.UTC(y, m, 0));
@@ -32,21 +35,15 @@ export async function getHotelKpis({ month }: KpiParams) {
   const cashInPeriod = { isCashAccount: true, ...inPeriod };
 
   const [
-    byType, byRoomAgg,
+    byType,
     accommodation, personnel, maintenance, byAccountType,
     paymentAgg, voidAgg, receivablesAgg,
     issuedCount, cancelledCount,
-    inventory, rooms,
+    inventory,
     occupancyTarget,
   ] = await Promise.all([
     prisma.kpiRoomNight.groupBy({
       by: ['roomTypeId', 'roomTypeName'],
-      where: { bookingStatus: { not: 'CANCELLED' }, nightDate: { gte: monthStart, lte: dateTo } },
-      _count: true,
-      _sum: { roomRate: true, catalogueRate: true },
-    }),
-    prisma.kpiRoomNight.groupBy({
-      by: ['roomId'],
       where: { bookingStatus: { not: 'CANCELLED' }, nightDate: { gte: monthStart, lte: dateTo } },
       _count: true,
       _sum: { roomRate: true, catalogueRate: true },
@@ -61,9 +58,23 @@ export async function getHotelKpis({ month }: KpiParams) {
     prisma.kpiInvoice.count({ where: { validatedDate: { gte: monthStart, lte: dateTo } } }),
     prisma.kpiInvoice.count({ where: { validatedDate: { gte: monthStart, lte: dateTo }, status: 'CANCELLED' } }),
     prisma.kpiRoomInventory.findMany(),
-    prisma.kpiRoom.findMany({ orderBy: { roomNumber: 'asc' } }),
     prisma.kpiOccupancyTarget.findUnique({ where: { month } }),
   ]);
+
+  // byRoomAgg (nuitées par chambre) + rooms (inventaire par chambre) : uniquement pour la table
+  // "détail par chambre" (byRoom) — sautées quand `detail` est faux (mois de comparaison "vs mois
+  // précédent", où seuls les agrégats globaux ci-dessus servent aux DeltaBadge du dashboard).
+  const [byRoomAgg, rooms] = detail
+    ? await Promise.all([
+        prisma.kpiRoomNight.groupBy({
+          by: ['roomId'],
+          where: { bookingStatus: { not: 'CANCELLED' }, nightDate: { gte: monthStart, lte: dateTo } },
+          _count: true,
+          _sum: { roomRate: true, catalogueRate: true },
+        }),
+        prisma.kpiRoom.findMany({ orderBy: { roomNumber: 'asc' } }),
+      ])
+    : [[], []];
 
   const totalOf = (type: 'REVENUE' | 'EXPENSE') => {
     const row = byAccountType.find(r => r.accountType === type);
