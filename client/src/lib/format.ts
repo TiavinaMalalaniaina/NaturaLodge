@@ -7,6 +7,12 @@ export function formatCurrency(n: number): string {
   return n.toLocaleString('fr-MG') + ' Ar';
 }
 
+// Date + heure — pour un horodatage réel (check-in/check-out), pas une date prévue.
+export function formatDateTime(d: Date | string): string {
+  const date = typeof d === 'string' ? new Date(d) : d;
+  return date.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 // Date locale (pas toISOString — qui convertit en UTC et décale d'un jour dans un
 // fuseau en avance sur UTC, ex: UTC+3 à Madagascar, puisque les dates manipulées
 // dans l'app sont construites en minuit local, pas en minuit UTC).
