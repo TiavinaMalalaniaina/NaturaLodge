@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { User, Key, ArrowRight, Fingerprint, Scan, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { PageLoader } from '../components/QueryLoader';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [error, setError] = useState('');
@@ -28,6 +29,12 @@ export const LoginPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Déjà connecté → pas de page de login : on file vers le tableau de bord (attend la fin de la
+  // vérification du token pour éviter un flash du formulaire).
+  if (authLoading) return <PageLoader />;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+
   return (
     <motion.main
       initial={{ opacity: 0 }}
