@@ -3,6 +3,66 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.1.0] — 2026-09-12
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.1.0`.
+>
+> Version **mineure** : uniquement additive — nouvelles colonnes/table nullables, nouvelle
+> permission qui dégrade proprement tant qu'elle n'est pas reseedée, aucun renommage ni suppression
+> côté API ou UI existante. Aucune rupture de compatibilité.
+
+### Ajouté
+
+**Tableau de bord KPI hôteliers, réparti sur 3 pages**
+- `/kpi` (occupation & revenu), `/kpi/billing` (facturation & encaissement), `/kpi/profitability`
+  (rentabilité & structure des charges) — remplace l'ancien écran unique qui empilait les 3
+  sections sans hiérarchie visuelle.
+- Hiérarchie façon Z/F sur chaque page : un chiffre héros qui résume la page (taux d'occupation /
+  encaissement net / résultat net), 2 métriques de second plan juste à côté, le détail (stats +
+  tableaux) lu ensuite.
+- Comparaison « vs mois précédent » (delta coloré) sur les métriques principales de chaque page.
+- Objectif d'occupation mensuel éditable (`KpiOccupancyTarget`, nouvelle permission
+  `kpi.manage_target`, ADMIN/MANAGER) comparé au taux réel directement sur `/kpi`.
+- ADR/RevPAR théoriques et ligne TOTAL sur les tableaux « par type de chambre » / « par chambre ».
+- `GET /kpi` accepte `detail=0` pour un calcul allégé (sans le détail par chambre) — utilisé pour
+  le mois de comparaison, évite de doubler inutilement le coût de calcul par visite de page.
+
+**Horodatage réel du check-in / check-out**
+- `Booking.checkedInAt` / `checkedOutAt` : horodatage réel du geste (distinct des dates prévues
+  `arrival`/`departure`), écrit par `PATCH /bookings/:id/status`, effacé si le geste est annulé
+  (revert check-in).
+- Nouveau statut effectif `due_checkout` : le jour du départ prévu, un séjour en cours passe en
+  « Doit quitter » (alerte visuelle) avant de devenir « En retard » le lendemain seulement — sans
+  aucun recalcul de facture automatique.
+- Facture : dates réelles d'arrivée/départ affichées (repli sur les dates prévues tant que le
+  check-in/check-out n'a pas eu lieu).
+
+### Modifié
+- Facture (`InvoiceView.tsx` / `InvoiceDocument.tsx`) : extraction de composants partagés
+  (`InvoiceDocumentCard`, `InvoicePaymentForm`, `InvoicePaymentHistory`) qui éliminaient des
+  divergences entre les deux pages (auteur/note d'un paiement absents sur l'une, date d'émission
+  d'un brouillon mal protégée sur l'autre, libellés non traduits).
+- Mise en page à l'impression de la facture : la barre latérale masquée ne laisse plus un tiers de
+  page vide, marges de page ajoutées, une ligne du tableau ne se coupe plus entre deux pages.
+- Bloc des totaux de facture rendu responsive (largeur bornée + alignement `justify-between`
+  plutôt qu'un espacement fixe qui s'étirait sur grand écran).
+
+### Corrigé
+- Le mois sélectionné sur le tableau de bord KPI se réinitialisait en changeant d'onglet — le
+  chargement à la demande du nouvel onglet remontait tout le layout parent (et son état local) ;
+  le mois vit désormais dans l'URL et un `Suspense` local isole le rechargement à l'onglet lui-même.
+- Libellés codés en dur non traduits sur la facture (en-têtes de tableau, statut de paiement,
+  bouton Imprimer, champs « Notes ») — jamais rendus correctement en anglais ou en malgache.
+
+### Notes de déploiement
+```bash
+cd server
+npx prisma migrate deploy        # KpiOccupancyTarget + Booking.checkedInAt/checkedOutAt
+                                  # (déjà câblé au démarrage du conteneur, rien à faire de plus)
+npx tsx prisma/seedPermissions.ts # ou seed.init.ts — nécessaire pour que ADMIN/MANAGER voient le
+                                   # contrôle d'édition de l'objectif d'occupation (kpi.manage_target)
+```
+
 ## [2.0.0] — 2026-09-06
 
 > `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.0.0`.
