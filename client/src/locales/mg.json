@@ -62,7 +62,9 @@
     "apply":        "Ampiharo",
     "optional":     "tsy tsy maintsy",
     "showMore":     "Mampiseho mihoatra",
-    "showLess":     "Mampiseho kely"
+    "showLess":     "Mampiseho kely",
+    "notes":        "Fanamarihana",
+    "print":        "Print"
   },
   "status": {
     "available":    "Afaka",
@@ -80,6 +82,7 @@
     "upcoming":     "Ho avy",
     "dueCheckin":   "Fidirana androany",
     "inProgress":   "Mandeha",
+    "dueCheckout":  "Tokony hivoaka",
     "overdue":      "Tapitra"
   },
   "auth": {
@@ -388,6 +391,8 @@
     "billTo":                "Faktiora ho an'ny",
     "documentDetail":        "Antsipiriany antontan-taratasy",
     "registrationRef":       "Firesevana",
+    "stayCheckIn":           "Fidirana",
+    "stayCheckOut":          "Fivoahana",
     "remaining":             "Sisa tsy naloa",
     "recordPayment":         "Mandraikitra fandoavana",
     "paymentHistory":        "Tantaran'ny fandoavana",
@@ -403,6 +408,11 @@
     "account":               "Kaonty nandraisana",
     "reference":             "Laharana",
     "voidPayment":           "Foana",
+    "processedBy":           "Nosoratan'i",
+    "paymentStatus_completed": "Vita",
+    "paymentStatus_pending":   "Miandry",
+    "paymentStatus_failed":    "Tsy nahomby",
+    "paymentStatus_refunded":  "Naverina",
     "taxRate":               "Tahan'ny hetra (%)",
     "status_pending":        "Tsy naloa",
     "status_paid":           "Naloa",

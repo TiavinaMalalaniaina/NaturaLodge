@@ -62,7 +62,9 @@
     "apply":        "Appliquer",
     "optional":     "optionnel",
     "showMore":     "Montrer plus",
-    "showLess":     "Montrer moins"
+    "showLess":     "Montrer moins",
+    "notes":        "Notes",
+    "print":        "Imprimer"
   },
   "status": {
     "available":    "Disponible",
@@ -80,6 +82,7 @@
     "upcoming":     "À venir",
     "dueCheckin":   "Arrivée du jour",
     "inProgress":   "En cours",
+    "dueCheckout":  "Doit quitter",
     "overdue":      "En retard"
   },
   "auth": {
@@ -388,6 +391,8 @@
     "billTo":                "Facturer à",
     "documentDetail":        "Détails du document",
     "registrationRef":       "Réservation",
+    "stayCheckIn":           "Arrivée",
+    "stayCheckOut":          "Départ",
     "remaining":             "Reste à payer",
     "recordPayment":         "Enregistrer un paiement",
     "paymentHistory":        "Historique des paiements",
@@ -403,6 +408,11 @@
     "account":               "Compte reçu",
     "reference":             "Référence",
     "voidPayment":           "Annuler",
+    "processedBy":           "Enregistré par",
+    "paymentStatus_completed": "Validé",
+    "paymentStatus_pending":   "En attente",
+    "paymentStatus_failed":    "Échoué",
+    "paymentStatus_refunded":  "Remboursé",
     "taxRate":               "Taux TVA (%)",
     "status_pending":        "Non payée",
     "status_paid":           "Payée",

@@ -152,6 +152,11 @@ model Booking {
   arrival      DateTime
   departure    DateTime
   status       BookingStatus @default(AWAITING)
+  // Horodatage réel du geste (pas la date prévue arrival/departure) — écrit par updateStatus()
+  // au check-in / check-out, effacé par un retour en arrière (revert). Imprimé sur la facture ;
+  // tant que null, la facture retombe sur arrival/departure.
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
   totalAmount  Int
   notes        String?
   createdAt    DateTime      @default(now())

@@ -69,6 +69,11 @@ export interface Invoice {
     id:        string;
     arrival:   string;
     departure: string;
+    // Horodatage réel du check-in/check-out (ISO, avec heure) — absents tant que le geste n'a pas
+    // eu lieu. Présents uniquement sur le détail (getById/getByBookingId), voir invoiceInclude côté
+    // serveur. Priment sur arrival/departure pour l'affichage une fois connus (InvoiceView/Document).
+    checkedInAt?:  string | null;
+    checkedOutAt?: string | null;
     guest:     { id: string; name: string; email: string };
     // Présents sur la liste (GET /invoices) — absents sur le détail (booking.rooms y est, pas ça).
     effectiveStatus?: EffectiveStatus;

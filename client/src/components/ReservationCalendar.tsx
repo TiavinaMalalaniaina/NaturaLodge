@@ -32,6 +32,7 @@ const BAR_CLS: Partial<Record<EffectiveStatus, string>> = {
   upcoming:           'bg-primary/15 text-primary border-primary/20',
   due_checkin:        'bg-amber-100  text-amber-800 border-amber-200',
   in_progress:        'bg-teal-700   text-white     border-teal-600',
+  due_checkout:       'bg-orange-100 text-orange-800 border-orange-200',
   overdue:             'bg-red-100    text-red-700   border-red-200',
   awaiting:            'bg-amber-100  text-amber-800 border-amber-200',
   checked_out_unpaid: 'bg-rose-50    text-rose-500  border-rose-100',

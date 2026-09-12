@@ -62,7 +62,9 @@
     "apply":        "Apply",
     "optional":     "optional",
     "showMore":     "Show more",
-    "showLess":     "Show less"
+    "showLess":     "Show less",
+    "notes":        "Notes",
+    "print":        "Print"
   },
   "status": {
     "available":    "Available",
@@ -80,6 +82,7 @@
     "upcoming":     "Upcoming",
     "dueCheckin":   "Due Check-in",
     "inProgress":   "In Progress",
+    "dueCheckout":  "Due Check-out",
     "overdue":      "Overdue"
   },
   "auth": {
@@ -388,6 +391,8 @@
     "billTo":                "Bill To",
     "documentDetail":        "Document Detail",
     "registrationRef":       "Reservation",
+    "stayCheckIn":           "Check-in",
+    "stayCheckOut":          "Check-out",
     "remaining":             "Remaining",
     "recordPayment":         "Record Payment",
     "paymentHistory":        "Payment History",
@@ -403,6 +408,11 @@
     "account":               "Received into",
     "reference":             "Reference",
     "voidPayment":           "Void",
+    "processedBy":           "Recorded by",
+    "paymentStatus_completed": "Completed",
+    "paymentStatus_pending":   "Pending",
+    "paymentStatus_failed":    "Failed",
+    "paymentStatus_refunded":  "Refunded",
     "taxRate":               "VAT Rate (%)",
     "status_pending":        "Unpaid",
     "status_paid":           "Paid",

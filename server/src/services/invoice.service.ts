@@ -75,6 +75,9 @@ const invoiceInclude = {
   booking: {
     select: {
       id: true, arrival: true, departure: true,
+      // Dates réelles du séjour, affichées sur la facture à la place d'arrival/departure (prévues)
+      // dès qu'elles sont connues — voir InvoiceView.tsx/InvoiceDocument.tsx.
+      checkedInAt: true, checkedOutAt: true,
       guest: { select: { id: true, name: true, email: true } },
       rooms: {
         include: {

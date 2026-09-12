@@ -70,8 +70,8 @@ export const BookingDetail: React.FC = () => {
 
   const es = booking.effectiveStatus;
   const canCheckIn = es === 'due_checkin';
-  const canCheckOut = (es === 'in_progress' || es === 'overdue') && canCheckOutBooking(booking.paymentStatus, can);
-  const canRevert = es === 'in_progress';
+  const canCheckOut = (es === 'in_progress' || es === 'due_checkout' || es === 'overdue') && canCheckOutBooking(booking.paymentStatus, can);
+  const canRevert = es === 'in_progress' || es === 'due_checkout';
   const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
   const canClose = can('bookings.close') && es === 'checked_out_paid';
