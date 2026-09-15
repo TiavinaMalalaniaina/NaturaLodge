@@ -3,6 +3,40 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.2.0] — 2026-09-15
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.2.0`.
+>
+> Version **mineure** : uniquement de l'observabilité et un fix de déploiement, aucun changement de
+> schéma ni de comportement fonctionnel. Rien à migrer ni à reseeder.
+
+### Ajouté
+
+**Stack de monitoring (VPS de production)**
+- `docker-compose.monitoring.yml` : Prometheus, Grafana (dashboard « NaturaLodge — App Performance »
+  préprovisionné), Loki + Promtail, node-exporter, cAdvisor, postgres-exporter, nginx-exporter,
+  Uptime Kuma — voir `monitoring/README.md` pour l'installation et l'accès.
+- `GET /metrics` (Prometheus, `server/src/middleware/metrics.ts`) : latence/débit/erreurs par route
+  + métriques Node par défaut, jamais exposé publiquement (scrapé via le réseau Docker interne).
+- Logs structurés JSON (`server/src/lib/logger.ts`, pino + `pino-http`), journalisation des requêtes
+  Prisma lentes (`server/src/lib/prisma.ts`, seuil `SLOW_QUERY_THRESHOLD_MS`, 200 ms par défaut).
+- `make monitoring-up` / `make monitoring-down` / `make monitoring-logs`.
+
+### Corrigé
+- Déploiement Coolify du conteneur `client` : `nginx.conf` proxyait `/api/` vers l'hôte fixe
+  `server`, qui n'existe que dans le `docker-compose.yml` local — sur la VPS, `db`/`server`/`client`
+  sont 3 ressources Coolify séparées et le conteneur backend n'a jamais eu ce nom, ce qui faisait
+  planter nginx au démarrage (`host not found in upstream "server"`, crash loop). Remplacé par
+  `client/nginx.conf.template` + `ENV API_UPSTREAM` (défaut `server`, substitué au démarrage du
+  conteneur par l'entrypoint nginx officiel) — un seul Dockerfile pour les deux environnements.
+
+### Notes de déploiement
+```bash
+# Ressource Coolify "client" : ajouter la variable d'environnement runtime
+API_UPSTREAM=naturalodge-server-container
+# (nom du conteneur backend sur la VPS — voir monitoring/README.md), puis redéployer.
+```
+
 ## [2.1.0] — 2026-09-12
 
 > `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.1.0`.
