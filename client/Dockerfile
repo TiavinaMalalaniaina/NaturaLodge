@@ -15,7 +15,12 @@ RUN npm run build
 
 # --- Runtime (nginx static) ------------------------------------------------
 FROM nginx:1.27-alpine AS runtime
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Nom d'hôte du conteneur serveur pour le proxy /api (voir nginx.conf.template) — "server" convient
+# au docker-compose.yml local ; surchargé par une variable d'environnement Coolify
+# (API_UPSTREAM=naturalodge-server-container) quand server/db/client sont 3 ressources séparées,
+# pas ce docker-compose.yml (voir monitoring/README.md).
+ENV API_UPSTREAM=server
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

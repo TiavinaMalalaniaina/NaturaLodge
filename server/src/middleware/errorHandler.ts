@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { AppError } from '../errors/AppError';
+import { logger } from '../lib/logger';
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof AppError) {
@@ -20,6 +21,6 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     if (err.code === 'P2003') { res.status(409).json({ error: 'Suppression impossible : des données liées existent encore' }); return; }
   }
 
-  console.error(err.stack);
+  logger.error({ err }, 'unhandled_error');
   res.status(500).json({ error: 'Erreur serveur interne' });
 }

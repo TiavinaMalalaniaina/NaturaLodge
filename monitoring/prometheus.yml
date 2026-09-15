@@ -1,0 +1,35 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Node.js + Express + Prisma — server/src/middleware/metrics.ts. Nom de conteneur stable côté
+  # Coolify (contrairement à db/client, voir docker-compose.monitoring.yml) — pas de paramétrage
+  # nécessaire tant qu'il n'est pas renommé dans l'UI Coolify.
+  - job_name: naturalodge-server
+    static_configs:
+      - targets: ["naturalodge-server-container:4000"]
+
+  # CPU / RAM / disque / réseau de la VPS elle-même
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # CPU / RAM par conteneur (db, server, client)
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # Connexions, cache hit ratio, requêtes lentes PostgreSQL
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # nginx (client) — nécessite le bloc stub_status ajouté dans client/nginx.conf
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
