@@ -4,9 +4,13 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # Proxy API calls to the backend service (docker-compose network)
+    # Proxy API calls to the backend service. ${API_UPSTREAM} = nom du conteneur serveur — "server"
+    # en local (docker-compose.yml), "naturalodge-server-container" sur la VPS Coolify où
+    # db/server/client sont 3 ressources séparées (voir monitoring/README.md). Substitué au
+    # démarrage par l'entrypoint nginx officiel (fichier .template dans /etc/nginx/templates/),
+    # donc résolu à chaque redémarrage du conteneur plutôt que figé au moment du build.
     location /api/ {
-        proxy_pass http://server:4000/api/;
+        proxy_pass http://${API_UPSTREAM}:4000/api/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
