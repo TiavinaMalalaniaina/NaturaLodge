@@ -1,8 +1,14 @@
 # --- Dependencies --------------------------------------------------------
 FROM node:22-alpine AS deps
 WORKDIR /app
+# IPv6 vers registry.npmjs.org instable/coupé sur certains VPS (ex. Contabo) → ECONNRESET en plein
+# téléchargement, vu en prod côté server/Dockerfile — même fix ici par cohérence/prévention.
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm ci
 
 # --- Build ---------------------------------------------------------------
 FROM node:22-alpine AS build

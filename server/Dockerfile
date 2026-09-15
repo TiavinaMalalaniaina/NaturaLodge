@@ -2,11 +2,19 @@
 FROM node:22-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache openssl
+# IPv6 vers registry.npmjs.org instable/coupé sur certains VPS (ex. Contabo) → Node résout le
+# registry en IPv6 par défaut, la connexion traîne puis se coupe (ECONNRESET en plein téléchargement,
+# vu en prod). Force IPv4 en priorité pour npm/Node sans dépendre d'une correction réseau côté hôte.
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 # --- Dependencies --------------------------------------------------------
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# Retries généreux : une coupure réseau isolée ne doit plus faire échouer tout le déploiement.
+RUN npm config set fetch-retries 5 \
+ && npm config set fetch-retry-mintimeout 20000 \
+ && npm config set fetch-retry-maxtimeout 120000 \
+ && npm ci
 
 # --- Build ---------------------------------------------------------------
 FROM base AS build
