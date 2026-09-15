@@ -1,0 +1,40 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Proxy API calls to the backend service. ${API_UPSTREAM} = nom du conteneur serveur — "server"
+    # en local (docker-compose.yml), "naturalodge-server-container" sur la VPS Coolify où
+    # db/server/client sont 3 ressources séparées (voir monitoring/README.md). Substitué au
+    # démarrage par l'entrypoint nginx officiel (fichier .template dans /etc/nginx/templates/),
+    # donc résolu à chaque redémarrage du conteneur plutôt que figé au moment du build.
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM}:4000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SPA fallback: let React Router handle client-side routes
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(?:css|js|svg|png|jpg|jpeg|gif|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Métriques nginx pour nginx-prometheus-exporter (monitoring/) — restreint au réseau Docker
+    # interne (naturalodge-network) : jamais exposé publiquement même si le port 80 du conteneur
+    # l'est via docker-compose.yml, contrairement au reste de ce server block.
+    location = /nginx_status {
+        stub_status on;
+        allow 172.16.0.0/12;
+        allow 192.168.0.0/16;
+        deny all;
+    }
+}

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import pinoHttp from 'pino-http';
 import { authRouter } from './routes/auth';
 import { roomsRouter } from './routes/rooms';
 import { roomTypesRouter } from './routes/roomTypes';
@@ -19,18 +20,30 @@ import { rolesRouter } from './routes/roles';
 import { startScheduler } from './lib/scheduler';
 import { errorHandler } from './middleware/errorHandler';
 import { auditLogger } from './middleware/auditLog';
+import { metricsMiddleware, registry } from './middleware/metrics';
+import { logger } from './lib/logger';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
 app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:3000', credentials: true }));
 app.use(express.json());
+app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/metrics' || req.url === '/health' } }));
+app.use(metricsMiddleware);
 // Monté avant les routers : le middleware n'écrit qu'au moment où la réponse se termine
 // (`res.on('finish')`), donc `req.user` — posé par `authenticate` plus loin dans la chaîne pour
 // chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
 app.use(auditLogger);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.1.0' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.2.0' }));
+
+// Scrapé par Prometheus (monitoring/prometheus.yml) via le réseau Docker interne
+// (naturalodge-network) — jamais publié sur un port exposé à l'hôte, donc jamais accessible
+// depuis l'extérieur de la VPS malgré l'absence d'authentification sur cette route.
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', registry.contentType);
+  res.send(await registry.metrics());
+});
 
 app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
@@ -53,10 +66,10 @@ app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 app.use(errorHandler);
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason);
+  logger.error({ err: reason }, 'unhandled_rejection');
 });
 
 app.listen(PORT, () => {
-  console.log(`🏨 NaturaLodge API running on http://localhost:${PORT}`);
+  logger.info(`🏨 NaturaLodge API running on http://localhost:${PORT}`);
   startScheduler();
 });

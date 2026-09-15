@@ -1,7 +1,8 @@
 COMPOSE = docker compose
 
 .PHONY: help build up down restart stop logs logs-server logs-client ps clean migrate seed studio sh-server sh-client sh-db \
-	install install-server install-client dev dev-server dev-client db-up db-down local-migrate local-seed local-studio
+	install install-server install-client dev dev-server dev-client db-up db-down local-migrate local-seed local-studio \
+	monitoring-up monitoring-down monitoring-logs
 
 help: ## Affiche cette aide
 	@echo Cibles disponibles :
@@ -22,6 +23,10 @@ help: ## Affiche cette aide
 	@echo     sh-server     Shell dans le conteneur server
 	@echo     sh-client     Shell dans le conteneur client
 	@echo     sh-db         Shell psql dans le conteneur db
+	@echo   [Monitoring]
+	@echo     monitoring-up    Demarre Prometheus/Grafana/Loki/exporters/Uptime Kuma (voir monitoring/README.md)
+	@echo     monitoring-down  Arrete le stack de monitoring (donnees conservees)
+	@echo     monitoring-logs  Suit les logs du stack de monitoring
 	@echo   [Local, sans Docker]
 	@echo     install       Installe les dependances npm (client + serveur)
 	@echo     dev           Lance serveur+client en parallele (meme terminal)
@@ -79,6 +84,19 @@ sh-client: ## Ouvre un shell dans le conteneur client
 
 sh-db: ## Ouvre un shell psql dans le conteneur db
 	$(COMPOSE) exec db psql -U naturalodge -d naturalodge
+
+# ─── Monitoring (Prometheus/Grafana/Loki/exporters/Uptime Kuma) ────────────
+# Fichier compose séparé, se raccroche au réseau nommé "naturalodge-network" créé par `make up` —
+# lancer la stack principale au moins une fois avant. Voir monitoring/README.md.
+
+monitoring-up: ## Démarre le stack de monitoring
+	$(COMPOSE) -f docker-compose.monitoring.yml up -d
+
+monitoring-down: ## Arrête le stack de monitoring (données conservées)
+	$(COMPOSE) -f docker-compose.monitoring.yml down
+
+monitoring-logs: ## Suit les logs du stack de monitoring
+	$(COMPOSE) -f docker-compose.monitoring.yml logs -f
 
 # ─── Lancement en local (sans Docker) ──────────────────────────────────────
 # Utilise npm run dev directement (client + serveur tournent sur la machine hôte).

@@ -1,0 +1,44 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Auto-découverte de tous les conteneurs Docker de la VPS (pas seulement les nôtres — Coolify et
+  # ses propres services tournent dessus aussi) — filtré par nom via relabeling pour ne garder que
+  # server/db/client. `naturalodge-server-container` est stable (nom fixé côté Coolify) ; les deux
+  # autres sont les noms auto-générés constatés le 2026-09-13 (`docker ps`) — le préfixe avant le
+  # dernier "-" est priori stable au redéploiement, le suffixe (id de déploiement) ne l'est pas.
+  # À corriger ici si un déploiement casse le suivi des logs de db/client (voir monitoring/README.md
+  # pour fixer un nom de conteneur stable côté Coolify une bonne fois pour toutes).
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: [container]
+        regex: '.*(naturalodge-server-container|fyras9iwq30860e2irn6oogg|c6uht499syquqb605dbdxocq).*'
+        action: keep
+    pipeline_stages:
+      # Format d'enveloppe du driver json-file de Docker : {"log": "...", "stream": "...", ...}
+      - docker: {}
+      # Le contenu de `server` est du JSON pino (voir lib/logger.ts) — extrait level/msg comme
+      # labels pour pouvoir filtrer "toutes les erreurs" dans Grafana sans regex sur le texte brut.
+      # Silencieusement ignoré pour db/client (texte brut, pas du JSON) grâce à `expression`.
+      - match:
+          selector: '{container=~".*server.*"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  msg: msg
+            - labels:
+                level:
