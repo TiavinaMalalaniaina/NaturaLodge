@@ -11,11 +11,10 @@ clients:
 scrape_configs:
   # Auto-découverte de tous les conteneurs Docker de la VPS (pas seulement les nôtres — Coolify et
   # ses propres services tournent dessus aussi) — filtré par nom via relabeling pour ne garder que
-  # server/db/client. `naturalodge-server-container` est stable (nom fixé côté Coolify) ; les deux
-  # autres sont les noms auto-générés constatés le 2026-09-13 (`docker ps`) — le préfixe avant le
-  # dernier "-" est priori stable au redéploiement, le suffixe (id de déploiement) ne l'est pas.
-  # À corriger ici si un déploiement casse le suivi des logs de db/client (voir monitoring/README.md
-  # pour fixer un nom de conteneur stable côté Coolify une bonne fois pour toutes).
+  # server/db/client. `naturalodge-server-container` et `naturalodge-client-container` sont stables
+  # (noms fixés côté Coolify, Advanced/General → Container Name) ; `db` (`fyras9iwq30860e2irn6oogg`)
+  # ne l'est pas encore — à repasser en nom fixe pour ne plus avoir à corriger ce fichier après un
+  # redéploiement de la base (voir monitoring/README.md).
   - job_name: docker
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
@@ -25,7 +24,7 @@ scrape_configs:
         regex: '/(.*)'
         target_label: container
       - source_labels: [container]
-        regex: '.*(naturalodge-server-container|fyras9iwq30860e2irn6oogg|c6uht499syquqb605dbdxocq).*'
+        regex: '.*(naturalodge-server-container|naturalodge-client-container|fyras9iwq30860e2irn6oogg).*'
         action: keep
     pipeline_stages:
       # Format d'enveloppe du driver json-file de Docker : {"log": "...", "stream": "...", ...}

@@ -34,3 +34,6 @@ limits_config:
 compactor:
   working_directory: /loki/compactor
   retention_enabled: true
+  # Loki 3.x refuse de démarrer avec retention_enabled sans store pour les demandes de suppression
+  # (purge appliquée via delete requests, même en filesystem) — CONFIG ERROR sinon.
+  delete_request_store: filesystem

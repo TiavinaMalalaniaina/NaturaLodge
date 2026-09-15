@@ -22,23 +22,22 @@ s'arrête, se met à jour et redémarre sans jamais toucher à la prod.
 
 ## Identifier les 3 conteneurs de l'app (une fois, ou après un redéploiement)
 
-Coolify fixe un nom stable pour `server` (`naturalodge-server-container`), mais génère des noms
-aléatoires pour `db` et `client` — ces deux-là peuvent changer (surtout `client`, à chaque
-redéploiement du frontend). Vérifier via SSH :
+Coolify fixe un nom stable pour `server` (`naturalodge-server-container`) et `client`
+(`naturalodge-client-container`, épinglé le 2026-09-15) — déjà dans `monitoring/promtail-config.yml`
+et les valeurs par défaut de `docker-compose.monitoring.yml`. `db` génère encore un nom aléatoire
+à chaque redéploiement. Vérifier via SSH :
 
 ```bash
 docker ps --format '{{.Names}}\t{{.Image}}'
 ```
 
-Repérer l'image `postgres:16-alpine` (= `db`, ≠ `coolify-db` qui est la base interne de Coolify)
-et le conteneur nginx sur le port `80/tcp` (= `client`). Noms constatés le 2026-09-13 :
-`db=fyras9iwq30860e2irn6oogg`, `client=c6uht499syquqb605dbdxocq-193520081631` — déjà dans
-`monitoring/promtail-config.yml` et les valeurs par défaut de `docker-compose.monitoring.yml`,
-mais à revérifier si le monitoring perd les logs/métriques d'un des deux après un déploiement.
+Repérer l'image `postgres:16-alpine` (= `db`, ≠ `coolify-db` qui est la base interne de Coolify).
+Nom constaté le 2026-09-15 : `db=fyras9iwq30860e2irn6oogg` — à revérifier si le monitoring perd
+les métriques/logs de la base après un redéploiement.
 
-**Fix permanent recommandé** : dans l'UI Coolify, ressource `db` puis `client` → onglet
-Advanced/General → renseigner un *Container Name* fixe (comme déjà fait pour `server`) — évite de
-revenir sur ce fichier à chaque redéploiement.
+**Fix permanent recommandé** : dans l'UI Coolify, ressource `db` → onglet Advanced/General →
+renseigner un *Container Name* fixe (comme déjà fait pour `server` et `client`) — évite de revenir
+sur ce fichier à chaque redéploiement.
 
 ## Démarrage
 
@@ -50,7 +49,8 @@ ssh <user>@<vps-ip>
 cd /chemin/vers/le/repo && git pull
 
 export POSTGRES_EXPORTER_DSN="postgresql://<user>:<password>@fyras9iwq30860e2irn6oogg:5432/<db>?sslmode=disable"
-export CLIENT_CONTAINER="c6uht499syquqb605dbdxocq-193520081631"   # si différent de la valeur par défaut
+# CLIENT_CONTAINER : inutile de le redéfinir, la valeur par défaut (naturalodge-client-container)
+# correspond au nom fixé côté Coolify — seulement si tu le renommes à nouveau.
 export GRAFANA_ADMIN_PASSWORD="<choisis un vrai mot de passe>"
 
 docker compose -f docker-compose.monitoring.yml up -d
