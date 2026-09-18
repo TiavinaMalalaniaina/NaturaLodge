@@ -19,7 +19,7 @@ import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
-import { RichBooking, EffectiveStatus } from '../api/bookings';
+import { RichBooking, BookingRoomEntry, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
@@ -143,9 +143,9 @@ export const Reservations: React.FC = () => {
   // ── Grid helpers ──────────────────────────────────────────────────
 
 
-  function getBlockStyle(b: RichBooking): React.CSSProperties | null {
-    const startDay = dayDiff(windowStart, new Date(b.arrival));
-    const endDay = dayDiff(windowStart, new Date(b.departure));
+  function getBlockStyle(br: BookingRoomEntry): React.CSSProperties | null {
+    const startDay = dayDiff(windowStart, new Date(br.arrival));
+    const endDay = dayDiff(windowStart, new Date(br.departure));
     const s = Math.max(0, startDay);
     const e = Math.min(totalDays, endDay);
     if (e <= s) return null;
@@ -484,7 +484,7 @@ export const Reservations: React.FC = () => {
                 )}
 
                 {gridRooms.map(room => {
-                  const bookings = bookingsByRoomId.get(room.id) ?? [];
+                  const roomBookings = bookingsByRoomId.get(room.id) ?? [];
                   const isMaint = room.status === 'maintenance';
 
                   return (
@@ -534,14 +534,14 @@ export const Reservations: React.FC = () => {
                           </div>
                         )}
 
-                        {bookings.map(b => {
-                          const style = getBlockStyle(b);
+                        {roomBookings.map(({ booking: b, room: br }) => {
+                          const style = getBlockStyle(br);
                           if (!style) return null;
                           const cls = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
                           const isVip = b.guest.status === 'VIP_ELITE' || b.guest.status === 'PLATINUM_TIER';
                           return (
                             <div
-                              key={b.id}
+                              key={br.id}
                               style={style}
                               onClick={e => { e.stopPropagation(); setSelectedBooking(b); }}
                               className={cn(
@@ -555,7 +555,7 @@ export const Reservations: React.FC = () => {
                                 {can('bookings.reassign') && canModifyBooking(b.effectiveStatus, can) && (
                                   <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                     <button
-                                      onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
+                                      onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(r => ({ roomId: r.roomId, roomNumber: r.room.number, arrival: r.arrival, departure: r.departure })) }); }}
                                       className="p-0.5 hover:bg-white/20 rounded" title={t('reservations.reassign')}>
                                       <RefreshCw className="w-3 h-3" />
                                     </button>
