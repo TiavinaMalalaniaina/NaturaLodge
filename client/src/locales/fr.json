@@ -98,6 +98,12 @@
     "forgotPassword":    "Oublié ?",
     "orAccessVia":       "OU ACCÉDER VIA"
   },
+  "resetPassword": {
+    "title":             "Nouveau mot de passe",
+    "description":       "Veuillez définir votre nouveau mot de passe sécurisé pour finaliser l'accès à votre compte.",
+    "newPassword":       "Nouveau mot de passe",
+    "confirmPassword":   "Confirmer le mot de passe"
+  },
   "dashboard": {
     "title":             "Vue d'ensemble",
     "occupancy":         "Taux d'occupation",

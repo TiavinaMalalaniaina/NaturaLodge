@@ -21,8 +21,12 @@ export const LoginPage: React.FC = () => {
     setError('');
     setIsLoading(true);
     try {
-      await login(username, password);
-      navigate('/dashboard', { replace: true });
+      const result = await login(username, password);
+      if (result.requiresPasswordChange) {
+        navigate('/reset-password?token=' + encodeURIComponent(result.token), { state: { token: result.token } });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch {
       setError(t('auth.wrongCredentials'));
     } finally {
@@ -30,8 +34,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  // Déjà connecté → pas de page de login : on file vers le tableau de bord (attend la fin de la
-  // vérification du token pour éviter un flash du formulaire).
   if (authLoading) return <PageLoader />;
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
 

@@ -21,6 +21,9 @@ model User {
   avatar            String?
   joinedDate        DateTime      @default(now())
   lastLogin         DateTime?
+  isFirstLogin        Boolean  @default(true) 
+  resetPasswordToken  String?
+  resetPasswordExpires DateTime?
   guestNotes        GuestNote[]
   createdBookings   Booking[]
   issuedInvoices    Invoice[]
