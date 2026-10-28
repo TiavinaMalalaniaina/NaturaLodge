@@ -64,7 +64,9 @@
     "showMore": "Show more",
     "showLess": "Show less",
     "notes": "Notes",
-    "print": "Print"
+    "print": "Print",
+    "next": "Next →",
+    "prev": "← Prev"
   },
   "status": {
     "available": "Available",

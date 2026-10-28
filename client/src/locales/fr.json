@@ -64,7 +64,9 @@
     "showMore":     "Montrer plus",
     "showLess":     "Montrer moins",
     "notes":        "Notes",
-    "print":        "Imprimer"
+    "print":        "Imprimer",
+    "next":         "Suivant →",
+    "prev":         "← Précédent"
   },
   "status": {
     "available":    "Disponible",

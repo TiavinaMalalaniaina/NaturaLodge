@@ -64,7 +64,9 @@
     "showMore": "Mampiseho mihoatra",
     "showLess": "Mampiseho kely",
     "notes": "Fanamarihana",
-    "print": "Print"
+    "print": "Print",
+    "next": "Manaraka →",
+    "prev": "← Mialoha"
   },
   "status": {
     "available": "Afaka",
