@@ -70,10 +70,10 @@ export const ResetPassword: React.FC = () => {
             <Lock className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
-            Nouveau mot de passe
+            {t('resetPassword.title')}
           </h1>
           <p className="text-sm text-stone-500 mt-2">
-            Veuillez définir votre nouveau mot de passe sécurisé pour finaliser l'accès à votre compte.
+            {t('resetPassword.description')}
           </p>
         </div>
 
@@ -84,9 +84,9 @@ export const ResetPassword: React.FC = () => {
             className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center"
           >
             <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3" />
-            <h3 className="font-semibold text-emerald-900">Mot de passe mis à jour !</h3>
+            <h3 className="font-semibold text-emerald-900">{t('resetPassword.successTitle')}</h3>
             <p className="text-xs text-emerald-700 mt-1">
-              Redirection en cours vers la page de connexion...
+              {t('resetPassword.successMessage')}
             </p>
           </motion.div>
         ) : (
@@ -100,7 +100,7 @@ export const ResetPassword: React.FC = () => {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-                Nouveau mot de passe
+                {t('resetPassword.newPassword')}
               </label>
               <div className="relative">
                 <input
@@ -123,7 +123,7 @@ export const ResetPassword: React.FC = () => {
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-                Confirmer le mot de passe
+                {t('resetPassword.confirmPassword')}
               </label>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -144,7 +144,7 @@ export const ResetPassword: React.FC = () => {
                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  Enregistrer le mot de passe
+                  {t('resetPassword.saveButton')}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

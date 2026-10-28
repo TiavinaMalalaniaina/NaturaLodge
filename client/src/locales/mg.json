@@ -100,9 +100,17 @@
   },
   "resetPassword": {
     "title": "Teny miafina vaovao",
-    "description": "Fafao ny teny miafina vaovao sy azo antoka mba ahafahanao miditra ao amin'ny kaontinao.",
+    "description": "Ampidiro ny teny miafina vaovao sy azo antoka mba hamaranana ny fidirana amin'ny kaontinao.",
     "newPassword": "Teny miafina vaovao",
-    "confirmPassword": "Hamafiso ny teny miafina"
+    "confirmPassword": "Hamafiso ny teny miafina",
+    "invalidToken": "Tsy manan-kery na lany daty ilay rohy famerenana",
+    "passwordMismatch": "Tsy mitovy ireo teny miafina ireo",
+    "resetFailed": "Tsy nahomby ny fanavaozana ny teny miafina",
+    "invalidTokenTitle": "Rozy tsy manan-kery",
+    "invalidTokenMessage": "Tsy manan-kery na efa lany daty ilay rohy famerenana teny miafina.",
+    "successTitle": "Voakitika ny teny miafina !",
+    "successMessage": "Mandeha any amin'ny pejy fidirana...",
+    "saveButton": "Tehirizo ny teny miafina"
   },
   "dashboard": {
     "title": "Fijery ankapobeny",

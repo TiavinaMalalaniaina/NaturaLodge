@@ -102,7 +102,15 @@
     "title":             "Nouveau mot de passe",
     "description":       "Veuillez définir votre nouveau mot de passe sécurisé pour finaliser l'accès à votre compte.",
     "newPassword":       "Nouveau mot de passe",
-    "confirmPassword":   "Confirmer le mot de passe"
+    "confirmPassword":   "Confirmer le mot de passe",
+    "invalidToken":      "Token de réinitialisation invalide ou expiré",
+    "passwordMismatch":  "Les mots de passe ne correspondent pas",
+    "resetFailed":       "La réinitialisation du mot de passe a échoué",
+    "invalidTokenTitle": "Token invalide",
+    "invalidTokenMessage": "Le token de réinitialisation est invalide ou a expiré.",
+    "successTitle":      "Mot de passe mis à jour !",
+    "successMessage":    "Redirection en cours vers la page de connexion...",
+    "saveButton":        "Enregistrer le mot de passe"
   },
   "dashboard": {
     "title":             "Vue d'ensemble",

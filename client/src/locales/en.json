@@ -103,10 +103,14 @@
     "description": "Please set a secure new password to finalize access to your account.",
     "newPassword": "New password",
     "confirmPassword": "Confirm password",
+    "invalidToken": "Invalid or expired reset token",
     "passwordMismatch": "Passwords do not match",
-    "passwordTooShort": "Password must be at least 6 characters long",
-    "invalidToken": "Invalid or missing reset token",
-    "resetFailed": "Failed to reset password"
+    "resetFailed": "Password reset failed",
+    "invalidTokenTitle": "Invalid Token",
+    "invalidTokenMessage": "The reset token is invalid or has expired.",
+    "successTitle": "Password Updated!",
+    "successMessage": "Redirecting to the login page...",
+    "saveButton": "Save password"
   },
   "dashboard": {
     "title": "Overview",
