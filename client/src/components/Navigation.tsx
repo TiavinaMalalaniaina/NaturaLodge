@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, Star, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock, Landmark, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock, Landmark, BarChart3 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -77,7 +77,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     const active = navGroups.find(g => g.items.some(i => matchPath(i.path)));
     if (active) setOpenGroups(prev => prev.has(active.key) ? prev : new Set(prev).add(active.key));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   const toggleGroup = (key: string) => {

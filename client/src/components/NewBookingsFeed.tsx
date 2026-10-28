@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Zap, ExternalLink, Check, Trash2 } from 'lucide-react';
+import { Zap, Check, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useNotifications } from '../context/NotificationContext';
 import { useNow } from '../hooks/useNow';
@@ -31,7 +31,7 @@ export const NewBookingsFeed: React.FC = () => {
               <p className="text-xs text-on-surface-variant/50">No recent activities available.</p>
             </motion.div>
           ) : (
-            notifications.slice(0, 5).map((notif, i) => (
+            notifications.slice(0, 5).map((notif) => (
               <motion.div
                 key={notif.id}
                 initial={{ x: -10, opacity: 0 }}

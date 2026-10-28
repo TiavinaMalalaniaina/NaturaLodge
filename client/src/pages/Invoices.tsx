@@ -42,7 +42,6 @@ export const Invoices: React.FC = () => {
     page,
     limit: 20,
   });
-
   const invoices = data?.data ?? [];
   const meta     = data?.meta;
 
