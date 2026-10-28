@@ -64,6 +64,7 @@ export default tseslint.config(
           // Attributs techniques dont la valeur n'est pas un texte à traduire
           "jsx-attributes": {
             exclude: [
+              "activeClassName",
               "className",
               "styleName",
               "style",
@@ -75,12 +76,19 @@ export default tseslint.config(
               "data-testid",
               "data-test-id",
               "role",
+              "variant"
             ],
           },
           callees: {
             exclude: [
               "^can$",
               "^t$",
+            ],
+          },
+          "object-properties": {
+            exclude: [
+              "^color$",
+              "^height$",
             ],
           },
         },

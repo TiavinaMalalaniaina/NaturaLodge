@@ -26,6 +26,7 @@ import { getApiErrorMessage } from '../lib/apiError';
 import { useVirtualDayGrid } from '../hooks/useVirtualDayGrid';
 import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
 import { useAuth } from '../context/AuthContext';
+import i18n from '../i18n';
 
 // ── Block styles by effectiveStatus ──────────────────────────────
 
@@ -49,6 +50,8 @@ const ROOM_STATUS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
 const LABEL_W = 176;  // px for room label column
 
+const SYSTEM_NOTIFICATION_SOURCE = "system" as const;
+
 // ── Main component ────────────────────────────────────────────────
 
 export const Reservations: React.FC = () => {
@@ -57,6 +60,23 @@ export const Reservations: React.FC = () => {
 
   // View
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const viewOptions = [
+    {
+      v: "grid",
+      icon: <LayoutGrid className="w-4 h-4" />,
+      label: t("reservations.viewGrid"),
+    },
+    {
+      v: "list",
+      icon: <List className="w-4 h-4" />,
+      label: t("reservations.viewList"),
+    },
+    {
+      v: "calendar",
+      icon: <Calendar className="w-4 h-4" />,
+      label: t("reservations.calendar"),
+    },
+  ] as const;
 
   // Filters (shared)
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +109,13 @@ export const Reservations: React.FC = () => {
   const updateStatus = useUpdateBookingStatus();
   const closeBooking = useCloseBooking();
   const { addNotification } = useNotifications();
+
+  const visibleMonth = visibleDate.toLocaleString(
+    i18n.resolvedLanguage || i18n.language,
+    { month: "long" },
+  );
+
+  const visibleYear = visibleDate.getFullYear();
 
   const changeBookingStatus = (id: string, status: string) => {
     updateStatus.mutate({ id, status }, {
@@ -194,11 +221,7 @@ export const Reservations: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
             {/* View toggle */}
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
-              {([
-                { v: 'grid', icon: <LayoutGrid className="w-4 h-4" />, label: t('reservations.viewGrid') },
-                { v: 'list', icon: <List className="w-4 h-4" />, label: t('reservations.viewList') },
-                { v: 'calendar', icon: <Calendar className="w-4 h-4" />, label: t('reservations.calendar') },
-              ] as const).map(({ v, icon, label }) => (
+              {viewOptions.map(({ v, icon, label }) => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('p-2 rounded-lg transition-all flex items-center gap-2',
                     viewMode === v ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant/40 hover:text-on-surface-variant/60')}>
@@ -219,7 +242,7 @@ export const Reservations: React.FC = () => {
                 {/* Visible date info */}
                 <div className="text-center min-w-[140px] select-none">
                   <p className="text-sm font-bold text-on-surface leading-tight capitalize">
-                    {visibleDate.toLocaleString('en', { month: 'long' })} {visibleDate.getFullYear()}
+                    {visibleMonth} {visibleYear}
                   </p>
                   <p className="text-[9px] font-mono text-on-surface-variant/40">
                     {toStr(visibleDate)} – {toStr(addDays(visibleDate, 20))}
@@ -697,7 +720,7 @@ export const Reservations: React.FC = () => {
             </div>
 
             {/* Pagination */}
-            
+
             <div className="px-8 py-5 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">
                 {t('reservations.pageInfo', { page: meta?.page ?? 1, total: meta?.totalPages ?? 1, count: meta?.total ?? listBookings.length })}
@@ -766,7 +789,7 @@ export const Reservations: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} Ar</span>
+                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} {t('common.ariary')}</span>
                   <button onClick={() => setSelectedBooking(null)}
                     className="p-1.5 text-on-surface-variant/40 hover:text-on-surface hover:bg-stone-50 rounded-lg transition-colors">
                     <X className="w-4 h-4" />
@@ -890,7 +913,7 @@ export const Reservations: React.FC = () => {
         onConfirm={() => {
           closeBooking.mutate(closeBookingId!, {
             onError: (err) => addNotification({
-              source: 'system', title: 'Action failed',
+              source: SYSTEM_NOTIFICATION_SOURCE, title: t('common.actionFailed'),
               subtitle: getApiErrorMessage(err), amount: '--',
             }),
           });

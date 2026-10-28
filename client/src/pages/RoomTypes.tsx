@@ -157,7 +157,7 @@ export const RoomTypes: React.FC = () => {
                 <div className="min-w-0">
                   <h3 className="font-display italic text-xl text-on-surface">{rt.name}</h3>
                   <p className="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-widest mt-1">
-                    {rt.capacity} {t('common.guests_count')} · {rt.area}m² · {rt.bedType} · {rt.view}
+                    {rt.capacity} {t('common.guests_count')} · {rt.area} {t('rooms.surfaceUnit')} · {rt.bedType} · {rt.view}
                   </p>
                   <p className="text-[10px] text-on-surface-variant/40 mt-1">
                     {t('roomTypes.roomsCount', { count: rt.rooms.length })}
@@ -232,7 +232,7 @@ export const RoomTypes: React.FC = () => {
                       onChange={e => setForm(p => ({ ...p, capacity: e.target.value }))} className={field} />
                   </div>
                   <div>
-                    <label className={labelCls}>{t('rooms.surface')} (m²)</label>
+                    <label className={labelCls}>{t('rooms.surface')} ({t('rooms.surfaceUnit')})</label>
                     <input type="number" min={1} value={form.area}
                       onChange={e => setForm(p => ({ ...p, area: e.target.value }))} className={field} />
                   </div>

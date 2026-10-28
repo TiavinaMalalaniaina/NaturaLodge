@@ -66,7 +66,9 @@
     "notes": "Notes",
     "print": "Print",
     "next": "Next →",
-    "prev": "← Prev"
+    "prev": "← Prev",
+    "actionFailed": "Action Failed",
+    "ariary": " Ar"
   },
   "status": {
     "available": "Available",
@@ -251,7 +253,11 @@
     "maintenanceConflictsNote": "These bookings must be reassigned or cancelled.",
     "roomInMaintenance": "This room is under maintenance and cannot be booked.",
     "confirmMaintenanceTitle": "Flag for maintenance?",
-    "confirmMaintenanceMessage": "This room won't be bookable while under maintenance."
+    "confirmMaintenanceMessage": "This room won't be bookable while under maintenance.",
+    "attributes": "Attributes",
+    "extras": "Extras",
+    "surfaceUnit": "m²",
+    "rateOverrideSpecific": "(specific)"
   },
   "roomTypes": {
     "title": "Room Types",
@@ -662,5 +668,26 @@
     "loadingError": "Loading error",
     "checkBackend": "Check that the backend is started.",
     "noData": "No data available"
+  },
+  "staff": {
+    "title": "Employees",
+    "subtitle": "Manage staff access & roles",
+    "grantAccess": "Grant access",
+    "totalPersonnel": "Total personnel",
+    "active": "Active",
+    "onLeave": "On leave",
+    "searchPlaceholder": "Search by name, email or role…",
+    "showMemberLength": "Showing {{count}} member(s)",
+    "name": "Name",
+    "authorization": "Authorization",
+    "condition": "Condition",
+    "activity": "Activity",
+    "joinedDate": "Joined {{date}}",
+    "modify": "Modify",
+    "resetPassword": "Reset password",
+    "revokeAccess": "Revoke access",
+    "changeRole": "Change role?",
+    "roleChangeConfirmation": "{{name}} will be granted {{roleName}} access.",
+    "all": "All"
   }
 }

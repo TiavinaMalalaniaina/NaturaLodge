@@ -10,10 +10,12 @@ import { STAFF_ROLE_CLASS, STAFF_STATUS_DOT_CLASS } from '../lib/statusColors';
 import { FilterChip } from '../components/FilterChip';
 import { useAuth } from '../context/AuthContext';
 import { getApiErrorMessage } from '../lib/apiError';
+import { useTranslation } from 'react-i18next';
 
 export const Staff: React.FC = () => {
   const { data: staffList = [], isLoading, isError } = useStaff();
   const { data: roles = [] } = useRoles();
+  const { t } = useTranslation();
   const { can } = useAuth();
   const updateStaff = useUpdateStaff();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -53,15 +55,15 @@ export const Staff: React.FC = () => {
     <div className="space-y-10 pb-20">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
         <div>
-          <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-1 leading-none">Internal Cabinet</h2>
-          <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/40">Manage staff access & roles</p>
+          <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-1 leading-none">{t('staff.title')}</h2>
+          <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/40">{t('staff.subtitle')}</p>
         </div>
         {canCreateStaff && (
           <button
             onClick={() => setIsAddModalOpen(true)}
             className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
           >
-            <UserPlus className="w-4 h-4" /> Grant Access
+            <UserPlus className="w-4 h-4" /> {t('staff.grantAccess')}
           </button>
         )}
       </div>
@@ -69,9 +71,9 @@ export const Staff: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Total Personnel', value: staffList.length, icon: Users, color: 'text-primary' },
-          { label: 'Active', value: activeCount, icon: UserCheck, color: 'text-teal-500' },
-          { label: 'On Leave', value: onLeaveCount, icon: Shield, color: 'text-amber-500' },
+          { label: t('staff.totalPersonnel'), value: staffList.length, icon: Users, color: 'text-primary' },
+          { label: t('staff.active'), value: activeCount, icon: UserCheck, color: 'text-teal-500' },
+          { label: t('staff.onLeave'), value: onLeaveCount, icon: Shield, color: 'text-amber-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow flex items-center justify-between">
             <div>
@@ -100,7 +102,7 @@ export const Staff: React.FC = () => {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search member by name, username or email..."
+              placeholder={t('staff.searchPlaceholder')}
               className="w-full h-12 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-sm transition-all"
             />
           </div>
@@ -108,12 +110,12 @@ export const Staff: React.FC = () => {
             <div className="flex gap-1.5 flex-wrap">
               {roleTabs.map(r => (
                 <FilterChip key={r} active={roleFilter === r} onClick={() => setRoleFilter(r)} activeClassName="bg-zinc-900 text-white border-zinc-900">
-                  {r === 'ALL' ? 'All' : r}
+                  {r === 'ALL' ? t('staff.all') : r}
                 </FilterChip>
               ))}
             </div>
             <div className="h-8 w-[1px] bg-stone-200 mx-2 hidden md:block" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Showing {filteredStaff.length} Members</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('staff.showMemberLength', { count: filteredStaff.length })}</p>
           </div>
         </div>
 
@@ -121,10 +123,10 @@ export const Staff: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-stone-50/50">
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Personnel</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Authorization</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Condition</th>
-                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 text-right">Activity</th>
+                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('staff.name')}</th>
+                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('staff.authorization')}</th>
+                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('staff.condition')}</th>
+                <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 text-right">{t('staff.activity')}</th>
                 <th className="px-8 py-5 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40"></th>
               </tr>
             </thead>
@@ -181,7 +183,7 @@ export const Staff: React.FC = () => {
                     <p className="text-xs text-on-surface-variant font-light flex items-center justify-end gap-1.5">
                       <Clock className="w-3 h-3 opacity-40" /> {member.lastLogin}
                     </p>
-                    <p className="text-[9px] font-bold uppercase tracking-tighter opacity-20 mt-1">Joined {member.joinedDate}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-tighter opacity-20 mt-1">{t('staff.joinedDate', { date: member.joinedDate })}</p>
                   </td>
                   <td className="px-8 py-5 text-right w-10">
                     <button
@@ -198,7 +200,7 @@ export const Staff: React.FC = () => {
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2"
                         >
-                          Modifier
+                          {t('staff.modify')}
                         </button>
                         <button
                           onClick={() => {
@@ -206,7 +208,7 @@ export const Staff: React.FC = () => {
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2"
                         >
-                          Réinitialiser le mot de passe
+                          {t('staff.resetPassword')}
                         </button>
                         <button
                           onClick={() => {
@@ -214,7 +216,7 @@ export const Staff: React.FC = () => {
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                         >
-                          Bloquer le compte
+                          {t('staff.revokeAccess')}
                         </button>
                       </div>
                     )}
@@ -223,12 +225,6 @@ export const Staff: React.FC = () => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="p-8 bg-stone-50/50 flex justify-center">
-          <button className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 hover:text-primary transition-all">
-            Audit Full Personnel History
-          </button>
         </div>
       </div>
       <AddStaffModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
@@ -239,11 +235,11 @@ export const Staff: React.FC = () => {
           if (pendingRoleChange) handleRoleChange(pendingRoleChange.id, pendingRoleChange.roleId);
           setPendingRoleChange(null);
         }}
-        title="Change role?"
+        title={t('staff.changeRole')}
         message={pendingRoleChange
-          ? `${pendingRoleChange.name} will be granted "${pendingRoleChange.roleName}" access.`
+          ? t('staff.roleChangeConfirmation', { name: pendingRoleChange.name, roleName: pendingRoleChange.roleName })
           : ''}
-        confirmLabel="Confirm"
+        confirmLabel={t('common.confirm')}
         variant="warning"
         isPending={updateStaff.isPending}
       />

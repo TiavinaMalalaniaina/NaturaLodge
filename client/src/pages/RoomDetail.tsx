@@ -178,7 +178,7 @@ export const RoomDetail: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-bottom p-8">
               <div className="mt-auto">
                 <span className="text-[10px] font-bold text-white uppercase tracking-[0.3em] opacity-80">{room.type}</span>
-                <h3 className="font-display italic text-5xl text-white mt-2">Suite {room.number}</h3>
+                <h3 className="font-display italic text-5xl text-white mt-2">{room.number}</h3>
               </div>
             </div>
           </div>
@@ -223,44 +223,6 @@ export const RoomDetail: React.FC = () => {
                 );
               })}
             </div>
-          </div>
-
-          <div className="bg-primary/5 p-8 rounded-3xl border border-primary/10">
-            <h4 className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-6 flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 animate-bounce" /> {t('rooms.upcomingAvailability')}
-            </h4>
-            <div className="space-y-4 font-sans">
-              {[
-                { date: 'Oct 28 - Oct 30', guest: 'Available', type: 'Instant Book' },
-                { date: 'Oct 31 - Nov 04', guest: 'Thorne Party', type: 'Reservation #924' },
-                { date: 'Nov 05 - Nov 12', guest: 'S. Kovich', type: 'Direct VIP' },
-              ].map((res, i) => (
-                <div key={i} className={cn(
-                  "p-4 rounded-xl flex items-center justify-between border transition-all",
-                  res.guest === 'Available' ? "bg-white border-primary/20 shadow-sm" : "bg-stone-50/50 border-stone-100 opacity-60"
-                )}>
-                  <div>
-                    <p className="font-mono text-[10px] font-bold text-on-surface/60">{res.date}</p>
-                    <p className={cn(
-                      "font-display italic text-xl",
-                      res.guest === 'Available' ? "text-primary" : "text-on-surface-variant"
-                    )}>{res.guest}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{res.type}</p>
-                    {res.guest === 'Available' && (
-                      <button className="text-primary hover:text-primary-container cursor-pointer">
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button className="w-full py-4 mt-6 bg-white border border-primary/20 rounded-xl font-bold text-xs tracking-widest uppercase text-primary hover:bg-teal-50 transition-all cursor-pointer">
-              {t('rooms.consultFullLog')}
-            </button>
           </div>
         </section>
       </div>
