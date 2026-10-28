@@ -35,6 +35,7 @@ const AuditLog            = lazy(() => import('./pages/AuditLog').then(m => ({ d
 const Permissions          = lazy(() => import('./pages/Permissions').then(m => ({ default: m.Permissions })));
 const Accounts              = lazy(() => import('./pages/Accounts').then(m => ({ default: m.Accounts })));
 const TreasuryAccess        = lazy(() => import('./pages/TreasuryAccess').then(m => ({ default: m.TreasuryAccess })));
+const ResetPassword        = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 
 const App: React.FC = () => {
   return (
@@ -44,6 +45,7 @@ const App: React.FC = () => {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>

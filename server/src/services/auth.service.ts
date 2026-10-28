@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma';
 import { NotFoundError, UnauthorizedError, ForbiddenError } from '../errors/AppError';
@@ -17,6 +18,25 @@ export async function login(data: LoginInput) {
     throw new ForbiddenError('Compte désactivé');
   }
 
+  if (user.isFirstLogin) {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await prisma.user.update({ where: { id: user.id }, data: { resetPasswordToken: resetToken, resetPasswordExpires: resetPasswordExpires, lastLogin: new Date() } });
+    return {
+      requiresPasswordChange: true,
+      token: resetToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role.name,
+        avatar: user.avatar,
+        permissions: await getPermissionsForRole(user.role.name),
+      },
+    };
+  }
+
   await prisma.user.update({ where: { id: user.id }, data: { lastLogin: new Date() } });
 
   const token = jwt.sign(
@@ -26,14 +46,15 @@ export async function login(data: LoginInput) {
   );
 
   return {
+    requiresPasswordChange: false,
     token,
     user: {
-      id:          user.id,
-      username:    user.username,
-      email:       user.email,
-      name:        user.name,
-      role:        user.role.name,
-      avatar:      user.avatar,
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      role: user.role.name,
+      avatar: user.avatar,
       permissions: await getPermissionsForRole(user.role.name),
     },
   };
@@ -46,4 +67,41 @@ export async function getMe(userId: string) {
   });
   if (!user) throw new NotFoundError('Utilisateur');
   return { ...user, role: user.role.name, permissions: await getPermissionsForRole(user.role.name) };
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const { user } = await verifyResetToken(token);
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+      isFirstLogin: false,
+    },
+  });
+}
+
+export async function verifyResetToken(token: string) {
+  const user = await prisma.user.findFirst({
+    where: { resetPasswordToken: token, resetPasswordExpires: { gte: new Date() } },
+    include: { role: true },
+  });
+
+  if (!user) {
+    throw new UnauthorizedError('Token de réinitialisation invalide ou expiré');
+  }
+
+  return {
+    isValid: true,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      role: user.role.name,
+      avatar: user.avatar,
+    },
+  };
 }

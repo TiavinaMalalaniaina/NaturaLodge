@@ -22,6 +22,7 @@ export const Staff: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<'ALL' | string>('ALL');
   const [apiError, setApiError] = useState('');
   const [pendingRoleChange, setPendingRoleChange] = useState<{ id: string; name: string; roleId: string; roleName: string } | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const canManageRoles = can('staff.assign_role');
   const canCreateStaff = can('staff.create');
@@ -36,8 +37,8 @@ export const Staff: React.FC = () => {
     );
   }, [staffList, search, roleFilter]);
 
-  const activeCount   = staffList.filter(m => m.status === 'active').length;
-  const onLeaveCount  = staffList.filter(m => m.status === 'on-leave').length;
+  const activeCount = staffList.filter(m => m.status === 'active').length;
+  const onLeaveCount = staffList.filter(m => m.status === 'on-leave').length;
 
   const handleRoleChange = (id: string, roleId: string) => {
     setApiError('');
@@ -58,8 +59,8 @@ export const Staff: React.FC = () => {
         </div>
         {canCreateStaff && (
           <button
-             onClick={() => setIsAddModalOpen(true)}
-             className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-zinc-900 text-white px-8 py-3.5 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-black/10"
           >
             <UserPlus className="w-4 h-4" /> Grant Access
           </button>
@@ -68,21 +69,21 @@ export const Staff: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         {[
-           { label: 'Total Personnel', value: staffList.length,  icon: Users,     color: 'text-primary' },
-           { label: 'Active',          value: activeCount,       icon: UserCheck, color: 'text-teal-500' },
-           { label: 'On Leave',        value: onLeaveCount,       icon: Shield,    color: 'text-amber-500' },
-         ].map((stat, i) => (
-           <div key={i} className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{stat.label}</p>
-                <span className="text-3xl font-display italic">{stat.value}</span>
-              </div>
-              <div className={cn("w-12 h-12 rounded-2xl bg-stone-50 flex items-center justify-center", stat.color)}>
-                 <stat.icon className="w-6 h-6" />
-              </div>
-           </div>
-         ))}
+        {[
+          { label: 'Total Personnel', value: staffList.length, icon: Users, color: 'text-primary' },
+          { label: 'Active', value: activeCount, icon: UserCheck, color: 'text-teal-500' },
+          { label: 'On Leave', value: onLeaveCount, icon: Shield, color: 'text-amber-500' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{stat.label}</p>
+              <span className="text-3xl font-display italic">{stat.value}</span>
+            </div>
+            <div className={cn("w-12 h-12 rounded-2xl bg-stone-50 flex items-center justify-center", stat.color)}>
+              <stat.icon className="w-6 h-6" />
+            </div>
+          </div>
+        ))}
       </div>
 
       {apiError && (
@@ -94,27 +95,27 @@ export const Staff: React.FC = () => {
 
       <div className="bg-white rounded-[2.5rem] border border-stone-200/60 overflow-hidden organic-shadow">
         <div className="p-8 border-b border-stone-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
-           <div className="relative flex-1 max-w-md">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-             <input
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
+            <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search member by name, username or email..."
               className="w-full h-12 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none text-sm transition-all"
-             />
-           </div>
-           <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex gap-1.5 flex-wrap">
-                {roleTabs.map(r => (
-                  <FilterChip key={r} active={roleFilter === r} onClick={() => setRoleFilter(r)} activeClassName="bg-zinc-900 text-white border-zinc-900">
-                    {r === 'ALL' ? 'All' : r}
-                  </FilterChip>
-                ))}
-              </div>
-              <div className="h-8 w-[1px] bg-stone-200 mx-2 hidden md:block" />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Showing {filteredStaff.length} Members</p>
-           </div>
+            />
+          </div>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex gap-1.5 flex-wrap">
+              {roleTabs.map(r => (
+                <FilterChip key={r} active={roleFilter === r} onClick={() => setRoleFilter(r)} activeClassName="bg-zinc-900 text-white border-zinc-900">
+                  {r === 'ALL' ? 'All' : r}
+                </FilterChip>
+              ))}
+            </div>
+            <div className="h-8 w-[1px] bg-stone-200 mx-2 hidden md:block" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">Showing {filteredStaff.length} Members</p>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -172,10 +173,10 @@ export const Staff: React.FC = () => {
                     )}
                   </td>
                   <td className="px-8 py-5">
-                     <div className="flex items-center gap-2">
-                        <div className={cn("w-1.5 h-1.5 rounded-full", STAFF_STATUS_DOT_CLASS[member.status])} />
-                        <span className="text-xs text-on-surface/80 capitalize">{member.status.replace('-', ' ')}</span>
-                     </div>
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-1.5 h-1.5 rounded-full", STAFF_STATUS_DOT_CLASS[member.status])} />
+                      <span className="text-xs text-on-surface/80 capitalize">{member.status.replace('-', ' ')}</span>
+                    </div>
                   </td>
                   <td className="px-8 py-5 text-right">
                     <p className="text-xs text-on-surface-variant font-light flex items-center justify-end gap-1.5">
@@ -184,9 +185,40 @@ export const Staff: React.FC = () => {
                     <p className="text-[9px] font-bold uppercase tracking-tighter opacity-20 mt-1">Joined {member.joinedDate}</p>
                   </td>
                   <td className="px-8 py-5 text-right w-10">
-                    <button className="p-2 hover:bg-white rounded-xl transition-all border border-transparent hover:border-stone-200 group-hover:text-primary">
+                    <button
+                      onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
+                      className="p-2 hover:bg-white rounded-xl transition-all border border-transparent hover:border-stone-200"
+                    >
                       <MoreVertical className="w-5 h-5" />
                     </button>
+                    {openMenuId === member.id && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-lg border border-stone-100 py-2 z-50">
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-stone-700 hover:bg-stone-50 flex items-center gap-2"
+                        >
+                          Réinitialiser le mot de passe
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                        >
+                          Bloquer le compte
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -195,9 +227,9 @@ export const Staff: React.FC = () => {
         </div>
 
         <div className="p-8 bg-stone-50/50 flex justify-center">
-           <button className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 hover:text-primary transition-all">
-             Audit Full Personnel History
-           </button>
+          <button className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 hover:text-primary transition-all">
+            Audit Full Personnel History
+          </button>
         </div>
       </div>
       <AddStaffModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />

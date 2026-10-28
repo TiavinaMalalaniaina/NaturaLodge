@@ -18,7 +18,7 @@ interface AuthContextProps {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<{ requiresPasswordChange: boolean; token: string; user: AuthUser }>;
   logout: () => void;
   can: (permissionKey: string) => boolean;
 }
@@ -42,9 +42,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
-    const { data } = await api.post<{ token: string; user: AuthUser }>('/auth/login', { username, password });
+    const { data } = await api.post<{ token: string; user: AuthUser; requiresPasswordChange: boolean }>('/auth/login', { username, password });
+    if (data.requiresPasswordChange) {
+      return {
+        requiresPasswordChange: true,
+        token: data.token,
+        user: data.user,
+      };
+    }
     localStorage.setItem('naturalodge_token', data.token);
     setUser(data.user);
+    return {
+      requiresPasswordChange: false,
+      token: data.token,
+      user: data.user,
+    };
   }, []);
 
   const logout = useCallback(() => {
