@@ -70,7 +70,8 @@
     "actionFailed": "Action échouée",
     "ariary": " Ar",
     "nights_one": "{{count}} nuit",
-    "nights_other": "{{count}} nuits"
+    "nights_other": "{{count}} nuits",
+    "summary": "Résumé"
   },
   "status": {
     "available": "Disponible",
@@ -102,7 +103,9 @@
     "signingIn": "Connexion…",
     "wrongCredentials": "Identifiants incorrects",
     "forgotPassword": "Oublié ?",
-    "orAccessVia": "OU ACCÉDER VIA"
+    "orAccessVia": "OU ACCÉDER VIA",
+    "usernamePlaceholder": "e.g. john.doe",
+    "passwordPlaceholder": "Votre mot de passe sécurisé"
   },
   "resetPassword": {
     "title": "Nouveau mot de passe",
@@ -210,7 +213,9 @@
     "searchRoomModal": "Rechercher par numéro ou type…",
     "guestLabel": "Client",
     "windowLabel": "Fenêtre",
-    "unitsLabel": "Unités ({{count}})"
+    "unitsLabel": "Unités ({{count}})",
+    "today": "Aujourd'hui",
+    "month": "Mois"
   },
   "rooms": {
     "title": "Chambres",

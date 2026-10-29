@@ -70,7 +70,8 @@
     "actionFailed": "Tsy nahomby ny hetsika",
     "ariary": "Ar",
     "nights_one": "{{count}} alina",
-    "nights_other": "{{count}} alina"
+    "nights_other": "{{count}} alina",
+    "summary": "Fehin-kevitra"
   },
   "status": {
     "available": "Afaka",
@@ -102,7 +103,9 @@
     "signingIn": "Miditra…",
     "wrongCredentials": "Diso ny fanamarinana",
     "forgotPassword": "Adino?",
-    "orAccessVia": "NA HIDITRA AMIN'NY"
+    "orAccessVia": "NA HIDITRA AMIN'NY",
+    "usernamePlaceholder": "oh. john.doe",
+    "passwordPlaceholder": "Teny miafina azo antoka"
   },
   "resetPassword": {
     "title": "Teny miafina vaovao",
@@ -210,7 +213,9 @@
     "searchRoomModal": "Karohy laharana na karazana…",
     "guestLabel": "Vahiny",
     "windowLabel": "Vanim-potoana",
-    "unitsLabel": "Efitrano ({{count}})"
+    "unitsLabel": "Efitrano ({{count}})",
+    "today": "Androany",
+    "month": "Volana"
   },
   "rooms": {
     "title": "Efitrano",

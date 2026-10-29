@@ -103,7 +103,9 @@
     "signingIn": "Signing in…",
     "wrongCredentials": "Incorrect credentials",
     "forgotPassword": "Forgot?",
-    "orAccessVia": "OR ACCESS VIA"
+    "orAccessVia": "OR ACCESS VIA",
+    "usernamePlaceholder": "e.g. john.doe",
+    "passwordPlaceholder": "Your secure password"
   },
   "resetPassword": {
     "title": "New Password",
