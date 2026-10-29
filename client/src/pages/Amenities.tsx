@@ -11,7 +11,7 @@ interface Amenity {
   status: 'active' | 'maintenance' | 'closed';
   capacity: string;
   hours: string;
-  icon: any;
+  icon: string; // Icon component name
   color: string;
   nextService: string;
   usage: number; // percentage
@@ -69,7 +69,6 @@ const MOCK_AMENITIES: Amenity[] = [
 ];
 
 export const Amenities: React.FC = () => {
-  const [filter, setFilter] = useState('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   return (

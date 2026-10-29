@@ -21,6 +21,9 @@ import { InvoiceDocumentCard, MoneyRow } from '../components/invoice/InvoiceDocu
 import { InvoicePaymentForm } from '../components/invoice/InvoicePaymentForm';
 import { InvoicePaymentHistory } from '../components/invoice/InvoicePaymentHistory';
 
+const ADJUSTMENT_TYPES = ["charge", "discount"] as const;
+const DISCOUNT_TYPES = ["percent", "fixed"] as const;
+
 export const InvoiceView: React.FC = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
@@ -461,7 +464,7 @@ export const InvoiceView: React.FC = () => {
                 <div className="flex flex-col gap-3 p-4 bg-stone-50 border border-stone-200 rounded-xl">
                   {/* Charge / Remise */}
                   <div className="flex gap-1 p-1 bg-white border border-stone-200 rounded-xl w-fit">
-                    {(['charge', 'discount'] as const).map(m => (
+                    {ADJUSTMENT_TYPES.map(m => (
                       <button
                         key={m}
                         onClick={() => setAddMode(m)}
@@ -514,7 +517,7 @@ export const InvoiceView: React.FC = () => {
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.discountKind')}</label>
                         <div className="flex gap-1 p-1 bg-white border border-stone-200 rounded-xl">
-                          {(['percent', 'fixed'] as const).map(k => (
+                          {DISCOUNT_TYPES.map(k => (
                             <button
                               key={k}
                               onClick={() => setDiscountKind(k)}

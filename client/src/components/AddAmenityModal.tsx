@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Waves, Trees, Dumbbell, Coffee, Clock, ShieldCheck, Check, ChevronDown, Activity } from 'lucide-react';
+import { X, Waves, Trees, Dumbbell, Coffee, ShieldCheck, Check, ChevronDown, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Modal } from './Modal';
 

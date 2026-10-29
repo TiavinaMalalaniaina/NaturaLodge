@@ -14,6 +14,8 @@ const firstOfMonth = () => {
   return dateToLocalStr(new Date(now.getFullYear(), now.getMonth(), 1));
 };
 
+const inside = '↳ ';
+
 // Les comptes partageant un préfixe de code sont regroupés sous un en-tête virtuel calculé
 // côté serveur (ex: 512100 BMOI + 512200 BNI → groupe "512 · Banque") — `isGroup` distingue ces cumuls d'affichage
 // des vrais comptes, `depth` gère l'indentation en cascade.
@@ -24,7 +26,7 @@ const RowList: React.FC<{ rows: { code: string; name: string; balance?: number; 
       return (
         <div key={r.code} className={cn('flex items-center justify-between gap-3 text-sm', amount === 0 && 'opacity-40')} style={{ paddingLeft: r.depth * 16 }}>
           <span className={cn('truncate', r.isGroup ? 'text-on-surface font-semibold' : 'text-on-surface-variant')}>
-            {!r.isGroup && r.depth > 0 && '↳ '}{r.name}
+            {!r.isGroup && r.depth > 0 && inside}{r.name}
           </span>
           <span className={cn('font-mono shrink-0', r.isGroup ? 'font-bold text-on-surface' : 'text-on-surface-variant')}>
             {formatCurrency(amount)}

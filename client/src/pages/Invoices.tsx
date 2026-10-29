@@ -42,7 +42,6 @@ export const Invoices: React.FC = () => {
     page,
     limit: 20,
   });
-
   const invoices = data?.data ?? [];
   const meta     = data?.meta;
 
@@ -214,7 +213,7 @@ export const Invoices: React.FC = () => {
             onClick={() => setPage(p => p - 1)}
             className="px-4 py-2 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 hover:border-primary/30 transition-colors"
           >
-            ← Prev
+            {t('common.prev')}
           </button>
           <span className="text-[10px] font-bold text-on-surface-variant/50">
             {t('common.page')} {meta.page} {t('common.of')} {meta.totalPages}
@@ -224,7 +223,7 @@ export const Invoices: React.FC = () => {
             onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 hover:border-primary/30 transition-colors"
           >
-            Next →
+            {t('common.next')}
           </button>
         </div>
       )}

@@ -64,7 +64,14 @@
     "showMore": "Mampiseho mihoatra",
     "showLess": "Mampiseho kely",
     "notes": "Fanamarihana",
-    "print": "Print"
+    "print": "Print",
+    "next": "Manaraka →",
+    "prev": "← Mialoha",
+    "actionFailed": "Tsy nahomby ny hetsika",
+    "ariary": "Ar",
+    "nights_one": "{{count}} alina",
+    "nights_other": "{{count}} alina",
+    "summary": "Fehin-kevitra"
   },
   "status": {
     "available": "Afaka",
@@ -96,7 +103,9 @@
     "signingIn": "Miditra…",
     "wrongCredentials": "Diso ny fanamarinana",
     "forgotPassword": "Adino?",
-    "orAccessVia": "NA HIDITRA AMIN'NY"
+    "orAccessVia": "NA HIDITRA AMIN'NY",
+    "usernamePlaceholder": "oh. john.doe",
+    "passwordPlaceholder": "Teny miafina azo antoka"
   },
   "resetPassword": {
     "title": "Teny miafina vaovao",
@@ -204,7 +213,9 @@
     "searchRoomModal": "Karohy laharana na karazana…",
     "guestLabel": "Vahiny",
     "windowLabel": "Vanim-potoana",
-    "unitsLabel": "Efitrano ({{count}})"
+    "unitsLabel": "Efitrano ({{count}})",
+    "today": "Androany",
+    "month": "Volana"
   },
   "rooms": {
     "title": "Efitrano",
@@ -249,7 +260,11 @@
     "maintenanceConflictsNote": "Ireto firesevana ireto dia tsy maintsy hovaliana na hofoanana.",
     "roomInMaintenance": "Ity efitrano ity dia amin'ny fikarakara ary tsy azo atao firesevana.",
     "confirmMaintenanceTitle": "Hametraka amin'ny fikarakara?",
-    "confirmMaintenanceMessage": "Tsy azo atao firesevana ity efitrano ity raha mbola amin'ny fikarakara."
+    "confirmMaintenanceMessage": "Tsy azo atao firesevana ity efitrano ity raha mbola amin'ny fikarakara.",
+    "attributes": "Toetra mampiavaka",
+    "extras": "Fanampiny",
+    "surfaceUnit": "m²",
+    "rateOverrideSpecific": "(manokana)"
   },
   "roomTypes": {
     "title": "Karazana efitrano",
@@ -660,5 +675,26 @@
     "loadingError": "Lesoka amin'ny fampidirana",
     "checkBackend": "Jereo raha nanomboka ny backend.",
     "noData": "Tsy misy angona afaka"
+  },
+  "staff": {
+    "title": "Mpiasa",
+    "subtitle": "Tantano ny fahazoan-dalana hiditra sy ny andraikitry ny mpiasa",
+    "grantAccess": "Omeo alalana hiditra",
+    "totalPersonnel": "Fitambaran'ny mpiasa",
+    "active": "Mavitrika",
+    "onLeave": "Amin'ny fialan-tsasatra",
+    "searchPlaceholder": "Mitadiava araka ny anarana, mailaka na andraikitra…",
+    "showMemberLength": "Mpiasa {{count}} no aseho",
+    "name": "Anarana",
+    "authorization": "Fahazoan-dalana",
+    "condition": "Sata",
+    "activity": "Asa atao",
+    "joinedDate": "Niditra tamin'ny {{date}}",
+    "modify": "Ovay",
+    "resetPassword": "Ovay ny tenimiafina",
+    "revokeAccess": "Esory ny fahazoan-dalana hiditra",
+    "changeRole": "Hiova anjara?",
+    "roleChangeConfirmation": "Homena alalana hiditra miaraka amin'ny andraikitra {{roleName}} i {{name}}.",
+    "all": "Rehetra"
   }
 }
