@@ -68,7 +68,9 @@
     "next": "Suivant →",
     "prev": "← Précédent",
     "actionFailed": "Action échouée",
-    "ariary": " Ar"
+    "ariary": " Ar",
+    "nights_one": "{{count}} nuit",
+    "nights_other": "{{count}} nuits"
   },
   "status": {
     "available": "Disponible",

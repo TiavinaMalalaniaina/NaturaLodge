@@ -76,7 +76,14 @@ export default tseslint.config(
               "data-testid",
               "data-test-id",
               "role",
-              "variant"
+              "variant",
+              "layoutId",
+              "mode",
+              "accent",
+              "kind",
+              "color",
+              "size",
+              "value"
             ],
           },
           callees: {
@@ -89,6 +96,16 @@ export default tseslint.config(
             exclude: [
               "^color$",
               "^height$",
+              "^layoutId$",
+              "^width$",
+              "^variant$",
+              "^month$",
+              "^year$",
+              "^day$",
+              "^key$",
+              "^cls$",
+              "^accent$",
+              "^type$",
             ],
           },
         },

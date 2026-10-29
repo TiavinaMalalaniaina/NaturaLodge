@@ -57,7 +57,7 @@ export const ResetPassword: React.FC = () => {
       className="min-h-screen flex items-center justify-center bg-stone-50 px-4"
     >
       {!isTokenValid ? (
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-stone-100 p-4 sm:p-10 text-center">
+        <div className="w-full max-w-[420px] bg-white p-12 rounded-2xl organic-shadow border border-outline-variant/30 text-center">
           <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-600">
             <Lock className="w-6 h-6" />
           </div>
@@ -112,7 +112,7 @@ export const ResetPassword: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder={t('resetPassword.newPasswordPlaceholder')}
                     required
                     className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-3 text-stone-900 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10 focus:border-stone-900 transition-all pr-10"
                   />

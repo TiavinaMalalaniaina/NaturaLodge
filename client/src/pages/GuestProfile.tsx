@@ -15,6 +15,9 @@ import { BOOKING_STATUS_CLASS } from '../lib/statusColors';
 import { AddGuestModal } from '../components/AddGuestModal';
 import { useAuth } from '../context/AuthContext';
 
+const DATE_RANGE_SEPARATOR = " → ";
+const SUMMARY_SEPARATOR = " · ";
+
 function bookingNights(b: GuestBooking) {
   return nightsBetween(b.arrival, b.departure);
 }
@@ -60,7 +63,7 @@ export const GuestProfile: React.FC = () => {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 md:px-5 py-2.5 rounded-xl border border-primary/30 text-primary font-bold text-[9px] md:text-[10px] tracking-widest uppercase hover:bg-teal-50 transition-colors">
-            <Printer className="w-3.5 h-3.5" /> Summary
+            <Printer className="w-3.5 h-3.5" /> {t('common.summary')}
           </button>
           {can('guests.update') && (
             <button onClick={() => setIsEditModalOpen(true)}
@@ -91,10 +94,10 @@ export const GuestProfile: React.FC = () => {
 
           <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-6 w-full">
             {[
-              { label: t('guests.totalStays'),    value: guest.totalStays,                             type: 'display' },
+              { label: t('guests.totalStays'), value: guest.totalStays, type: 'display' },
               { label: t('guests.lifetimeValue'), value: formatCurrency(guest.lifetimeValue), type: 'mono' },
-              { label: t('guests.lastStay'),      value: guest.lastStay,                              type: 'mono' },
-              { label: t('guests.memberSince'),   value: guest.memberSince,                           type: 'mono' },
+              { label: t('guests.lastStay'), value: guest.lastStay, type: 'mono' },
+              { label: t('guests.memberSince'), value: guest.memberSince, type: 'mono' },
             ].map(stat => (
               <div key={stat.label} className="p-5 rounded-2xl bg-stone-50 border border-stone-100">
                 <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mb-2">{stat.label}</p>
@@ -119,9 +122,9 @@ export const GuestProfile: React.FC = () => {
             </h4>
             <div className="space-y-5">
               {[
-                { icon: Phone, label: t('guests.phone'),   value: guest.phone   || '—' },
-                { icon: Mail,  label: t('guests.email'),   value: guest.email },
-                { icon: Home,  label: t('guests.address'), value: guest.address || '—' },
+                { icon: Phone, label: t('guests.phone'), value: guest.phone || '—' },
+                { icon: Mail, label: t('guests.email'), value: guest.email },
+                { icon: Home, label: t('guests.address'), value: guest.address || '—' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-center gap-4">
                   <div className="w-8 h-8 rounded-lg bg-stone-50 flex items-center justify-center text-outline-variant shrink-0">
@@ -177,7 +180,7 @@ export const GuestProfile: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {bookings.map(b => {
-                  const nights    = bookingNights(b);
+                  const nights = bookingNights(b);
                   const firstRoom = b.rooms[0]?.room;
                   const moreRooms = b.rooms.length - 1;
                   return (
@@ -194,7 +197,11 @@ export const GuestProfile: React.FC = () => {
                           <div className="flex items-center gap-2 mt-0.5">
                             <Calendar className="w-3 h-3 text-on-surface-variant/30" />
                             <p className="text-[10px] font-mono text-on-surface-variant/60">
-                              {fmtDate(b.arrival)} → {fmtDate(b.departure)} · {nights}n
+                              {fmtDate(b.arrival)}
+                              {DATE_RANGE_SEPARATOR}
+                              {fmtDate(b.departure)}
+                              {SUMMARY_SEPARATOR}
+                              {t("common.nights", { count: nights })}
                             </p>
                           </div>
                         </div>

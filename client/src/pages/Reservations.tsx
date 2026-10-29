@@ -42,6 +42,11 @@ const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
   closed: 'bg-stone-100 text-stone-400 border-stone-200',           // Clôturé / Archivé
 };
 
+const DEFAULT_BLOCK_CLS =
+  "bg-stone-100 text-stone-400 border-stone-200";
+
+const CURRENCY_SUFFIX = " Ar";
+
 // ── Constants ─────────────────────────────────────────────────────
 
 const LIMIT = 20;
@@ -116,6 +121,14 @@ export const Reservations: React.FC = () => {
   );
 
   const visibleYear = visibleDate.getFullYear();
+
+  const locale = i18n.resolvedLanguage || i18n.language;
+
+  const formatShortMonth = (date: Date): string =>
+    date.toLocaleString(locale, { month: "short" });
+
+  const formatShortWeekday = (date: Date): string =>
+    date.toLocaleDateString(locale, { weekday: "short" });
 
   const changeBookingStatus = (id: string, status: string) => {
     updateStatus.mutate({ id, status }, {
@@ -208,6 +221,24 @@ export const Reservations: React.FC = () => {
       ? t('reservations.calendar')
       : t('reservations.bookingsRegistry');
 
+  const selectedBookingSummary = selectedBooking
+    ? [
+      selectedBooking.rooms
+        .map((br) => br.room.type)
+        .join(", "),
+
+      selectedBooking.rooms
+        .map((br) => `#${br.room.number}`)
+        .join(" · "),
+
+      `${selectedBooking.arrival} → ${selectedBooking.departure}`,
+
+      t("common.nights", {
+        count: selectedBooking.nights,
+      }),
+    ].join(" · ")
+    : "";
+
   return (
     <div className="space-y-8 h-full overflow-x-hidden">
 
@@ -251,7 +282,7 @@ export const Reservations: React.FC = () => {
 
                 <button onClick={scrollToToday}
                   className="px-3 py-1.5 rounded-lg border border-stone-200 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 hover:text-primary transition-colors text-on-surface-variant/60">
-                  Today
+                  {t('reservations.today')}
                 </button>
                 <button onClick={() => scrollByDays(14)}
                   className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
@@ -357,8 +388,9 @@ export const Reservations: React.FC = () => {
                   const entry = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
                   const isActive = visibleDate.getMonth() === i;
                   const isNow = new Date().getFullYear() === visibleDate.getFullYear() && new Date().getMonth() === i;
-                  const label = new Date(visibleDate.getFullYear(), i, 1)
-                    .toLocaleString('en', { month: 'short' }).toUpperCase();
+                  const label = formatShortMonth(
+                    new Date(visibleDate.getFullYear(), i, 1)
+                  )
                   return (
                     <button
                       key={i}
@@ -398,7 +430,7 @@ export const Reservations: React.FC = () => {
               {/* Corner: label */}
               <div className="shrink-0 border-r border-stone-100 px-3 flex items-center bg-white"
                 style={{ width: LABEL_W }}>
-                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">Mois</span>
+                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">{t('reservations.month')}</span>
               </div>
               {/* Month chips — synced via monthBarRef, overflow hidden */}
               <div ref={monthBarRef} className="flex-1 overflow-hidden relative">
@@ -457,7 +489,7 @@ export const Reservations: React.FC = () => {
                   const i = virtualStartIdx + localI;
                   const isToday = toStr(date) === todayStr;
                   const isMonthStart = date.getDate() === 1;
-                  const dayName = date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+                  const dayName = formatShortWeekday(date);
                   return (
                     <div key={i} style={{ width: COL_W, minWidth: COL_W }}
                       className={cn(
@@ -475,7 +507,7 @@ export const Reservations: React.FC = () => {
                       {(isMonthStart || i === 0) && (
                         <p className={cn('text-[7px] font-bold uppercase tracking-widest mt-0.5',
                           isToday ? 'text-primary/60' : 'text-on-surface-variant/30')}>
-                          {date.toLocaleString('en', { month: 'short' }).toUpperCase()}
+                          {formatShortMonth(date)}
                         </p>
                       )}
                     </div>
@@ -560,7 +592,7 @@ export const Reservations: React.FC = () => {
                         {bookings.map(b => {
                           const style = getBlockStyle(b);
                           if (!style) return null;
-                          const cls = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
+                          const cls = BLOCK_CLS[b.effectiveStatus] ?? DEFAULT_BLOCK_CLS;
                           const isVip = b.guest.status === 'VIP_ELITE' || b.guest.status === 'PLATINUM_TIER';
                           return (
                             <div
@@ -586,7 +618,8 @@ export const Reservations: React.FC = () => {
                                 )}
                               </div>
                               <p className="text-[8px] opacity-60 font-medium leading-tight mt-0.5">
-                                {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} · {b.nights}n
+                                {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} ·{" "}
+                                {t("common.nights", { count: b.nights })}
                               </p>
                             </div>
                           );
@@ -688,7 +721,7 @@ export const Reservations: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()} Ar</p>
+                        <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()}{CURRENCY_SUFFIX}</p>
                         <div className="flex gap-1.5 opacity-40 justify-end mt-1">
                           <CreditCard className="w-3 h-3" /><Clock className="w-3 h-3" />
                         </div>
@@ -785,7 +818,9 @@ export const Reservations: React.FC = () => {
                   </div>
                   <p className="font-semibold text-on-surface truncate">{selectedBooking.guestName}</p>
                   <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
-                    {selectedBooking.rooms.map(br => br.room.type).join(', ')} · {selectedBooking.rooms.map(br => `#${br.room.number}`).join(' · ')} · {selectedBooking.arrival} → {selectedBooking.departure} ({selectedBooking.nights}n)
+                    <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
+                      {selectedBookingSummary}
+                    </p>
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

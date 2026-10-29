@@ -303,8 +303,13 @@ export const NewReservation: React.FC = () => {
                           </div>
                           {sel.arrival && sel.departure && n > 0 && (
                             <p className="text-[9px] opacity-50 mt-0.5">
-                              {sel.arrival} → {sel.departure} · {n}n · {formatCurrency(r.rate * n + roomExtrasTotal(r.id, n))}
-                            </p>
+                              {sel.arrival}
+                              {" → "}
+                              {sel.departure}
+                              {" · "}
+                              {t("common.nights", { count: n })}
+                              {" · "}
+                              {formatCurrency(r.rate * n + roomExtrasTotal(r.id, n))}                            </p>
                           )}
                           {(roomExtras.get(r.id) ?? []).length > 0 && (
                             <p className="text-[9px] opacity-50 mt-0.5 flex items-center gap-1">
@@ -611,7 +616,11 @@ export const NewReservation: React.FC = () => {
                               {formatCurrency(room.rate * Math.max(n, 1) + roomExtrasTotal(room.id, Math.max(n, 1)))}
                             </p>
                             <p className="text-[9px] text-on-surface-variant/30 font-mono">
-                              {formatCurrency(room.rate)}/n · {n}n
+                              {formatCurrency(room.rate)}
+                              {" / "}
+                              {t("common.perNight")}
+                              {" · "}
+                              {t("common.nights", { count: n })}
                             </p>
                           </div>
                         </div>

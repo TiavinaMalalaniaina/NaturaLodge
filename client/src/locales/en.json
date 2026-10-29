@@ -68,7 +68,10 @@
     "next": "Next →",
     "prev": "← Prev",
     "actionFailed": "Action Failed",
-    "ariary": " Ar"
+    "ariary": " Ar",
+    "nights_one": "{{count}} night",
+    "nights_other": "{{count}} nights",
+    "summary": "Summary"
   },
   "status": {
     "available": "Available",
@@ -208,7 +211,9 @@
     "searchRoomModal": "Search by number or type…",
     "guestLabel": "Guest",
     "windowLabel": "Window",
-    "unitsLabel": "Units ({{count}})"
+    "unitsLabel": "Units ({{count}})",
+    "today": "Today",
+    "month": "Month"
   },
   "rooms": {
     "title": "Rooms",

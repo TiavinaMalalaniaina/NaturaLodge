@@ -68,7 +68,9 @@
     "next": "Manaraka →",
     "prev": "← Mialoha",
     "actionFailed": "Tsy nahomby ny hetsika",
-    "ariary": "Ar"
+    "ariary": "Ar",
+    "nights_one": "{{count}} alina",
+    "nights_other": "{{count}} alina"
   },
   "status": {
     "available": "Afaka",

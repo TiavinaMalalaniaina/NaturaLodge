@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Edit, Wifi, Coffee, Wind, Tv, ShieldCheck, Star, Bed, Users, Maximize, Map, Calendar, ArrowRight, Zap, AlertTriangle, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { ArrowLeft, Edit, Wifi, Coffee, Wind, Tv, ShieldCheck, Star, Bed, Users, Maximize, Map, Zap, AlertTriangle, ChevronRight as ChevronRightIcon } from 'lucide-react';
 import { Room } from '../types';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
