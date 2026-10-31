@@ -1,7 +1,7 @@
 {
   "name": "hotel-monorepo-client",
   "private": true,
-  "version": "1.0.4",
+  "version": "2.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -30,13 +30,18 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.21",
+    "eslint": "^10.13.0",
+    "eslint-plugin-i18next": "^6.1.5",
+    "globals": "^17.13.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
+    "typescript-eslint": "^8.72.1",
     "vite": "^6.2.3",
     "vite-plugin-pwa": "^1.3.0"
   }

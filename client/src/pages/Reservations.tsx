@@ -19,13 +19,14 @@ import { useRoomTypes } from '../hooks/useRoomTypes';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
-import { RichBooking, EffectiveStatus } from '../api/bookings';
+import { RichBooking, BookingRoomEntry, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
 import { useVirtualDayGrid } from '../hooks/useVirtualDayGrid';
 import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
 import { useAuth } from '../context/AuthContext';
+import i18n from '../i18n';
 
 // ── Block styles by effectiveStatus ──────────────────────────────
 
@@ -33,12 +34,18 @@ const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
   upcoming: 'bg-slate-100 text-slate-700 border-slate-200',     // Neutre / En attente future
   due_checkin: 'bg-blue-100 text-blue-900 border-blue-300',       // Action requise (Bleu d'appel à l'action)
   in_progress: 'bg-emerald-600 text-white border-emerald-500',   // Actif / En cours (Vert dynamique)
+  due_checkout: 'bg-orange-100 text-orange-900 border-orange-300', // Doit quitter aujourd'hui (Orange d'alerte)
   awaiting: 'bg-amber-100 text-amber-900 border-amber-300',     // En pause / En attente (Jaune/Orange d'attention)
   overdue: 'bg-rose-100 text-rose-900 border-rose-300',       // Critique / En retard (Rouge alerte)
   checked_out_unpaid: 'bg-rose-50 text-rose-500 border-rose-200',   // Terminé, impayé — reste à suivre
   checked_out_paid: 'bg-stone-200 text-stone-500 border-stone-300', // Terminé, soldé
   closed: 'bg-stone-100 text-stone-400 border-stone-200',           // Clôturé / Archivé
 };
+
+const DEFAULT_BLOCK_CLS =
+  "bg-stone-100 text-stone-400 border-stone-200";
+
+const CURRENCY_SUFFIX = " Ar";
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -48,6 +55,8 @@ const ROOM_STATUS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
 const LABEL_W = 176;  // px for room label column
 
+const SYSTEM_NOTIFICATION_SOURCE = "system" as const;
+
 // ── Main component ────────────────────────────────────────────────
 
 export const Reservations: React.FC = () => {
@@ -56,6 +65,23 @@ export const Reservations: React.FC = () => {
 
   // View
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const viewOptions = [
+    {
+      v: "grid",
+      icon: <LayoutGrid className="w-4 h-4" />,
+      label: t("reservations.viewGrid"),
+    },
+    {
+      v: "list",
+      icon: <List className="w-4 h-4" />,
+      label: t("reservations.viewList"),
+    },
+    {
+      v: "calendar",
+      icon: <Calendar className="w-4 h-4" />,
+      label: t("reservations.calendar"),
+    },
+  ] as const;
 
   // Filters (shared)
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,6 +114,21 @@ export const Reservations: React.FC = () => {
   const updateStatus = useUpdateBookingStatus();
   const closeBooking = useCloseBooking();
   const { addNotification } = useNotifications();
+
+  const visibleMonth = visibleDate.toLocaleString(
+    i18n.resolvedLanguage || i18n.language,
+    { month: "long" },
+  );
+
+  const visibleYear = visibleDate.getFullYear();
+
+  const locale = i18n.resolvedLanguage || i18n.language;
+
+  const formatShortMonth = (date: Date): string =>
+    date.toLocaleString(locale, { month: "short" });
+
+  const formatShortWeekday = (date: Date): string =>
+    date.toLocaleDateString(locale, { weekday: "short" });
 
   const changeBookingStatus = (id: string, status: string) => {
     updateStatus.mutate({ id, status }, {
@@ -142,9 +183,9 @@ export const Reservations: React.FC = () => {
   // ── Grid helpers ──────────────────────────────────────────────────
 
 
-  function getBlockStyle(b: RichBooking): React.CSSProperties | null {
-    const startDay = dayDiff(windowStart, new Date(b.arrival));
-    const endDay = dayDiff(windowStart, new Date(b.departure));
+  function getBlockStyle(br: BookingRoomEntry): React.CSSProperties | null {
+    const startDay = dayDiff(windowStart, new Date(br.arrival));
+    const endDay = dayDiff(windowStart, new Date(br.departure));
     const s = Math.max(0, startDay);
     const e = Math.min(totalDays, endDay);
     if (e <= s) return null;
@@ -180,6 +221,24 @@ export const Reservations: React.FC = () => {
       ? t('reservations.calendar')
       : t('reservations.bookingsRegistry');
 
+  const selectedBookingSummary = selectedBooking
+    ? [
+      selectedBooking.rooms
+        .map((br) => br.room.type)
+        .join(", "),
+
+      selectedBooking.rooms
+        .map((br) => `#${br.room.number}`)
+        .join(" · "),
+
+      `${selectedBooking.arrival} → ${selectedBooking.departure}`,
+
+      t("common.nights", {
+        count: selectedBooking.nights,
+      }),
+    ].join(" · ")
+    : "";
+
   return (
     <div className="space-y-8 h-full overflow-x-hidden">
 
@@ -193,11 +252,7 @@ export const Reservations: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
             {/* View toggle */}
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
-              {([
-                { v: 'grid', icon: <LayoutGrid className="w-4 h-4" />, label: t('reservations.viewGrid') },
-                { v: 'list', icon: <List className="w-4 h-4" />, label: t('reservations.viewList') },
-                { v: 'calendar', icon: <Calendar className="w-4 h-4" />, label: t('reservations.calendar') },
-              ] as const).map(({ v, icon, label }) => (
+              {viewOptions.map(({ v, icon, label }) => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('p-2 rounded-lg transition-all flex items-center gap-2',
                     viewMode === v ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant/40 hover:text-on-surface-variant/60')}>
@@ -218,7 +273,7 @@ export const Reservations: React.FC = () => {
                 {/* Visible date info */}
                 <div className="text-center min-w-[140px] select-none">
                   <p className="text-sm font-bold text-on-surface leading-tight capitalize">
-                    {visibleDate.toLocaleString('en', { month: 'long' })} {visibleDate.getFullYear()}
+                    {visibleMonth} {visibleYear}
                   </p>
                   <p className="text-[9px] font-mono text-on-surface-variant/40">
                     {toStr(visibleDate)} – {toStr(addDays(visibleDate, 20))}
@@ -227,7 +282,7 @@ export const Reservations: React.FC = () => {
 
                 <button onClick={scrollToToday}
                   className="px-3 py-1.5 rounded-lg border border-stone-200 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 hover:text-primary transition-colors text-on-surface-variant/60">
-                  Today
+                  {t('reservations.today')}
                 </button>
                 <button onClick={() => scrollByDays(14)}
                   className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
@@ -333,8 +388,9 @@ export const Reservations: React.FC = () => {
                   const entry = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
                   const isActive = visibleDate.getMonth() === i;
                   const isNow = new Date().getFullYear() === visibleDate.getFullYear() && new Date().getMonth() === i;
-                  const label = new Date(visibleDate.getFullYear(), i, 1)
-                    .toLocaleString('en', { month: 'short' }).toUpperCase();
+                  const label = formatShortMonth(
+                    new Date(visibleDate.getFullYear(), i, 1)
+                  )
                   return (
                     <button
                       key={i}
@@ -374,7 +430,7 @@ export const Reservations: React.FC = () => {
               {/* Corner: label */}
               <div className="shrink-0 border-r border-stone-100 px-3 flex items-center bg-white"
                 style={{ width: LABEL_W }}>
-                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">Mois</span>
+                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">{t('reservations.month')}</span>
               </div>
               {/* Month chips — synced via monthBarRef, overflow hidden */}
               <div ref={monthBarRef} className="flex-1 overflow-hidden relative">
@@ -433,7 +489,7 @@ export const Reservations: React.FC = () => {
                   const i = virtualStartIdx + localI;
                   const isToday = toStr(date) === todayStr;
                   const isMonthStart = date.getDate() === 1;
-                  const dayName = date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+                  const dayName = formatShortWeekday(date);
                   return (
                     <div key={i} style={{ width: COL_W, minWidth: COL_W }}
                       className={cn(
@@ -451,7 +507,7 @@ export const Reservations: React.FC = () => {
                       {(isMonthStart || i === 0) && (
                         <p className={cn('text-[7px] font-bold uppercase tracking-widest mt-0.5',
                           isToday ? 'text-primary/60' : 'text-on-surface-variant/30')}>
-                          {date.toLocaleString('en', { month: 'short' }).toUpperCase()}
+                          {formatShortMonth(date)}
                         </p>
                       )}
                     </div>
@@ -483,7 +539,7 @@ export const Reservations: React.FC = () => {
                 )}
 
                 {gridRooms.map(room => {
-                  const bookings = bookingsByRoomId.get(room.id) ?? [];
+                  const roomBookings = bookingsByRoomId.get(room.id) ?? [];
                   const isMaint = room.status === 'maintenance';
 
                   return (
@@ -533,14 +589,14 @@ export const Reservations: React.FC = () => {
                           </div>
                         )}
 
-                        {bookings.map(b => {
-                          const style = getBlockStyle(b);
+                        {roomBookings.map(({ booking: b, room: br }) => {
+                          const style = getBlockStyle(br);
                           if (!style) return null;
-                          const cls = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
+                          const cls = BLOCK_CLS[b.effectiveStatus] ?? DEFAULT_BLOCK_CLS;
                           const isVip = b.guest.status === 'VIP_ELITE' || b.guest.status === 'PLATINUM_TIER';
                           return (
                             <div
-                              key={b.id}
+                              key={br.id}
                               style={style}
                               onClick={e => { e.stopPropagation(); setSelectedBooking(b); }}
                               className={cn(
@@ -554,7 +610,7 @@ export const Reservations: React.FC = () => {
                                 {can('bookings.reassign') && canModifyBooking(b.effectiveStatus, can) && (
                                   <div className="opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0 flex gap-1">
                                     <button
-                                      onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure })) }); }}
+                                      onClick={e => { e.stopPropagation(); setReassignBooking({ id: b.id, rooms: b.rooms.map(r => ({ roomId: r.roomId, roomNumber: r.room.number, arrival: r.arrival, departure: r.departure })) }); }}
                                       className="p-0.5 hover:bg-white/20 rounded" title={t('reservations.reassign')}>
                                       <RefreshCw className="w-3 h-3" />
                                     </button>
@@ -562,7 +618,8 @@ export const Reservations: React.FC = () => {
                                 )}
                               </div>
                               <p className="text-[8px] opacity-60 font-medium leading-tight mt-0.5">
-                                {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} · {b.nights}n
+                                {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} ·{" "}
+                                {t("common.nights", { count: b.nights })}
                               </p>
                             </div>
                           );
@@ -581,6 +638,7 @@ export const Reservations: React.FC = () => {
                   { key: 'status.upcoming', cls: 'bg-slate-100 border-slate-200 text-slate-700' },
                   { key: 'status.dueCheckin', cls: 'bg-blue-100 border-blue-300 text-blue-900' },
                   { key: 'status.inProgress', cls: 'bg-emerald-600 border-emerald-500 text-white' },
+                  { key: 'status.dueCheckout', cls: 'bg-orange-100 border-orange-300 text-orange-900' },
                   { key: 'status.overdue', cls: 'bg-rose-100 border-rose-300 text-rose-900' },
                   { key: 'status.maintenance', cls: 'bg-stone-200 border-stone-300 text-stone-500' },
                 ] as const).map(item => (
@@ -663,7 +721,7 @@ export const Reservations: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()} Ar</p>
+                        <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()}{CURRENCY_SUFFIX}</p>
                         <div className="flex gap-1.5 opacity-40 justify-end mt-1">
                           <CreditCard className="w-3 h-3" /><Clock className="w-3 h-3" />
                         </div>
@@ -695,7 +753,7 @@ export const Reservations: React.FC = () => {
             </div>
 
             {/* Pagination */}
-            
+
             <div className="px-8 py-5 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">
                 {t('reservations.pageInfo', { page: meta?.page ?? 1, total: meta?.totalPages ?? 1, count: meta?.total ?? listBookings.length })}
@@ -760,11 +818,13 @@ export const Reservations: React.FC = () => {
                   </div>
                   <p className="font-semibold text-on-surface truncate">{selectedBooking.guestName}</p>
                   <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
-                    {selectedBooking.rooms.map(br => br.room.type).join(', ')} · {selectedBooking.rooms.map(br => `#${br.room.number}`).join(' · ')} · {selectedBooking.arrival} → {selectedBooking.departure} ({selectedBooking.nights}n)
+                    <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
+                      {selectedBookingSummary}
+                    </p>
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} Ar</span>
+                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} {t('common.ariary')}</span>
                   <button onClick={() => setSelectedBooking(null)}
                     className="p-1.5 text-on-surface-variant/40 hover:text-on-surface hover:bg-stone-50 rounded-lg transition-colors">
                     <X className="w-4 h-4" />
@@ -788,14 +848,14 @@ export const Reservations: React.FC = () => {
                     <LogIn className="w-3.5 h-3.5" /> {t('reservations.checkin')}
                   </button>
                 )}
-                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'in_progress' && canCheckOutBooking(selectedBooking.paymentStatus, can) && (
+                {can('bookings.update_status') && (selectedBooking.effectiveStatus === 'in_progress' || selectedBooking.effectiveStatus === 'due_checkout') && canCheckOutBooking(selectedBooking.paymentStatus, can) && (
                   <button
                     onClick={() => setPendingAction({ id: selectedBooking.id, action: 'checkout' })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-colors">
                     <LogOut className="w-3.5 h-3.5" /> {t('reservations.checkout')}
                   </button>
                 )}
-                {can('bookings.update_status') && selectedBooking.effectiveStatus === 'in_progress' && (
+                {can('bookings.update_status') && (selectedBooking.effectiveStatus === 'in_progress' || selectedBooking.effectiveStatus === 'due_checkout') && (
                   <button
                     onClick={() => setPendingAction({ id: selectedBooking.id, action: 'revert' })}
                     className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-amber-100 transition-colors">
@@ -888,7 +948,7 @@ export const Reservations: React.FC = () => {
         onConfirm={() => {
           closeBooking.mutate(closeBookingId!, {
             onError: (err) => addNotification({
-              source: 'system', title: 'Action failed',
+              source: SYSTEM_NOTIFICATION_SOURCE, title: t('common.actionFailed'),
               subtitle: getApiErrorMessage(err), amount: '--',
             }),
           });

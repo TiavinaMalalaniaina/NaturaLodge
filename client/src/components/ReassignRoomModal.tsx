@@ -168,7 +168,6 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
   // Delta helpers (mode réassignation uniquement)
   const oldRate = currentRoom?.rateOverride ?? currentRoom?.rate ?? 0;
   const newRate = selectedRoom ? derivedRate : 0;
-  const rateDiff = (manualRate ? Number(manualRate) : newRate) - oldRate;
   const oldNights = activeRoom ? nightsBetween(activeRoom.arrival, activeRoom.departure) : 0;
   const newNights = nightsBetween(newArrival, newDeparture);
   const oldTotal = oldRate * oldNights;

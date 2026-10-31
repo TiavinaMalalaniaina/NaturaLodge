@@ -3,7 +3,252 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
-## [1.0.4] — Non publié
+## [2.3.0] — 2026-10-29
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.3.0`.
+>
+> Version **mineure** : uniquement additive — nouvelles colonnes/table nullables, nouvelle
+> côté API ou UI existante. Aucune rupture de compatibilité.
+
+### Ajouté
+
+**Fonction de définition de mot de passe à la première connection**
+- Migration SQL
+  - colonne `resetPasswordToken`,`resetPasswordExpiries`,`isFirstLogin` sur la table user
+- 
+
+**Mis en place d'eslint**
+- Vérification des plain-text
+
+
+
+## [2.2.0] — 2026-09-15
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.2.0`.
+>
+> Version **mineure** : uniquement de l'observabilité et un fix de déploiement, aucun changement de
+> schéma ni de comportement fonctionnel. Rien à migrer ni à reseeder.
+
+### Ajouté
+
+**Stack de monitoring (VPS de production)**
+- `docker-compose.monitoring.yml` : Prometheus, Grafana (dashboard « NaturaLodge — App Performance »
+  préprovisionné), Loki + Promtail, node-exporter, cAdvisor, postgres-exporter, nginx-exporter,
+  Uptime Kuma — voir `monitoring/README.md` pour l'installation et l'accès.
+- `GET /metrics` (Prometheus, `server/src/middleware/metrics.ts`) : latence/débit/erreurs par route
+  + métriques Node par défaut, jamais exposé publiquement (scrapé via le réseau Docker interne).
+- Logs structurés JSON (`server/src/lib/logger.ts`, pino + `pino-http`), journalisation des requêtes
+  Prisma lentes (`server/src/lib/prisma.ts`, seuil `SLOW_QUERY_THRESHOLD_MS`, 200 ms par défaut).
+- `make monitoring-up` / `make monitoring-down` / `make monitoring-logs`.
+
+### Corrigé
+- Déploiement Coolify du conteneur `client` : `nginx.conf` proxyait `/api/` vers l'hôte fixe
+  `server`, qui n'existe que dans le `docker-compose.yml` local — sur la VPS, `db`/`server`/`client`
+  sont 3 ressources Coolify séparées et le conteneur backend n'a jamais eu ce nom, ce qui faisait
+  planter nginx au démarrage (`host not found in upstream "server"`, crash loop). Remplacé par
+  `client/nginx.conf.template` + `ENV API_UPSTREAM` (défaut `server`, substitué au démarrage du
+  conteneur par l'entrypoint nginx officiel) — un seul Dockerfile pour les deux environnements.
+
+### Notes de déploiement
+```bash
+# Ressource Coolify "client" : ajouter la variable d'environnement runtime
+API_UPSTREAM=naturalodge-server-container
+# (nom du conteneur backend sur la VPS — voir monitoring/README.md), puis redéployer.
+```
+
+## [2.1.0] — 2026-09-12
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.1.0`.
+>
+> Version **mineure** : uniquement additive — nouvelles colonnes/table nullables, nouvelle
+> permission qui dégrade proprement tant qu'elle n'est pas reseedée, aucun renommage ni suppression
+> côté API ou UI existante. Aucune rupture de compatibilité.
+
+### Ajouté
+
+**Tableau de bord KPI hôteliers, réparti sur 3 pages**
+- `/kpi` (occupation & revenu), `/kpi/billing` (facturation & encaissement), `/kpi/profitability`
+  (rentabilité & structure des charges) — remplace l'ancien écran unique qui empilait les 3
+  sections sans hiérarchie visuelle.
+- Hiérarchie façon Z/F sur chaque page : un chiffre héros qui résume la page (taux d'occupation /
+  encaissement net / résultat net), 2 métriques de second plan juste à côté, le détail (stats +
+  tableaux) lu ensuite.
+- Comparaison « vs mois précédent » (delta coloré) sur les métriques principales de chaque page.
+- Objectif d'occupation mensuel éditable (`KpiOccupancyTarget`, nouvelle permission
+  `kpi.manage_target`, ADMIN/MANAGER) comparé au taux réel directement sur `/kpi`.
+- ADR/RevPAR théoriques et ligne TOTAL sur les tableaux « par type de chambre » / « par chambre ».
+- `GET /kpi` accepte `detail=0` pour un calcul allégé (sans le détail par chambre) — utilisé pour
+  le mois de comparaison, évite de doubler inutilement le coût de calcul par visite de page.
+
+**Horodatage réel du check-in / check-out**
+- `Booking.checkedInAt` / `checkedOutAt` : horodatage réel du geste (distinct des dates prévues
+  `arrival`/`departure`), écrit par `PATCH /bookings/:id/status`, effacé si le geste est annulé
+  (revert check-in).
+- Nouveau statut effectif `due_checkout` : le jour du départ prévu, un séjour en cours passe en
+  « Doit quitter » (alerte visuelle) avant de devenir « En retard » le lendemain seulement — sans
+  aucun recalcul de facture automatique.
+- Facture : dates réelles d'arrivée/départ affichées (repli sur les dates prévues tant que le
+  check-in/check-out n'a pas eu lieu).
+
+### Modifié
+- Facture (`InvoiceView.tsx` / `InvoiceDocument.tsx`) : extraction de composants partagés
+  (`InvoiceDocumentCard`, `InvoicePaymentForm`, `InvoicePaymentHistory`) qui éliminaient des
+  divergences entre les deux pages (auteur/note d'un paiement absents sur l'une, date d'émission
+  d'un brouillon mal protégée sur l'autre, libellés non traduits).
+- Mise en page à l'impression de la facture : la barre latérale masquée ne laisse plus un tiers de
+  page vide, marges de page ajoutées, une ligne du tableau ne se coupe plus entre deux pages.
+- Bloc des totaux de facture rendu responsive (largeur bornée + alignement `justify-between`
+  plutôt qu'un espacement fixe qui s'étirait sur grand écran).
+
+### Corrigé
+- Le mois sélectionné sur le tableau de bord KPI se réinitialisait en changeant d'onglet — le
+  chargement à la demande du nouvel onglet remontait tout le layout parent (et son état local) ;
+  le mois vit désormais dans l'URL et un `Suspense` local isole le rechargement à l'onglet lui-même.
+- Libellés codés en dur non traduits sur la facture (en-têtes de tableau, statut de paiement,
+  bouton Imprimer, champs « Notes ») — jamais rendus correctement en anglais ou en malgache.
+
+### Notes de déploiement
+```bash
+cd server
+npx prisma migrate deploy        # KpiOccupancyTarget + Booking.checkedInAt/checkedOutAt
+                                  # (déjà câblé au démarrage du conteneur, rien à faire de plus)
+npx tsx prisma/seedPermissions.ts # ou seed.init.ts — nécessaire pour que ADMIN/MANAGER voient le
+                                   # contrôle d'édition de l'objectif d'occupation (kpi.manage_target)
+```
+
+## [2.0.0] — 2026-09-06
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.0.0`.
+>
+> Version **majeure** : la mise à niveau n'est pas transparente — migrations de schéma **et** reseed
+> des permissions obligatoires (voir *Rupture* et *Notes de déploiement*) — et le cycle de vie de la
+> facturation change pour le personnel (brouillon → visé avant toute écriture comptable).
+
+### Ajouté
+
+**Cycle de vie des documents de facturation (brouillon → visé)**
+- Une facture, un acompte ou un avoir naît en **brouillon** (`Invoice.validatedAt` nul) : librement
+  modifiable, sans numéro, invisible du grand livre. `POST /invoices/:id/validate`
+  (`can('invoices.validate')`) lui assigne son numéro définitif, cale sa date d'émission sur le visa
+  et poste l'écriture comptable — seul et unique moment où un document touche le grand livre.
+- `Invoice.number` devient nullable (attribué au visa) ; séquence propre par type — `INV-` / `ACO-`
+  / `AVO-` —, comptée uniquement sur les documents déjà visés (aucun trou en cas de brouillon
+  abandonné).
+- Suppression d'un brouillon jamais visé — `DELETE /invoices/:id` (`can('invoices.delete_draft')`),
+  aucun impact comptable.
+- Modification du montant d'un brouillon d'acompte — `PATCH /invoices/:id` avec `amount`.
+- Filtre « Brouillons uniquement » sur `/invoices`.
+
+**Factures d'acompte (`DEPOSIT` / `ACO-`)**
+- `POST /invoices/deposit` (`can('invoices.issue_deposit')`) — crée un brouillon d'acompte pour une
+  réservation, indépendamment de la facture définitive ; montant et notes éditables tant qu'il n'est
+  pas visé.
+- Au visa : `411000` créance / `419100` « Clients — avances et acomptes reçus » (nouveau compte de
+  passif) — aucun produit tant que le séjour n'a pas eu lieu.
+- Au visa de la facture définitive : les acomptes visés de la réservation viennent en déduction
+  (lignes négatives) et `419100` est soldé contre `411000`.
+- Encaissement d'un acompte visé depuis sa page dédiée (`/invoices/document/:id`).
+- Panneau « Acomptes en cours » sur `/reports` — acomptes visés pas encore absorbés par une facture
+  définitive, pour tracer le solde `419100` réservation par réservation.
+
+**Factures d'avoir (`CREDIT_NOTE` / `AVO-`)**
+- Émises automatiquement à l'annulation d'un document **déjà visé** (jamais en modifiant l'original)
+  — brouillon, `relatesToInvoiceId` vers le document crédité, montant = `refundRatePercent` % du
+  total (défaut 70 %), le reste retenu comme frais d'annulation. Le personnel doit encore viser
+  l'avoir pour qu'il produise ses effets.
+- Taux de remboursement ajustable au moment du geste — champ dans la modale d'annulation de
+  réservation (`refundRatePercent` sur `PATCH /bookings/:id/status`) et sur `POST /invoices/:id/cancel`.
+- Visa d'un avoir sur **facture** : extourne produit / TVA / créance au prorata.
+- Visa d'un avoir sur **acompte** : solde `419100` en entier — part remboursée vers `411000`, part
+  retenue vers `708500` « Frais d'annulation retenus » (nouveau compte de produit).
+- Remboursement d'un avoir visé : mouvement de trésorerie sortant depuis sa page (`411000` débit /
+  compte de trésorerie crédit), borné à ce qui a réellement été encaissé sur le document crédité.
+- Statut d'un avoir affiché avec le vocabulaire adapté (« À rembourser » / « Part. remboursé » /
+  « Remboursé ») plutôt que « Payé ».
+
+**Lignes de facture personnalisées et remises**
+- Ligne libre (`InvoiceItem.source = MANUAL`) — charge exceptionnelle (prix unitaire positif) ou
+  geste commercial ponctuel (négatif) : `POST /invoices/:id/items` + `PATCH` / `DELETE` associés
+  (`can('invoices.update')`). Préservées lors des resynchronisations avec la réservation, qui ne
+  réécrivent que les lignes `BOOKING`.
+- Remises sur facture — `POST /invoices/:id/discounts` : en pourcentage (recalculée à chaque
+  resynchronisation) ou en montant fixe, portées en contra-produit `709000`.
+
+**Contrôle d'accès à la trésorerie par rôle**
+- `RoleLedgerAccount` (`roleId × accountId` + `canTransferFrom` / `canTransferTo` /
+  `canPayExpenses`) — l'administrateur décide, compte de trésorerie par compte de trésorerie, quels
+  rôles le voient, peuvent le mettre en source ou en arrivée d'un virement, ou régler des charges
+  depuis.
+- Écran d'administration `/treasury-access` (ADMIN, `ledger.manage_accounts`).
+- `ledger.access_all_accounts` (ADMIN / MANAGER) — voit tous les comptes et transfère sans
+  restriction ; les rôles sans cette clé sont soumis aux grants `RoleLedgerAccount`.
+- Contrôles `assertCanViewCashAccount` / `assertCanTransfer` / `assertCanPayExpenseFrom` appliqués
+  sur l'encaissement, les virements et les dépenses.
+- Accès à la page Trésorerie (`ledger.view_cash_accounts`) distinct de l'accès aux Rapports
+  (`ledger.view_reports`).
+
+**Configuration comptable (administration)**
+- Plan comptable éditable depuis l'UI (création / modification de compte), types de dépense
+  configurables.
+
+**Réservation**
+- La page réservation liste tous les documents de facturation (facture, acomptes, avoirs) avec accès
+  direct à chacun, et permet de créer un acompte — la création redirige vers le document produit.
+
+### Modifié
+- `POST /invoices/generate` crée un **brouillon** — ne poste plus au grand livre (voir *Rupture*).
+- `POST /invoices/:id/payments` refuse (409) un document non visé et devient directionnel :
+  encaissement pour une facture / un acompte, remboursement pour un avoir.
+- `DELETE /invoices/:id/payments/:paymentId` (`voidPayment`) — contre-écriture directionnelle selon
+  le type de document.
+- `syncInvoiceStatus` ne recalcule plus un statut terminal (`CANCELLED` / `REFUNDED`) à partir des
+  seuls paiements.
+- L'annulation d'une réservation produit une facture d'avoir **par document visé** (facture ET
+  acompte) au lieu d'une extourne immédiate unique.
+- `PATCH /invoices/:id` accepte `amount` (brouillon d'acompte uniquement).
+- `ledger.manage_accounts` couvre désormais aussi la gestion des accès trésorerie.
+
+### Corrigé
+- Avoir sur un acompte jamais transformé en facture : l'extourne fabriquait un produit `706000`
+  inexistant et laissait `419100` bloqué au bilan indéfiniment — désormais routée `419100` /
+  `708500`, le passif soldé en entier.
+- Une facture annulée repassait en « non payée » après annulation de son paiement (`voidPayment` →
+  `syncInvoiceStatus` recalculait le statut à partir des seuls paiements) — les statuts terminaux
+  sont maintenant préservés.
+- Corrections d'affichage de la vue Trésorerie.
+
+### Rupture
+- **`POST /invoices/generate` ne poste plus au grand livre.** Le document créé est un brouillon ; il
+  faut `POST /invoices/:id/validate` pour qu'il constate créance / produit / TVA. Toute automatisation
+  qui supposait une facture immédiatement « vivante » doit ajouter cette étape.
+- **`POST /invoices/:id/payments` renvoie 409 sur un document non visé.**
+- **L'annulation d'une réservation ne solde plus la facture immédiatement** : elle crée des avoirs en
+  brouillon, à viser puis à rembourser pour que le grand livre bouge.
+- **`Invoice.number` est nullable** — tout code qui le lisait comme toujours défini doit gérer le cas
+  brouillon.
+
+### Notes de déploiement
+```bash
+cd server
+npx prisma migrate deploy         # migrations 20260903* et 20260905* : InvoiceKind, Invoice.validatedAt,
+                                  # number nullable, relatesToInvoiceId, InvoiceItem.source/discountRate,
+                                  # RoleLedgerAccount, comptes 419100 / 708500, enum JournalSource CREDIT_NOTE
+npx tsx prisma/seed.init.ts        # nouvelles clés de permission (invoices.issue_deposit, invoices.validate,
+                                  # invoices.update, invoices.cancel, invoices.delete_draft,
+                                  # ledger.access_all_accounts…) + comptes 419100 / 708500 — idempotent, additif
+```
+Puis **redémarrer le serveur** : le cache mémoire de la matrice de permissions (`lib/permissions.ts`)
+n'est pas rafraîchi par un seed exécuté hors du process. Sans reseed + redémarrage, les nouvelles
+fonctionnalités (création d'acompte, visa, suppression de brouillon…) restent masquées, sans erreur.
+
+Recommandé : câbler le seed dans la commande de démarrage du conteneur —
+`npx prisma migrate deploy && npm run db:seed:init && node dist/server.js` — `seed:init` étant
+idempotent, rôles / permissions / plan comptable se resynchronisent à chaque déploiement.
+
+⚠️ `DATABASE_SSL=false` ne vaut que pour une Postgres strictement locale : le laisser alors que
+`DATABASE_URL` pointe une base gérée (Render…) coupe le SSL et la connexion échoue (`P1017`).
+
+## [1.0.4] — 2026-08-30
 
 > `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` (build
 > identifier) bumpés à `1.0.4`, cohérents avec le nom de la branche `release/V1.0.4`.

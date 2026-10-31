@@ -15,9 +15,9 @@ type MethodFilter = 'all' | PaymentMethod;
 
 const STATUS_CLASS: Record<PaymentStatus, string> = {
   completed: 'bg-teal-50 text-teal-700 border-teal-200',
-  pending:   'bg-amber-50 text-amber-700 border-amber-200',
-  failed:    'bg-red-50 text-red-600 border-red-200',
-  refunded:  'bg-purple-50 text-purple-700 border-purple-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  failed: 'bg-red-50 text-red-600 border-red-200',
+  refunded: 'bg-purple-50 text-purple-700 border-purple-200',
 };
 
 export const Payments: React.FC = () => {
@@ -26,8 +26,8 @@ export const Payments: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [methodFilter, setMethodFilter] = useState<MethodFilter>('all');
-  const [search,       setSearch]       = useState('');
-  const [page,         setPage]         = useState(1);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const debouncedSearch = useDebounce(search);
 
@@ -40,25 +40,25 @@ export const Payments: React.FC = () => {
   });
 
   const payments = data?.data ?? [];
-  const meta      = data?.meta;
+  const meta = data?.meta;
 
   const STATUS_TABS: { key: StatusFilter; label: string }[] = [
-    { key: 'all',       label: t('common.all') },
+    { key: 'all', label: t('common.all') },
     { key: 'completed', label: t('payments.status_completed') },
-    { key: 'pending',   label: t('payments.status_pending') },
-    { key: 'failed',    label: t('payments.status_failed') },
-    { key: 'refunded',  label: t('payments.status_refunded') },
+    { key: 'pending', label: t('payments.status_pending') },
+    { key: 'failed', label: t('payments.status_failed') },
+    { key: 'refunded', label: t('payments.status_refunded') },
   ];
 
   const METHOD_TABS: { key: MethodFilter; label: string }[] = [
-    { key: 'all',           label: t('common.all') },
-    { key: 'cash',          label: t('invoice.method_cash') },
-    { key: 'mvola',         label: t('invoice.method_mvola') },
-    { key: 'orange_money',  label: t('invoice.method_orange_money') },
+    { key: 'all', label: t('common.all') },
+    { key: 'cash', label: t('invoice.method_cash') },
+    { key: 'mvola', label: t('invoice.method_mvola') },
+    { key: 'orange_money', label: t('invoice.method_orange_money') },
   ];
 
   if (isLoading) return <PageLoader />;
-  if (isError)   return <PageError />;
+  if (isError) return <PageError />;
 
   return (
     <div className="space-y-8">
@@ -156,7 +156,12 @@ export const Payments: React.FC = () => {
                   </div>
                   <p className="text-[10px] text-on-surface-variant/50 mt-0.5 truncate">
                     {t(`invoice.method_${p.method}`)} · {formatDate(p.paidAt)} · {p.processedBy.name}
-                    {p.reference && <> · #{p.reference}</>}
+                    {p.reference && (
+                      <>
+                        {" · #"}
+                        {p.reference}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -182,7 +187,7 @@ export const Payments: React.FC = () => {
             onClick={() => setPage(p => p - 1)}
             className="px-4 py-2 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 hover:border-primary/30 transition-colors"
           >
-            ← Prev
+            {t('common.prev')}
           </button>
           <span className="text-[10px] font-bold text-on-surface-variant/50">
             {t('common.page')} {meta.page} {t('common.of')} {meta.totalPages}
@@ -192,7 +197,7 @@ export const Payments: React.FC = () => {
             onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 hover:border-primary/30 transition-colors"
           >
-            Next →
+            {t('common.next')} →
           </button>
         </div>
       )}

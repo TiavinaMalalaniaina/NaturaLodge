@@ -50,6 +50,9 @@
 }
 
 @media print {
+  @page {
+    margin: 12mm;
+  }
   .no-print {
     display: none !important;
   }
@@ -60,5 +63,6 @@
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
+    padding: 0 !important;
   }
 }

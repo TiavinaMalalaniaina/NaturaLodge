@@ -46,3 +46,10 @@ services:
 
 volumes:
   db_data:
+
+# Nom explicite (plutôt que le nom auto-généré à partir du dossier, ex. "naturalodge_default") —
+# docker-compose.monitoring.yml s'y raccroche en réseau externe pour scraper server/db/client par
+# leur nom de service, sans dépendre du nom du dossier de déploiement sur la VPS.
+networks:
+  default:
+    name: naturalodge-network

@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
 }
 
 datasource db {
@@ -20,6 +21,9 @@ model User {
   avatar            String?
   joinedDate        DateTime      @default(now())
   lastLogin         DateTime?
+  isFirstLogin        Boolean  @default(true) 
+  resetPasswordToken  String?
+  resetPasswordExpires DateTime?
   guestNotes        GuestNote[]
   createdBookings   Booking[]
   issuedInvoices    Invoice[]
@@ -151,6 +155,11 @@ model Booking {
   arrival      DateTime
   departure    DateTime
   status       BookingStatus @default(AWAITING)
+  // Horodatage réel du geste (pas la date prévue arrival/departure) — écrit par updateStatus()
+  // au check-in / check-out, effacé par un retour en arrière (revert). Imprimé sur la facture ;
+  // tant que null, la facture retombe sur arrival/departure.
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
   totalAmount  Int
   notes        String?
   createdAt    DateTime      @default(now())
@@ -419,6 +428,8 @@ model JournalEntry {
   postedById       String?
   lines            JournalLine[]
   createdAt        DateTime      @default(now())
+
+  @@index([date])
 }
 
 enum JournalSource {
@@ -532,4 +543,92 @@ model RolePermission {
 
   @@unique([roleId, permissionId])
   @@index([roleId])
+}
+
+// Objectif d'occupation saisi manuellement pour un mois donné (ex: 0.90 pour une prévision haute
+// saison à 90 %) — comparé au taux d'occupation réel dans kpi.service.ts. Absence de ligne pour un
+// mois ⇒ pas de comparaison affichée (pas de valeur par défaut arbitraire).
+model KpiOccupancyTarget {
+  id         String   @id @default(cuid())
+  month      String   @unique
+  targetRate Float    @map("target_rate")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("kpi_occupancy_target")
+}
+
+// ─── Vues KPI hôteliers (lecture seule) ──────────────────────────
+// Toute l'agrégation SQL du tableau de bord KPI vit ici : explosion des nuitées, jointures,
+// classification des comptes, normalisation de signe. Le DDL de ces vues est écrit à la main dans
+// la migration `*_kpi_hotelier_views` (Prisma ne gère pas le DDL des vues). Une migration future
+// qui altère une colonne dont dépend une vue doit d'abord la DROP puis la recréer.
+// Le service (`kpi.service.ts`) ne fait que filtrer une période et calculer des ratios.
+
+/// Une ligne par nuitée-chambre : chaque BookingRoom [arrival, departure) éclaté en nuits
+/// calendaires (generate_series). `roomRate` = snapshot pris à la résa ; `catalogueRate` =
+/// RoomType.rate courant (base du "CA théorique"). Pas de plancher `max(1, …)`.
+view KpiRoomNight {
+  nightDate     DateTime @map("night_date") @db.Date
+  bookingId     String   @map("booking_id")
+  roomId        String   @map("room_id")
+  roomNumber    String   @map("room_number")
+  roomTypeId    String   @map("room_type_id")
+  roomTypeName  String   @map("room_type_name")
+  roomRate      Int      @map("room_rate")
+  catalogueRate Int      @map("catalogue_rate")
+  bookingStatus String   @map("booking_status")
+
+  @@unique([nightDate, bookingId, roomId])
+  @@map("kpi_room_night")
+}
+
+/// Une ligne par chambre — pour le détail par chambre du tableau KPI (inclut les chambres sans
+/// vente sur la période). `catalogueRate` = RoomType.rate.
+view KpiRoom {
+  roomId        String @unique @map("room_id")
+  roomNumber    String @map("room_number")
+  status        String
+  roomTypeId    String @map("room_type_id")
+  roomTypeName  String @map("room_type_name")
+  catalogueRate Int    @map("catalogue_rate")
+
+  @@map("kpi_room")
+}
+
+/// Grand livre agrégé au grain (jour d'écriture, compte, type, trésorerie ?, source).
+/// `debit`/`credit` sont des SUM(int) → bigint. Signe calculé côté service (cf. normalBalance).
+view KpiLedgerDaily {
+  entryDate     DateTime @map("entry_date") @db.Date
+  accountCode   String   @map("account_code")
+  accountType   String   @map("account_type")
+  isCashAccount Boolean  @map("is_cash_account")
+  source        String
+  debit         BigInt
+  credit        BigInt
+
+  @@unique([entryDate, accountCode, source])
+  @@map("kpi_ledger_daily")
+}
+
+/// Une ligne par facture STANDARD visée (kind = STANDARD AND validatedAt IS NOT NULL).
+view KpiInvoice {
+  invoiceId     String   @unique @map("invoice_id")
+  validatedDate DateTime @map("validated_date") @db.Date
+  status        String
+  totalAmount   Int      @map("total_amount")
+  bookingId     String   @map("booking_id")
+
+  @@map("kpi_invoice")
+}
+
+/// Inventaire chambres par type. `roomsAvailable` exclut le statut MAINTENANCE COURANT
+/// (aucun historique de statut en base — approximation assumée).
+view KpiRoomInventory {
+  roomTypeId     String @unique @map("room_type_id")
+  roomTypeName   String @map("room_type_name")
+  catalogueRate  Int    @map("catalogue_rate")
+  roomsAvailable BigInt @map("rooms_available")
+  roomsTotal     BigInt @map("rooms_total")
+
+  @@map("kpi_room_inventory")
 }

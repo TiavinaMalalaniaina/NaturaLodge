@@ -56,6 +56,14 @@ make dev-client    # client en local, hot-reload (port 3000)
 - Le serveur applique les migrations Prisma automatiquement au démarrage du conteneur (`prisma migrate deploy`).
 - Sous Windows sans Git Bash configuré comme `SHELL` de `make`, les recettes s'exécutent via `cmd.exe` : éviter `trap`/`&`/`wait`/`awk` dans le Makefile (syntaxe POSIX indisponible).
 
+### Monitoring (VPS de production)
+
+`docker-compose.monitoring.yml` (séparé de `docker-compose.yml`) : Prometheus + Grafana + Loki/Promtail + node-exporter + cAdvisor + postgres-exporter + nginx-exporter + Uptime Kuma. Se raccroche au réseau nommé `naturalodge-network` (déclaré dans `docker-compose.yml`) pour scraper `server`/`db`/`client` par leur nom de service. Voir `monitoring/README.md` pour le détail (accès aux dashboards, rétention, alertes).
+
+- Le serveur expose `GET /metrics` (Prometheus, `server/src/middleware/metrics.ts` — latence/throughput/erreurs par route, métriques Node par défaut) et journalise les requêtes Prisma lentes (`server/src/lib/prisma.ts`, seuil `SLOW_QUERY_THRESHOLD_MS`, 200ms par défaut) — jamais exposé publiquement, uniquement scrapé via `naturalodge-network`.
+- Logs structurés JSON via `server/src/lib/logger.ts` (pino) + `pino-http` — consommés par Promtail → Loki, cherchables dans Grafana.
+- `make monitoring-up` / `make monitoring-down` / `make monitoring-logs`.
+
 ---
 
 ## Stack technique

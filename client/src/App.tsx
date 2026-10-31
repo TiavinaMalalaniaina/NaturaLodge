@@ -27,10 +27,15 @@ const Settings        = lazy(() => import('./pages/Settings').then(m => ({ defau
 const Expenses         = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
 const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ default: m.Treasury })));
 const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
+const KpiLayout            = lazy(() => import('./pages/KpiLayout').then(m => ({ default: m.KpiLayout })));
+const KpiOccupancy         = lazy(() => import('./pages/KpiOccupancy').then(m => ({ default: m.KpiOccupancy })));
+const KpiBilling           = lazy(() => import('./pages/KpiBilling').then(m => ({ default: m.KpiBilling })));
+const KpiProfitability     = lazy(() => import('./pages/KpiProfitability').then(m => ({ default: m.KpiProfitability })));
 const AuditLog            = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLog })));
 const Permissions          = lazy(() => import('./pages/Permissions').then(m => ({ default: m.Permissions })));
 const Accounts              = lazy(() => import('./pages/Accounts').then(m => ({ default: m.Accounts })));
 const TreasuryAccess        = lazy(() => import('./pages/TreasuryAccess').then(m => ({ default: m.TreasuryAccess })));
+const ResetPassword        = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 
 const App: React.FC = () => {
   return (
@@ -40,6 +45,7 @@ const App: React.FC = () => {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>
@@ -73,6 +79,11 @@ const App: React.FC = () => {
                   </Route>
                   <Route element={<ProtectedRoute permission="ledger.view_reports" />}>
                     <Route path="reports" element={<Reports />} />
+                    <Route path="kpi" element={<KpiLayout />}>
+                      <Route index element={<KpiOccupancy />} />
+                      <Route path="billing" element={<KpiBilling />} />
+                      <Route path="profitability" element={<KpiProfitability />} />
+                    </Route>
                   </Route>
                   <Route element={<ProtectedRoute permission="ledger.manage_accounts" />}>
                     <Route path="accounts" element={<Accounts />} />

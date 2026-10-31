@@ -89,7 +89,7 @@ export const Settings: React.FC = () => {
              <div className="p-5 bg-stone-900 rounded-3xl text-white organic-shadow">
                 <Database className="w-6 h-6 text-teal-400 mb-4" />
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-40 mb-2">Build Identifier</p>
-                <p className="font-mono text-[10px] opacity-80 mb-4">v1.0.4</p>
+                <p className="font-mono text-[10px] opacity-80 mb-4">v2.2.0</p>
                 <button className="text-[9px] font-bold text-teal-400 uppercase tracking-widest hover:underline">Check for Updates</button>
              </div>
           </div>

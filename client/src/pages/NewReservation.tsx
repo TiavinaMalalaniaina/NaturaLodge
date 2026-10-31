@@ -35,17 +35,17 @@ export const NewReservation: React.FC = () => {
   const { can } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialRoomId   = searchParams.get('roomId');
-  const initialArrival  = searchParams.get('arrival');
+  const initialRoomId = searchParams.get('roomId');
+  const initialArrival = searchParams.get('arrival');
   const { addNotification } = useNotifications();
   const createBooking = useCreateBooking();
 
   // ─── State ────────────────────────────────────────────────────
-  const [step, setStep]       = useState(1);
+  const [step, setStep] = useState(1);
   const [guestId, setGuestId] = useState('');
-  const [arrival, setArrival]     = useState(() => initialArrival ?? '');
+  const [arrival, setArrival] = useState(() => initialArrival ?? '');
   const [departure, setDeparture] = useState(() => initialArrival ? addDaysToLocalStr(initialArrival, 1) : '');
-  const [apiError, setApiError]   = useState('');
+  const [apiError, setApiError] = useState('');
 
   const [roomSelections, setRoomSelections] = useState<Map<string, RoomDates>>(() =>
     initialRoomId
@@ -54,25 +54,25 @@ export const NewReservation: React.FC = () => {
   );
   const [roomExtras, setRoomExtras] = useState<Map<string, RoomExtraSelection[]>>(new Map());
   const [addingExtraRoomId, setAddingExtraRoomId] = useState<string | null>(null);
-  const [newExtraId,        setNewExtraId]        = useState('');
-  const [newExtraQty,       setNewExtraQty]       = useState(1);
+  const [newExtraId, setNewExtraId] = useState('');
+  const [newExtraQty, setNewExtraQty] = useState(1);
 
   const [isGuestDropdownOpen, setIsGuestDropdownOpen] = useState(false);
-  const [guestSearch, setGuestSearch]                 = useState('');
+  const [guestSearch, setGuestSearch] = useState('');
   const [isAddGuestModalOpen, setIsAddGuestModalOpen] = useState(false);
-  const [pendingGuest, setPendingGuest]               = useState<{ id: string; name: string; city: string; status: string } | null>(null);
+  const [pendingGuest, setPendingGuest] = useState<{ id: string; name: string; city: string; status: string } | null>(null);
   const guestDropdownRef = useRef<HTMLDivElement>(null);
 
   const debouncedSearch = useDebounce(guestSearch);
-  const { data: guestsPage }                                    = useGuests(debouncedSearch ? { search: debouncedSearch } : undefined);
+  const { data: guestsPage } = useGuests(debouncedSearch ? { search: debouncedSearch } : undefined);
   const guests = guestsPage?.data ?? [];
-  const { data: availableRooms = [], isLoading: roomsLoading }  = useAvailableRooms(arrival, departure);
+  const { data: availableRooms = [], isLoading: roomsLoading } = useAvailableRooms(arrival, departure);
   const { data: roomTypes = [] } = useRoomTypes();
   const { data: extrasCatalog = [] } = useExtras();
   const activeExtrasCatalog = extrasCatalog.filter(ex => ex.isActive);
 
   // ─── Room filters (step 2) ────────────────────────────────────
-  const [roomSearch,   setRoomSearch]   = useState('');
+  const [roomSearch, setRoomSearch] = useState('');
   const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
   const [roomCapacity, setRoomCapacity] = useState(0);
   const [dateEditRoomIds, setDateEditRoomIds] = useState<Set<string>>(new Set());
@@ -108,7 +108,7 @@ export const NewReservation: React.FC = () => {
     return sum + r.rate * nights + roomExtrasTotal(r.id, nights);
   }, 0), [selectedRooms, roomSelections, roomExtras, activeExtrasCatalog]);
 
-  const overallArrival   = [...roomSelections.values()].map(s => s.arrival).sort()[0]       ?? arrival;
+  const overallArrival = [...roomSelections.values()].map(s => s.arrival).sort()[0] ?? arrival;
   const overallDeparture = [...roomSelections.values()].map(s => s.departure).sort().at(-1) ?? departure;
 
   // ─── Effects ──────────────────────────────────────────────────
@@ -133,24 +133,24 @@ export const NewReservation: React.FC = () => {
 
   // ─── Helpers ──────────────────────────────────────────────────
 
-  const today      = todayLocalStr();
+  const today = todayLocalStr();
   const step1Valid = !!guestId && !!arrival && !!departure && globalNights > 0;
   const step2Valid = roomSelections.size > 0 &&
     [...roomSelections.values()].every(s => s.arrival && s.departure && roomNights(s) > 0);
 
   const toggleRoom = (id: string) => {
-    setRoomSelections(prev => {
+    setRoomSelections((prev) => {
       const next = new Map(prev);
-      next.has(id) ? next.delete(id) : next.set(id, { arrival, departure });
+      if (next.has(id)) next.delete(id); else next.set(id, { arrival: overallArrival, departure: overallDeparture });
       return next;
     });
-    setDateEditRoomIds(prev => {
+    setDateEditRoomIds((prev) => {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
-    setRoomExtras(prev => {
+    setRoomExtras((prev) => {
       if (!prev.has(id)) return prev;
       const next = new Map(prev);
       next.delete(id);
@@ -190,14 +190,14 @@ export const NewReservation: React.FC = () => {
   const toggleDateEdit = (id: string) => {
     setDateEditRoomIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
   const updateRoomDate = (id: string, field: 'arrival' | 'departure', value: string) => {
     setRoomSelections(prev => {
-      const next    = new Map(prev);
+      const next = new Map(prev);
       const current = next.get(id)!;
       next.set(id, { ...current, [field]: value });
       return next;
@@ -212,7 +212,7 @@ export const NewReservation: React.FC = () => {
     try {
       await createBooking.mutateAsync({
         guestId,
-        arrival:   `${overallArrival}T00:00:00.000Z`,
+        arrival: `${overallArrival}T00:00:00.000Z`,
         departure: `${overallDeparture}T00:00:00.000Z`,
         rooms: [...roomSelections.entries()].map(([roomId, sel]) => {
           const room = availableRooms.find(r => r.id === roomId)!;
@@ -220,7 +220,7 @@ export const NewReservation: React.FC = () => {
           return {
             roomId,
             roomRate: room.rate,
-            arrival:  `${sel.arrival}T00:00:00.000Z`,
+            arrival: `${sel.arrival}T00:00:00.000Z`,
             departure: `${sel.departure}T00:00:00.000Z`,
             ...(extras.length > 0 ? { extras } : {}),
           };
@@ -229,10 +229,10 @@ export const NewReservation: React.FC = () => {
       });
 
       addNotification({
-        source:   'direct',
-        title:    'New Direct Stay',
+        source: 'direct',
+        title: 'New Direct Stay',
         subtitle: `${selectedGuest?.name ?? 'Guest'} • ${selectedRooms.length} unit${selectedRooms.length > 1 ? 's' : ''}`,
-        amount:   formatCurrency(totalAmount),
+        amount: formatCurrency(totalAmount),
       });
 
       navigate('/reservations');
@@ -268,7 +268,7 @@ export const NewReservation: React.FC = () => {
           <div className="bg-primary rounded-3xl p-8 text-white flex flex-col lg:sticky lg:top-6">
             <div className="space-y-5">
               {[
-                { icon: User,     label: t('reservations.guestLabel'),  value: selectedGuest?.name ?? t('common.unassigned') },
+                { icon: User, label: t('reservations.guestLabel'), value: selectedGuest?.name ?? t('common.unassigned') },
                 { icon: Calendar, label: t('reservations.windowLabel'), value: arrival ? `${arrival} → ${departure}` : t('common.notSet') },
               ].map((item, i) => (
                 <div key={i} className="space-y-1">
@@ -291,7 +291,7 @@ export const NewReservation: React.FC = () => {
                   <div className="space-y-2 mt-1">
                     {selectedRooms.map(r => {
                       const sel = roomSelections.get(r.id)!;
-                      const n   = roomNights(sel);
+                      const n = roomNights(sel);
                       return (
                         <div key={r.id} className="bg-white/10 rounded-xl px-3 py-2">
                           <div className="flex items-center justify-between">
@@ -303,8 +303,13 @@ export const NewReservation: React.FC = () => {
                           </div>
                           {sel.arrival && sel.departure && n > 0 && (
                             <p className="text-[9px] opacity-50 mt-0.5">
-                              {sel.arrival} → {sel.departure} · {n}n · {formatCurrency(r.rate * n + roomExtrasTotal(r.id, n))}
-                            </p>
+                              {sel.arrival}
+                              {" → "}
+                              {sel.departure}
+                              {" · "}
+                              {t("common.nights", { count: n })}
+                              {" · "}
+                              {formatCurrency(r.rate * n + roomExtrasTotal(r.id, n))}                            </p>
                           )}
                           {(roomExtras.get(r.id) ?? []).length > 0 && (
                             <p className="text-[9px] opacity-50 mt-0.5 flex items-center gap-1">
@@ -536,7 +541,7 @@ export const NewReservation: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 shrink-0">{t('reservations.minGuests')}</span>
                   <div className="flex gap-1.5">
-                    {[0,1,2,3,4].map(n => (
+                    {[0, 1, 2, 3, 4].map(n => (
                       <button key={n} type="button" onClick={() => setRoomCapacity(n)}
                         className={cn('w-8 h-7 rounded-lg text-[9px] font-bold border transition-all',
                           roomCapacity === n
@@ -572,10 +577,10 @@ export const NewReservation: React.FC = () => {
                       </button>
                     </div>
                   ) : filteredRooms.map(room => {
-                    const sel      = roomSelections.get(room.id);
+                    const sel = roomSelections.get(room.id);
                     const selected = !!sel;
-                    const n        = sel ? roomNights(sel) : globalNights;
-                    const dateErr  = sel && sel.arrival && sel.departure && n <= 0;
+                    const n = sel ? roomNights(sel) : globalNights;
+                    const dateErr = sel && sel.arrival && sel.departure && n <= 0;
 
                     return (
                       <div key={room.id}
@@ -611,7 +616,11 @@ export const NewReservation: React.FC = () => {
                               {formatCurrency(room.rate * Math.max(n, 1) + roomExtrasTotal(room.id, Math.max(n, 1)))}
                             </p>
                             <p className="text-[9px] text-on-surface-variant/30 font-mono">
-                              {formatCurrency(room.rate)}/n · {n}n
+                              {formatCurrency(room.rate)}
+                              {" / "}
+                              {t("common.perNight")}
+                              {" · "}
+                              {t("common.nights", { count: n })}
                             </p>
                           </div>
                         </div>

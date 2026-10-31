@@ -1,0 +1,39 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# Rétention courte : ce sont des logs applicatifs pour du diagnostic récent, pas un entrepôt
+# d'audit long terme (voir modèle AuditLog en base pour ça, qui a sa propre politique).
+limits_config:
+  retention_period: 15d
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  # Loki 3.x refuse de démarrer avec retention_enabled sans store pour les demandes de suppression
+  # (purge appliquée via delete requests, même en filesystem) — CONFIG ERROR sinon.
+  delete_request_store: filesystem

@@ -9,7 +9,7 @@ export interface CashAccount {
 }
 
 export const fetchCashAccounts = async (): Promise<CashAccount[]> => {
-  const { data } = await api.get<any[]>('/ledger/cash-accounts');
+  const { data } = await api.get<CashAccount[]>('/ledger/cash-accounts');
   return data.map(a => ({ ...a, allowedMethods: (a.allowedMethods ?? []).map((m: string) => m.toLowerCase()) }));
 };
 

@@ -8,6 +8,7 @@ import { useInvoices } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { InvoiceStatus } from '../api/invoices';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
+import { invoiceStatusI18nKey } from '../lib/statusColors';
 
 type StatusFilter = 'all' | InvoiceStatus;
 
@@ -41,7 +42,6 @@ export const Invoices: React.FC = () => {
     page,
     limit: 20,
   });
-
   const invoices = data?.data ?? [];
   const meta     = data?.meta;
 
@@ -174,7 +174,7 @@ export const Invoices: React.FC = () => {
                         </span>
                       )}
                       <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', STATUS_CLASS[inv.status])}>
-                        {t(`invoice.status_${inv.status}`)}
+                        {t(invoiceStatusI18nKey(inv.kind, inv.status))}
                       </span>
                       {inv.booking.effectiveStatus && (
                         <span className={cn('px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[inv.booking.effectiveStatus])}>
@@ -213,7 +213,7 @@ export const Invoices: React.FC = () => {
             onClick={() => setPage(p => p - 1)}
             className="px-4 py-2 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 hover:border-primary/30 transition-colors"
           >
-            ← Prev
+            {t('common.prev')}
           </button>
           <span className="text-[10px] font-bold text-on-surface-variant/50">
             {t('common.page')} {meta.page} {t('common.of')} {meta.totalPages}
@@ -223,7 +223,7 @@ export const Invoices: React.FC = () => {
             onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 hover:border-primary/30 transition-colors"
           >
-            Next →
+            {t('common.next')}
           </button>
         </div>
       )}

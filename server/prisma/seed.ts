@@ -96,135 +96,74 @@ const BOOKING_NOTES = [
   'Guest requested noise-free floor',
 ]
 
-// ─── 4 Room Types ─────────────────────────────────────────────────────────────
+// ─── Room Types — calqués sur la base de prod actuelle (2 types, sans features) ────────────────
 
 const ROOM_TYPE_DEFS = [
   {
-    key: 'SUP',
-    name: 'Natura Superior',
-    rate: 580_000,
-    area: 32,
-    bedType: 'Double',
-    capacity: 2,
-    view: 'Garden View',
-    description: 'Cozy superior room nestled in lush greenery with garden view and premium eco amenities.',
-    featureIds: ['wifi', 'tv'],
-  },
-  {
-    key: 'DEL',
-    name: 'Canopy Deluxe',
-    rate: 980_000,
-    area: 48,
+    key: 'STD',
+    name: 'Standard',
+    rate: 130_000,
+    area: 30,
     bedType: 'King Size',
-    capacity: 2,
-    view: 'Forest View',
-    description: 'Elevated deluxe room with treetop views, private balcony and curated local guide service.',
-    featureIds: ['wifi', 'coffee', 'ac', 'tv'],
+    capacity: 5,
+    view: 'Garden View',
+    description: '',
   },
   {
-    key: 'SUI',
-    name: 'Lagoon Suite',
-    rate: 1_750_000,
-    area: 62,
-    bedType: 'Super King',
-    capacity: 3,
-    view: 'Lagoon View',
-    description: 'Spacious suite overlooking the private lagoon with butler service and outdoor soaking tub.',
-    featureIds: ['wifi', 'coffee', 'ac', 'tv', 'entry'],
-  },
-  {
-    key: 'PEN',
-    name: 'Jungle Penthouse',
-    rate: 3_800_000,
-    area: 105,
-    bedType: 'Super King',
-    capacity: 4,
-    view: 'Panoramic Jungle',
-    description: 'Exclusive penthouse with 360° jungle panorama, private plunge pool and dedicated concierge.',
-    featureIds: ['wifi', 'coffee', 'ac', 'tv', 'entry', 'guide'],
+    key: 'SUP',
+    name: 'Standard Sup',
+    rate: 150_000,
+    area: 30,
+    bedType: 'King Size',
+    capacity: 6,
+    view: 'Garden View',
+    description: '',
   },
 ]
 
-// ─── 20 Rooms ─────────────────────────────────────────────────────────────────
+// ─── 8 Rooms — noms et statuts calqués sur la base de prod actuelle ───────────────────────────
 //
-// Role in the current period:
-//   today (7)       → CONFIRMED arrival = TODAY  → DB status RESERVED
-//   in_progress (10)→ CHECKED_IN since 1-4 days  → DB status OCCUPIED
-//   maintenance (2) → no active booking           → DB status MAINTENANCE
-//   available (1)   → no active booking           → DB status AVAILABLE
+//   in_progress (2) → CHECKED_IN en cours       → DB status OCCUPIED
+//   maintenance (3) → séjours passés uniquement → DB status MAINTENANCE
+//   available   (3) → passé + futur, pas de séjour en cours → DB status AVAILABLE
+//
+// `number` = "<numéro>-<nom de fleur>" comme en base (ex. "101-Azalée"). "Gironflier" reprend
+// l'orthographe (fautive) de la base.
 
-type RoomRole = 'today' | 'in_progress' | 'maintenance' | 'available'
+type RoomRole = 'in_progress' | 'maintenance' | 'available'
 
 const ROOM_DEFS: Array<{
   number: string
   typeKey: string
   role: RoomRole
-  dbStatus: 'RESERVED' | 'OCCUPIED' | 'MAINTENANCE' | 'AVAILABLE'
+  dbStatus: 'OCCUPIED' | 'MAINTENANCE' | 'AVAILABLE'
 }> = [
-  // Superior 101-105
-  { number: '101', typeKey: 'SUP', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '102', typeKey: 'SUP', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '103', typeKey: 'SUP', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '104', typeKey: 'SUP', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '105', typeKey: 'SUP', role: 'maintenance', dbStatus: 'MAINTENANCE' },
-  // Deluxe 201-205
-  { number: '201', typeKey: 'DEL', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '202', typeKey: 'DEL', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '203', typeKey: 'DEL', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '204', typeKey: 'DEL', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '205', typeKey: 'DEL', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  // Suite 301-305
-  { number: '301', typeKey: 'SUI', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '302', typeKey: 'SUI', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '303', typeKey: 'SUI', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '304', typeKey: 'SUI', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '305', typeKey: 'SUI', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  // Penthouse 401-405
-  { number: '401', typeKey: 'PEN', role: 'today',       dbStatus: 'RESERVED'    },
-  { number: '402', typeKey: 'PEN', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '403', typeKey: 'PEN', role: 'in_progress', dbStatus: 'OCCUPIED'    },
-  { number: '404', typeKey: 'PEN', role: 'maintenance', dbStatus: 'MAINTENANCE' },
-  { number: '405', typeKey: 'PEN', role: 'available',   dbStatus: 'AVAILABLE'   },
+  { number: '101-Azalée',     typeKey: 'STD', role: 'available',   dbStatus: 'AVAILABLE'   },
+  { number: '102-Bambou',     typeKey: 'STD', role: 'in_progress', dbStatus: 'OCCUPIED'    },
+  { number: '301-Eucalyptus', typeKey: 'STD', role: 'maintenance', dbStatus: 'MAINTENANCE' },
+  { number: '302-Fougère',    typeKey: 'STD', role: 'maintenance', dbStatus: 'MAINTENANCE' },
+  { number: '201-Canelle',    typeKey: 'SUP', role: 'available',   dbStatus: 'AVAILABLE'   },
+  { number: '202-Dombeya',    typeKey: 'SUP', role: 'in_progress', dbStatus: 'OCCUPIED'    },
+  { number: '401-Gironflier', typeKey: 'SUP', role: 'available',   dbStatus: 'AVAILABLE'   },
+  { number: '402-Hibiscus',   typeKey: 'SUP', role: 'maintenance', dbStatus: 'MAINTENANCE' },
 ]
 
-// Fixed offsets so the seed is reproducible and realistic
-const CHECKED_IN_ARRIVAL_OFFSET: Record<string, number> = {
-  '103': 1, '104': 3,
-  '203': 2, '204': 1, '205': 4,
-  '303': 2, '304': 3, '305': 1,
-  '402': 2, '403': 4,
-}
-const TODAY_DEP_OFFSET: Record<string, number> = {
-  '101': 3, '102': 5,
-  '201': 2, '202': 4,
-  '301': 6, '302': 3,
-  '401': 4,
-}
-const CHECKED_IN_DEP_OFFSET: Record<string, number> = {
-  '103': 3, '104': 2,
-  '203': 4, '204': 3, '205': 2,
-  '303': 5, '304': 2, '305': 3,
-  '402': 3, '403': 2,
-}
+// Fenêtre des données de démo : réservations d'août à début octobre 2026 (comme la base actuelle).
+const WINDOW_START = noon(new Date('2026-08-01'))
+const WINDOW_END   = noon(new Date('2026-10-05'))
+const GUEST_COUNT  = 49
 
 // ─── Staff data ───────────────────────────────────────────────────────────────
 
+// Utilisateurs calqués sur la base de prod actuelle. `username` = partie locale de l'email.
 const STAFF_DATA = [
-  { email: 'admin@naturalodge.mg',     name: 'Marie Dupont',     role: 'ADMIN',        status: 'ACTIVE'   },
-  { email: 'marc.d@naturalodge.mg',    name: 'Marc Delacroix',   role: 'MANAGER',      status: 'ACTIVE'   },
-  { email: 'ines.f@naturalodge.mg',    name: 'Inès Fontaine',    role: 'MANAGER',      status: 'ACTIVE'   },
-  { email: 'thomas.r@naturalodge.mg',  name: 'Thomas Renard',    role: 'MANAGER',      status: 'ON_LEAVE' },
-  { email: 'sarah.l@naturalodge.mg',   name: 'Sarah Laurent',    role: 'GERANT', status: 'ACTIVE'   },
-  { email: 'camille.b@naturalodge.mg', name: 'Camille Bernard',  role: 'GERANT', status: 'ACTIVE'   },
-  { email: 'leo.m@naturalodge.mg',     name: 'Léo Martin',       role: 'GERANT', status: 'ACTIVE'   },
-  { email: 'nina.s@naturalodge.mg',    name: 'Nina Silva',       role: 'GERANT', status: 'ACTIVE'   },
-  { email: 'theo.k@naturalodge.mg',    name: 'Théo Kovac',       role: 'GERANT', status: 'ACTIVE'   },
-  { email: 'alice.n@naturalodge.mg',   name: 'Alice Nguyen',     role: 'GERANT', status: 'ON_LEAVE' },
-  { email: 'jean.p@naturalodge.mg',    name: 'Jean Petit',       role: 'HOUSEKEEPING', status: 'ACTIVE'   },
-  { email: 'fatou.d@naturalodge.mg',   name: 'Fatou Diallo',     role: 'HOUSEKEEPING', status: 'ACTIVE'   },
-  { email: 'carlos.m@naturalodge.mg',  name: 'Carlos Morales',   role: 'HOUSEKEEPING', status: 'ACTIVE'   },
-  { email: 'yuki.t@naturalodge.mg',    name: 'Yuki Tanaka',      role: 'HOUSEKEEPING', status: 'ACTIVE'   },
-  { email: 'amara.o@naturalodge.mg',   name: 'Amara Osei',       role: 'HOUSEKEEPING', status: 'INACTIVE' },
+  { email: 'admin@naturalodge.mg',               name: 'Administrateur',                    role: 'ADMIN',   status: 'ACTIVE' },
+  { email: 'tiavinamalalaniaina@naturalodge.mg', name: 'Tiavina Malalaniaina RAMIANDRISOA', role: 'ADMIN',   status: 'ACTIVE' },
+  { email: 'felanaramia@naturalodge.mg',         name: 'Felana RAMIANDRISOA',               role: 'MANAGER', status: 'ACTIVE' },
+  { email: 'sahondra@naturalodge.mg',            name: 'Sahondra RAKOTOMALALA',             role: 'MANAGER', status: 'ACTIVE' },
+  { email: 'tovo@naturalodge.mg',                name: 'Tovoniaina RAMIANDRISOA',           role: 'MANAGER', status: 'ACTIVE' },
+  { email: 'gerant@naturalodge.mg',              name: 'gerant',                            role: 'GERANT',  status: 'ACTIVE' },
+  { email: 'manuella@naturalodge.mg',            name: 'Manuëlla',                          role: 'GERANT',  status: 'ACTIVE' },
 ] as const
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -235,25 +174,7 @@ async function main() {
   await seedRoles(prisma)
   await seedPermissions(prisma)
 
-  // ── Room Features (upsert by fixed id) ────────────────────────────────────
-  const featureDefs = [
-    { id: 'wifi',   label: 'High-speed Wi-Fi',    iconName: 'Wifi'        },
-    { id: 'coffee', label: 'Organic Coffee Bar',   iconName: 'Coffee'      },
-    { id: 'ac',     label: 'Eco-Air Control',      iconName: 'Wind'        },
-    { id: 'tv',     label: 'Smart TV 4K',          iconName: 'Tv'          },
-    { id: 'entry',  label: 'Contactless Entry',    iconName: 'ShieldCheck' },
-    { id: 'guide',  label: 'Curated Local Guide',  iconName: 'Map'         },
-  ]
-  for (const f of featureDefs) {
-    await prisma.roomFeature.upsert({
-      where:  { id: f.id },
-      update: { label: f.label, iconName: f.iconName },
-      create: f,
-    })
-  }
-  console.log('✅ 6 room features')
-
-  // ── Room Types (findFirst or create — name not @unique) ───────────────────
+  // ── Room Types (findFirst or create — name not @unique) — sans features, comme en base ────
   const roomTypeIdByKey: Record<string, string> = {}
   for (const rt of ROOM_TYPE_DEFS) {
     let existing = await prisma.roomType.findFirst({ where: { name: rt.name } })
@@ -267,13 +188,12 @@ async function main() {
           capacity:    rt.capacity,
           view:        rt.view,
           description: rt.description,
-          features:    { connect: rt.featureIds.map(id => ({ id })) },
         },
       })
     }
     roomTypeIdByKey[rt.key] = existing.id
   }
-  console.log('✅ 4 room types')
+  console.log(`✅ ${ROOM_TYPE_DEFS.length} room types`)
 
   // ── Rooms (upsert by number @unique) ─────────────────────────────────────
   type RoomInfo = { id: string; rate: number; role: RoomRole }
@@ -293,7 +213,7 @@ async function main() {
     })
     roomByNumber[rd.number] = { id: room.id, rate: typeDef.rate, role: rd.role }
   }
-  console.log('✅ 20 rooms')
+  console.log(`✅ ${ROOM_DEFS.length} rooms`)
 
   // ── Staff (upsert by username @unique — dérivé de la partie locale de l'email) ────────────
   const adminPwd = await bcrypt.hash('Admin@1234', 12)
@@ -321,7 +241,7 @@ async function main() {
       })
     }),
   )
-  console.log('✅ 15 staff')
+  console.log(`✅ ${STAFF_DATA.length} staff`)
 
   // ── Guests + Bookings : skip if already seeded ────────────────────────────
   const existingGuests = await prisma.guest.count()
@@ -331,9 +251,9 @@ async function main() {
     return
   }
 
-  // ── Guests (100) ─────────────────────────────────────────────────────────
+  // ── Guests ──────────────────────────────────────────────────────────────
   const guests: Array<{ id: string }> = []
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < GUEST_COUNT; i++) {
     const first = pick(FIRST_NAMES)
     const last  = pick(LAST_NAMES)
     const loc   = pick(LOCATIONS)
@@ -354,18 +274,21 @@ async function main() {
       },
     })
     guests.push({ id: g.id })
-    if ((i + 1) % 25 === 0) process.stdout.write(`\r  guests: ${i + 1}/100`)
+    if ((i + 1) % 25 === 0) process.stdout.write(`\r  guests: ${i + 1}/${GUEST_COUNT}`)
   }
-  console.log('\n✅ 100 guests')
+  console.log(`\n✅ ${GUEST_COUNT} guests`)
 
-  // ── Build booking payloads ────────────────────────────────────────────────
+  // ── Build booking payloads — fenêtre WINDOW_START → WINDOW_END, calquée sur la base actuelle ──
+  //   available   : séjours passés + 1-2 futurs
+  //   in_progress : séjours passés + 1 séjour CHECKED_IN en cours + 1-2 futurs
+  //   maintenance : séjours passés uniquement (chambre hors service depuis)
 
   type BookingPayload = {
     guestId:     string
     createdById: string
     arrival:     Date
     departure:   Date
-    status:      'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT_UNPAID' | 'CANCELLED'
+    status:      'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | 'CHECKED_OUT_UNPAID' | 'CANCELLED'
     totalAmount: number
     notes:       string | null
     roomId:      string
@@ -373,128 +296,70 @@ async function main() {
   }
 
   const allBookings: BookingPayload[] = []
+  const nights = (a: Date, b: Date) => Math.max(1, Math.round((b.getTime() - a.getTime()) / 86_400_000))
 
-  for (const [roomNumber, { id: roomId, rate, role }] of Object.entries(roomByNumber)) {
+  for (const { id: roomId, rate, role } of Object.values(roomByNumber)) {
 
-    // ── Maintenance rooms: a few historical stays only ───────────────────
-    if (role === 'maintenance') {
-      let c = noon(addDays(TODAY, -280))
-      for (let i = 0; i < 4; i++) {
-        const dur = rand(2, 5)
-        const dep = noon(addDays(c, dur))
-        allBookings.push({
-          guestId:     pick(guests).id,
-          createdById: pick(staff).id,
-          arrival:     new Date(c),
-          departure:   new Date(dep),
-          status:      'CHECKED_OUT_UNPAID',
-          totalAmount: rate * dur,
-          notes:       null,
-          roomId,
-          roomRate:    rate,
-        })
-        c = noon(addDays(dep, rand(15, 35)))
-      }
-      continue
-    }
+    // Séjour en cours (in_progress seulement)
+    const currentArrival   = role === 'in_progress' ? noon(addDays(TODAY, -rand(1, 4))) : null
+    const currentDeparture = role === 'in_progress' ? noon(addDays(TODAY, rand(2, 5)))  : null
 
-    // ── Determine current-period boundaries ──────────────────────────────
-    let currentArrival: Date
-    let currentDeparture: Date
-    let currentStatus: 'CONFIRMED' | 'CHECKED_IN'
-
-    if (role === 'in_progress') {
-      const arrOff = CHECKED_IN_ARRIVAL_OFFSET[roomNumber] ?? 2
-      const depOff = CHECKED_IN_DEP_OFFSET[roomNumber]    ?? 3
-      currentArrival   = noon(addDays(TODAY, -arrOff))
-      currentDeparture = noon(addDays(TODAY, depOff))
-      currentStatus    = 'CHECKED_IN'
-    } else if (role === 'today') {
-      const depOff     = TODAY_DEP_OFFSET[roomNumber] ?? 3
-      currentArrival   = noon(new Date(TODAY))
-      currentDeparture = noon(addDays(TODAY, depOff))
-      currentStatus    = 'CONFIRMED'
-    } else {
-      // available — no current stay; just need sensible future start
-      currentArrival   = noon(new Date(TODAY))
-      currentDeparture = noon(new Date(TODAY))
-      currentStatus    = 'CONFIRMED' // unused
-    }
-
-    // ── Past bookings (non-overlapping with current stay) ────────────────
-    const pastCutoff = role === 'available'
-      ? noon(addDays(TODAY, -14))
-      : noon(addDays(currentArrival, -2))
-
-    let cursor    = noon(addDays(TODAY, -(280 + rand(0, 30))))
-    let pastCount = 0
-    const MAX_PAST = 9
-
-    while (cursor < pastCutoff && pastCount < MAX_PAST) {
-      const dur = rand(2, 7)
-      const dep = noon(addDays(cursor, dur))
-      if (dep > pastCutoff) break
-
-      const isCancelled = Math.random() < 0.17
-
+    // ── Passé : d'août jusqu'à la veille du séjour en cours (ou TODAY - 3j), borné à la fenêtre ──
+    const pastCutoff = currentArrival ? noon(addDays(currentArrival, -2)) : noon(addDays(TODAY, -3))
+    const pastEnd    = pastCutoff < WINDOW_END ? pastCutoff : WINDOW_END
+    let cursor = noon(addDays(WINDOW_START, rand(0, 5)))
+    for (let n = 0; n < 8; n++) {
+      const dep = noon(addDays(cursor, rand(2, 5)))
+      if (dep >= pastEnd) break
       allBookings.push({
         guestId:     pick(guests).id,
         createdById: pick(staff).id,
         arrival:     new Date(cursor),
         departure:   new Date(dep),
-        status:      isCancelled ? 'CANCELLED' : 'CHECKED_OUT_UNPAID',
-        totalAmount: rate * dur,
+        status:      Math.random() < 0.18 ? 'CANCELLED' : 'CHECKED_OUT_UNPAID',
+        totalAmount: rate * nights(cursor, dep),
         notes:       Math.random() < 0.25 ? pick(BOOKING_NOTES) : null,
         roomId,
         roomRate:    rate,
       })
-
-      cursor = noon(addDays(dep, rand(10, 25)))
-      pastCount++
+      cursor = noon(addDays(dep, rand(2, 7)))
     }
 
-    // ── Current booking ───────────────────────────────────────────────────
-    if (role !== 'available') {
-      const nights = Math.round(
-        (currentDeparture.getTime() - currentArrival.getTime()) / 86_400_000,
-      )
+    // ── Séjour en cours ──
+    if (currentArrival && currentDeparture) {
       allBookings.push({
         guestId:     pick(guests).id,
         createdById: pick(staff).id,
         arrival:     new Date(currentArrival),
         departure:   new Date(currentDeparture),
-        status:      currentStatus,
-        totalAmount: rate * Math.max(1, nights),
-        notes:       Math.random() < 0.45 ? pick(BOOKING_NOTES) : null,
+        status:      'CHECKED_IN',
+        totalAmount: rate * nights(currentArrival, currentDeparture),
+        notes:       Math.random() < 0.4 ? pick(BOOKING_NOTES) : null,
         roomId,
         roomRate:    rate,
       })
     }
 
-    // ── Future bookings (2-3 per room) ────────────────────────────────────
-    let futCursor: Date
-    if (role === 'available') {
-      futCursor = noon(addDays(TODAY, rand(5, 15)))
-    } else {
-      futCursor = noon(addDays(currentDeparture, rand(7, 15)))
-    }
-
-    const futCount = rand(2, 4)
-    for (let f = 0; f < futCount; f++) {
-      const dur = rand(2, 7)
-      const dep = noon(addDays(futCursor, dur))
-      allBookings.push({
-        guestId:     pick(guests).id,
-        createdById: pick(staff).id,
-        arrival:     new Date(futCursor),
-        departure:   new Date(dep),
-        status:      'CONFIRMED',
-        totalAmount: rate * dur,
-        notes:       Math.random() < 0.2 ? pick(BOOKING_NOTES) : null,
-        roomId,
-        roomRate:    rate,
-      })
-      futCursor = noon(addDays(dep, rand(8, 20)))
+    // ── Futur : 1-2 par chambre, dans la fenêtre ──
+    if (role !== 'maintenance') {
+      let futCursor = noon(addDays(currentDeparture ?? TODAY, rand(3, 10)))
+      const futCount = rand(1, 2)
+      for (let f = 0; f < futCount; f++) {
+        const dep = noon(addDays(futCursor, rand(2, 5)))
+        if (dep > WINDOW_END) break
+        allBookings.push({
+          guestId:     pick(guests).id,
+          createdById: pick(staff).id,
+          arrival:     new Date(futCursor),
+          departure:   new Date(dep),
+          status:      Math.random() < 0.12 ? 'AWAITING' : 'CONFIRMED',
+          totalAmount: rate * nights(futCursor, dep),
+          notes:       Math.random() < 0.15 ? pick(BOOKING_NOTES) : null,
+          roomId,
+          roomRate:    rate,
+        })
+        futCursor = noon(addDays(dep, rand(4, 12)))
+      }
     }
   }
 
@@ -539,19 +404,20 @@ async function main() {
 
   console.log(`\n✅ ${allBookings.length} bookings total`)
   console.log(`   CHECKED_OUT_UNPAID: ${counts.CHECKED_OUT_UNPAID ?? 0}`)
-  console.log(`   CHECKED_IN:  ${counts.CHECKED_IN  ?? 0}  (today: in progress)`)
-  console.log(`   CONFIRMED:   ${counts.CONFIRMED   ?? 0}  (incl. 7 arriving today)`)
-  console.log(`   CANCELLED:   ${counts.CANCELLED   ?? 0}`)
+  console.log(`   CHECKED_IN:         ${counts.CHECKED_IN         ?? 0}  (séjours en cours)`)
+  console.log(`   CONFIRMED:          ${counts.CONFIRMED          ?? 0}`)
+  console.log(`   AWAITING:           ${counts.AWAITING           ?? 0}`)
+  console.log(`   CANCELLED:          ${counts.CANCELLED          ?? 0}`)
 
   console.log('\n🏨 Seed complete (full)!')
   console.log('─────────────────────────────────────────────────────')
-  console.log('  ADMIN       admin@naturalodge.mg   / Admin@1234')
-  console.log('  MANAGER     marc.d@naturalodge.mg  / Staff@1234')
-  console.log('  GERANT sarah.l@naturalodge.mg / Staff@1234')
+  console.log('  ADMIN    admin@naturalodge.mg   / Admin@1234')
+  console.log('  MANAGER  felanaramia@naturalodge.mg / Staff@1234')
+  console.log('  GERANT   gerant@naturalodge.mg  / Staff@1234')
   console.log('─────────────────────────────────────────────────────')
-  console.log('  Rooms arriving TODAY: 101 102 201 202 301 302 401')
-  console.log('  Rooms CHECKED_IN    : 103 104 203 204 205 303 304 305 402 403')
-  console.log('  Rooms MAINTENANCE   : 105 404')
+  console.log('  OCCUPIED    : 102-Bambou 202-Dombeya')
+  console.log('  MAINTENANCE : 301-Eucalyptus 302-Fougère 402-Hibiscus')
+  console.log('  AVAILABLE   : 101-Azalée 201-Canelle 401-Gironflier')
   console.log('─────────────────────────────────────────────────────')
 }
 

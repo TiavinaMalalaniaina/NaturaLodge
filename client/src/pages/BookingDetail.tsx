@@ -19,7 +19,7 @@ import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking as computeCanModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
-import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
+import { PAYMENT_STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
@@ -70,8 +70,8 @@ export const BookingDetail: React.FC = () => {
 
   const es = booking.effectiveStatus;
   const canCheckIn = es === 'due_checkin';
-  const canCheckOut = (es === 'in_progress' || es === 'overdue') && canCheckOutBooking(booking.paymentStatus, can);
-  const canRevert = es === 'in_progress';
+  const canCheckOut = (es === 'in_progress' || es === 'due_checkout' || es === 'overdue') && canCheckOutBooking(booking.paymentStatus, can);
+  const canRevert = es === 'in_progress' || es === 'due_checkout';
   const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
   const canClose = can('bookings.close') && es === 'checked_out_paid';
@@ -235,7 +235,9 @@ export const BookingDetail: React.FC = () => {
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[9px] font-mono text-on-surface-variant/40">{fmtDate(br.arrival)} → {fmtDate(br.departure)}</span>
                             <span className="text-stone-200">·</span>
-                            <span className="text-[9px] font-bold text-on-surface-variant/40">{nights}n</span>
+                            <span className="text-[9px] font-bold text-on-surface-variant/40">
+                              {t("common.nights", { count: nights })}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -484,7 +486,7 @@ export const BookingDetail: React.FC = () => {
                         <span className="min-w-0">
                           <span className="block text-xs font-semibold text-on-surface font-mono truncate">{doc.number ?? t('invoice.draft')}</span>
                           <span className="block text-[9px] uppercase tracking-widest text-on-surface-variant/40">
-                            {t(`invoice.kind_${doc.kind}`)} · {!doc.validatedAt ? t('invoice.draft') : t(`invoice.status_${doc.status}`)}
+                            {t(`invoice.kind_${doc.kind}`)} · {!doc.validatedAt ? t('invoice.draft') : t(invoiceStatusI18nKey(doc.kind, doc.status))}
                           </span>
                         </span>
                       </span>
