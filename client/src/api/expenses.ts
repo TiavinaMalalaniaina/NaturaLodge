@@ -15,7 +15,7 @@ export interface Expense {
   approvedBy:  { id: string; name: string; role: string } | null;
 }
 
-function normalizeExpense(raw: any): Expense {
+function normalizeExpense(raw: Expense): Expense {
   return { ...raw, incurredAt: raw.incurredAt.split('T')[0] };
 }
 
@@ -40,8 +40,8 @@ export interface ExpensesList {
 }
 
 export const fetchExpenses = async (params?: ExpensesListParams): Promise<ExpensesList> => {
-  const { data } = await api.get<any>('/expenses', { params });
-  return { data: (data.data as any[]).map(normalizeExpense), meta: data.meta };
+  const { data } = await api.get<ExpensesList>('/expenses', { params });
+  return { data: (data.data as Expense[]).map(normalizeExpense), meta: data.meta };
 };
 
 export interface CreateExpensePayload {
@@ -53,7 +53,7 @@ export interface CreateExpensePayload {
 }
 
 export const createExpense = async (payload: CreateExpensePayload): Promise<Expense> => {
-  const { data } = await api.post<any>('/expenses', payload);
+  const { data } = await api.post<Expense>('/expenses', payload);
   return normalizeExpense(data);
 };
 

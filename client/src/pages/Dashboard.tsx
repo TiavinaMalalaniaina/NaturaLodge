@@ -15,6 +15,10 @@ import { formatCurrency } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
 
+function formatRevenueInMillions(amount: number): string {
+  return `${(amount / 1_000_000).toFixed(2)}M Ar`;
+}
+
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
@@ -87,7 +91,7 @@ export const Dashboard: React.FC = () => {
       <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <p className="text-[10px] font-sans font-bold uppercase tracking-[0.3em] text-on-surface-variant/60 mb-2">
-            {t('dashboard.goodMorning')}, {user?.name?.split(' ')[0] ?? 'Marie'}
+            {t('dashboard.goodMorning')}, {user?.name?.split(' ')[0]}
           </p>
           <h2 className="font-display italic text-5xl text-primary leading-none">{t('dashboard.title')}</h2>
         </div>
@@ -187,14 +191,11 @@ export const Dashboard: React.FC = () => {
           <div className="bg-stone-900 text-on-primary-container p-10 rounded-[2.5rem] relative overflow-hidden organic-shadow">
             <div className="relative z-10">
               <h3 className="text-[10px] tracking-[0.4em] font-bold text-primary-fixed uppercase opacity-60 mb-2">{t('dashboard.livePerformance')}</h3>
-              <p className="font-display italic text-4xl mb-6 leading-none text-white">{(todayRevenue / 1_000_000).toFixed(2)}M Ar</p>
+              <p className="font-display italic text-4xl mb-6 leading-none text-white">{formatRevenueInMillions(todayRevenue)}</p>
               <div className="flex items-center gap-3">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-status-available">
                   <TrendingUp className="h-3 w-3 text-white" />
                 </div>
-                <p className="text-xs font-sans font-light text-white/80">
-                  15% higher than last Thursday
-                </p>
               </div>
             </div>
             <motion.div
@@ -257,9 +258,6 @@ export const Dashboard: React.FC = () => {
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse font-bold"></div>
               <h4 className="text-[10px] font-bold text-on-surface uppercase tracking-widest">{t('dashboard.operationalAlert')}</h4>
             </div>
-            <p className="text-xs text-on-surface-variant font-light leading-relaxed mb-4">
-              Housekeeping requires priority for Suite 402. VIP arrival at 15:10.
-            </p>
             <button
               onClick={handleNotifyTeam}
               disabled={isAlertDispatched}
