@@ -34,6 +34,15 @@ export interface InvoicePayment {
   account:     { id: string; code: string; name: string };
 }
 
+interface RawRelatedInvoiceRef {
+  id: string;
+  number: string | null;
+  kind: keyof typeof KIND_MAP;
+  payments?: {
+    amount: number;
+  }[];
+}
+
 export interface RelatedInvoiceRef {
   id:     string;
   number: string | null;
@@ -86,6 +95,68 @@ export interface Invoice {
   };
 }
 
+type RawCreditedInvoiceRef = RawRelatedInvoiceRef & {
+  totalAmount: number;
+  validatedAt: string | null;
+};
+
+type RawBookingRoom = Omit<
+  NonNullable<Invoice["booking"]["rooms"]>[number],
+  "arrival" | "departure"
+> & {
+  arrival: string;
+  departure: string;
+};
+
+type RawBooking = Omit<
+  Invoice["booking"],
+  "arrival" | "departure" | "rooms"
+> & {
+  arrival: string;
+  departure: string;
+  rooms?: RawBookingRoom[] | null;
+};
+
+type RawInvoiceItem = Omit<InvoiceItem, "source"> & {
+  source?: string | null;
+};
+
+type RawInvoicePayment = Omit<
+  InvoicePayment,
+  "method" | "status" | "paidAt"
+> & {
+  method: string;
+  status: string;
+  paidAt: string;
+};
+
+type RawInvoice = Omit<
+  Invoice,
+  | "status"
+  | "kind"
+  | "validatedAt"
+  | "issuedAt"
+  | "dueAt"
+  | "paidAt"
+  | "relatesToInvoice"
+  | "creditedBy"
+  | "items"
+  | "payments"
+  | "booking"
+> & {
+  status: string;
+  kind: string;
+  validatedAt?: string | null;
+  issuedAt: string;
+  dueAt?: string | null;
+  paidAt?: string | null;
+  relatesToInvoice?: RawRelatedInvoiceRef | null;
+  creditedBy?: RawCreditedInvoiceRef[] | null;
+  items?: RawInvoiceItem[] | null;
+  payments?: RawInvoicePayment[] | null;
+  booking: RawBooking;
+};
+
 // ─── Normalizer ───────────────────────────────────────────────────
 
 const STATUS_MAP: Record<string, InvoiceStatus> = {
@@ -94,7 +165,7 @@ const STATUS_MAP: Record<string, InvoiceStatus> = {
 };
 
 const PAYMENT_METHOD_MAP: Record<string, PaymentMethod> = {
-  CASH: 'cash', CARD: 'card', BANK_TRANSFER: 'bank_transfer', ONLINE: 'online',
+  CASH: 'cash', CARD: 'card', BANK_TRANSFER: 'bank_transfer', ONLINE: 'online', MVOLA: 'mvola', ORANGE_MONEY: 'orange_money',
 };
 
 const PAYMENT_STATUS_MAP: Record<string, PaymentStatus> = {
@@ -105,58 +176,184 @@ const KIND_MAP: Record<string, InvoiceKind> = {
   STANDARD: 'standard', DEPOSIT: 'deposit', CREDIT_NOTE: 'credit_note',
 };
 
-function normalizeRelatedRef(raw: any): RelatedInvoiceRef {
+function normalizeRelatedRef(raw: RawRelatedInvoiceRef): RelatedInvoiceRef {
   return {
     id: raw.id, number: raw.number, kind: KIND_MAP[raw.kind] ?? 'standard',
     ...(Array.isArray(raw.payments)
-      ? { collectedAmount: raw.payments.reduce((s: number, p: any) => s + p.amount, 0) }
+      ? { collectedAmount: raw.payments.reduce((s, p) => s + p.amount, 0) }
       : {}),
   };
 }
 
-function normalizeInvoice(raw: any): Invoice {
+export function normalizeInvoice(raw: RawInvoice): Invoice {
   return {
     ...raw,
-    status:      STATUS_MAP[raw.status]  ?? 'pending',
-    kind:        KIND_MAP[raw.kind] ?? 'standard',
-    validatedAt: raw.validatedAt ? raw.validatedAt.split('T')[0] : null,
-    issuedAt: raw.issuedAt.split('T')[0],
-    dueAt:    raw.dueAt  ? raw.dueAt.split('T')[0]  : null,
-    paidAt:   raw.paidAt ? raw.paidAt.split('T')[0] : null,
-    relatesToInvoice: raw.relatesToInvoice ? normalizeRelatedRef(raw.relatesToInvoice) : null,
-    creditedBy: (raw.creditedBy ?? []).map((c: any) => ({ ...normalizeRelatedRef(c), totalAmount: c.totalAmount, validatedAt: c.validatedAt ? c.validatedAt.split('T')[0] : null })),
-    items:    (raw.items ?? []).map((it: any) => ({
-      ...it,
-      source: (it.source ?? 'BOOKING').toLowerCase() as InvoiceItemSource,
+
+    status: normalizeInvoiceStatus(raw.status),
+    kind: normalizeInvoiceKind(raw.kind),
+
+    validatedAt: raw.validatedAt
+      ? raw.validatedAt.split("T")[0]
+      : null,
+
+    issuedAt: raw.issuedAt.split("T")[0],
+
+    dueAt: raw.dueAt
+      ? raw.dueAt.split("T")[0]
+      : null,
+
+    paidAt: raw.paidAt
+      ? raw.paidAt.split("T")[0]
+      : null,
+
+    relatesToInvoice: raw.relatesToInvoice
+      ? normalizeRelatedRef(raw.relatesToInvoice)
+      : null,
+
+    creditedBy: (raw.creditedBy ?? []).map((c) => ({
+      ...normalizeRelatedRef(c),
+      totalAmount: c.totalAmount,
+      validatedAt: c.validatedAt
+        ? c.validatedAt.split("T")[0]
+        : null,
     })),
-    payments: (raw.payments ?? []).map((p: any) => ({
-      ...p,
-      method: PAYMENT_METHOD_MAP[p.method] ?? p.method,
-      status: PAYMENT_STATUS_MAP[p.status] ?? p.status,
-      paidAt: p.paidAt.split('T')[0],
+
+    items: (raw.items ?? []).map((item) => ({
+      ...item,
+      source: normalizeInvoiceItemSource(item.source),
     })),
-    booking: raw.booking ? {
+
+    payments: (raw.payments ?? []).map((payment) => ({
+      ...payment,
+      method: normalizePaymentMethod(payment.method),
+      status: normalizePaymentStatus(payment.status),
+      paidAt: payment.paidAt.split("T")[0],
+    })),
+
+    booking: {
       ...raw.booking,
-      arrival:   raw.booking.arrival.split('T')[0],
-      departure: raw.booking.departure.split('T')[0],
-      rooms: (raw.booking.rooms ?? []).map((br: any) => ({
-        ...br,
-        arrival:   br.arrival.split('T')[0],
-        departure: br.departure.split('T')[0],
+
+      arrival: raw.booking.arrival.split("T")[0],
+      departure: raw.booking.departure.split("T")[0],
+
+      rooms: (raw.booking.rooms ?? []).map((room) => ({
+        ...room,
+        arrival: room.arrival.split("T")[0],
+        departure: room.departure.split("T")[0],
       })),
-    } : raw.booking,
+    },
   };
+}
+
+const INVOICE_STATUSES: readonly InvoiceStatus[] = [
+  "pending",
+  "paid",
+  "partially_paid",
+  "refunded",
+  "cancelled",
+];
+
+const INVOICE_KINDS: readonly InvoiceKind[] = [
+  "standard",
+  "deposit",
+  "credit_note",
+];
+
+const PAYMENT_METHODS: readonly PaymentMethod[] = [
+  "cash",
+  "card",
+  "bank_transfer",
+  "online",
+  "mvola",
+  "orange_money",
+];
+
+const PAYMENT_STATUSES: readonly PaymentStatus[] = [
+  "completed",
+  "pending",
+  "failed",
+  "refunded",
+];
+
+function isInvoiceStatus(value: unknown): value is InvoiceStatus {
+  return (
+    typeof value === "string" &&
+    INVOICE_STATUSES.some((status) => status === value)
+  );
+}
+
+function isInvoiceKind(value: unknown): value is InvoiceKind {
+  return (
+    typeof value === "string" &&
+    INVOICE_KINDS.some((kind) => kind === value)
+  );
+}
+
+function isPaymentMethod(value: unknown): value is PaymentMethod {
+  return (
+    typeof value === "string" &&
+    PAYMENT_METHODS.some((method) => method === value)
+  );
+}
+
+function isPaymentStatus(value: unknown): value is PaymentStatus {
+  return (
+    typeof value === "string" &&
+    PAYMENT_STATUSES.some((status) => status === value)
+  );
+}
+
+function normalizeInvoiceStatus(value: string): InvoiceStatus {
+  const mapped = STATUS_MAP[value as keyof typeof STATUS_MAP];
+  return isInvoiceStatus(mapped) ? mapped : "pending";
+}
+
+function normalizeInvoiceKind(value: string): InvoiceKind {
+  const mapped = KIND_MAP[value as keyof typeof KIND_MAP];
+  return isInvoiceKind(mapped) ? mapped : "standard";
+}
+
+function normalizePaymentMethod(value: string): PaymentMethod {
+  const mapped =
+    PAYMENT_METHOD_MAP[value as keyof typeof PAYMENT_METHOD_MAP];
+
+  if (isPaymentMethod(mapped)) return mapped;
+  if (isPaymentMethod(value)) return value;
+
+  throw new Error(`Méthode de paiement inconnue : ${value}`);
+}
+
+function normalizePaymentStatus(value: string): PaymentStatus {
+  const mapped =
+    PAYMENT_STATUS_MAP[value as keyof typeof PAYMENT_STATUS_MAP];
+
+  if (isPaymentStatus(mapped)) return mapped;
+  if (isPaymentStatus(value)) return value;
+
+  throw new Error(`Statut de paiement inconnu : ${value}`);
+}
+
+function normalizeInvoiceItemSource(
+  value: string | null | undefined,
+): InvoiceItemSource {
+  const normalized = (value ?? "BOOKING").toLowerCase();
+
+  if (normalized === "booking" || normalized === "manual") {
+    return normalized;
+  }
+
+  throw new Error(`Source de ligne de facture inconnue : ${value}`);
 }
 
 // ─── API calls ────────────────────────────────────────────────────
 
 export const fetchInvoiceByBooking = async (bookingId: string): Promise<Invoice> => {
-  const { data } = await api.get<any>(`/invoices/booking/${bookingId}`);
+  const { data } = await api.get<RawInvoice>(`/invoices/booking/${bookingId}`);
   return normalizeInvoice(data);
 };
 
 export const fetchInvoice = async (id: string): Promise<Invoice> => {
-  const { data } = await api.get<any>(`/invoices/${id}`);
+  const { data } = await api.get<RawInvoice>(`/invoices/${id}`);
   return normalizeInvoice(data);
 };
 
@@ -168,7 +365,7 @@ export interface GeneratePayload {
 }
 
 export const generateInvoice = async (payload: GeneratePayload): Promise<Invoice> => {
-  const { data } = await api.post<any>('/invoices/generate', payload);
+  const { data } = await api.post<RawInvoice>('/invoices/generate', payload);
   return normalizeInvoice(data);
 };
 
@@ -181,7 +378,7 @@ export interface PaymentPayload {
 }
 
 export const recordPayment = async (invoiceId: string, payload: PaymentPayload): Promise<Invoice> => {
-  const { data } = await api.post<any>(`/invoices/${invoiceId}/payments`, {
+  const { data } = await api.post<RawInvoice>(`/invoices/${invoiceId}/payments`, {
     ...payload,
     method: payload.method.toUpperCase(),
   });
@@ -189,12 +386,12 @@ export const recordPayment = async (invoiceId: string, payload: PaymentPayload):
 };
 
 export const voidPayment = async (invoiceId: string, paymentId: string): Promise<Invoice> => {
-  const { data } = await api.delete<any>(`/invoices/${invoiceId}/payments/${paymentId}`);
+  const { data } = await api.delete<RawInvoice>(`/invoices/${invoiceId}/payments/${paymentId}`);
   return normalizeInvoice(data);
 };
 
 export const updateInvoice = async (id: string, payload: { notes?: string; taxAmount?: number; dueAt?: string | null; amount?: number }): Promise<Invoice> => {
-  const { data } = await api.patch<any>(`/invoices/${id}`, payload);
+  const { data } = await api.patch<RawInvoice>(`/invoices/${id}`, payload);
   return normalizeInvoice(data);
 };
 
@@ -210,14 +407,14 @@ export interface CreateDepositPayload {
 }
 
 export const createDeposit = async (payload: CreateDepositPayload): Promise<Invoice> => {
-  const { data } = await api.post<any>('/invoices/deposit', payload);
+  const { data } = await api.post<RawInvoice>('/invoices/deposit', payload);
   return normalizeInvoice(data);
 };
 
 // Vise un brouillon (acompte, facture ou avoir) : lui assigne son numéro définitif et le poste au
 // grand livre — irréversible, le document est ensuite figé.
 export const validateInvoice = async (id: string): Promise<Invoice> => {
-  const { data } = await api.post<any>(`/invoices/${id}/validate`);
+  const { data } = await api.post<RawInvoice>(`/invoices/${id}/validate`);
   return normalizeInvoice(data);
 };
 
@@ -225,10 +422,14 @@ export type CancelInvoiceResult =
   | { deleted: true }
   | { deleted: false; creditNote: Invoice };
 
+type CancelInvoiceResponse =
+| { deleted: true }
+| { deleted: false; creditNote: RawInvoice };
+
 // Brouillon jamais visé : supprimé, aucun document produit. Facture visée : émet un avoir en
 // brouillon (`refundRatePercent` en pourcentage rendu au client, défaut serveur si omis).
 export const cancelInvoice = async (id: string, refundRatePercent?: number): Promise<CancelInvoiceResult> => {
-  const { data } = await api.post<any>(`/invoices/${id}/cancel`, refundRatePercent !== undefined ? { refundRatePercent } : {});
+  const { data } = await api.post<CancelInvoiceResponse>(`/invoices/${id}/cancel`, refundRatePercent !== undefined ? { refundRatePercent } : {});
   return data.deleted ? { deleted: true } : { deleted: false, creditNote: normalizeInvoice(data.creditNote) };
 };
 
@@ -239,17 +440,17 @@ export interface InvoiceItemPayload {
 }
 
 export const addInvoiceItem = async (invoiceId: string, payload: InvoiceItemPayload): Promise<Invoice> => {
-  const { data } = await api.post<any>(`/invoices/${invoiceId}/items`, payload);
+  const { data } = await api.post<RawInvoice>(`/invoices/${invoiceId}/items`, payload);
   return normalizeInvoice(data);
 };
 
 export const updateInvoiceItem = async (invoiceId: string, itemId: string, payload: Partial<InvoiceItemPayload>): Promise<Invoice> => {
-  const { data } = await api.patch<any>(`/invoices/${invoiceId}/items/${itemId}`, payload);
+  const { data } = await api.patch<RawInvoice>(`/invoices/${invoiceId}/items/${itemId}`, payload);
   return normalizeInvoice(data);
 };
 
 export const deleteInvoiceItem = async (invoiceId: string, itemId: string): Promise<Invoice> => {
-  const { data } = await api.delete<any>(`/invoices/${invoiceId}/items/${itemId}`);
+  const { data } = await api.delete<RawInvoice>(`/invoices/${invoiceId}/items/${itemId}`);
   return normalizeInvoice(data);
 };
 
@@ -260,7 +461,7 @@ export interface DiscountPayload {
 }
 
 export const addInvoiceDiscount = async (invoiceId: string, payload: DiscountPayload): Promise<Invoice> => {
-  const { data } = await api.post<any>(`/invoices/${invoiceId}/discounts`, payload);
+  const { data } = await api.post<RawInvoice>(`/invoices/${invoiceId}/discounts`, payload);
   return normalizeInvoice(data);
 };
 
@@ -287,10 +488,22 @@ export interface InvoicesList {
   };
 }
 
+export interface RawInvoicesList {
+  data: RawInvoice[];
+  meta: {
+    total:       number;
+    page:        number;
+    limit:       number;
+    totalPages:  number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
 export const fetchInvoices = async (params?: InvoicesListParams): Promise<InvoicesList> => {
-  const { data } = await api.get<any>('/invoices', { params });
+  const { data } = await api.get<RawInvoicesList>('/invoices', { params });
   return {
-    data: (data.data as any[]).map(normalizeInvoice),
+    data: (data.data as RawInvoice[]).map(normalizeInvoice),
     meta: data.meta,
   };
 };
@@ -307,6 +520,6 @@ export interface OutstandingDeposit {
 // Acomptes visés pas encore absorbés par la facture définitive de leur réservation — trace le
 // solde du compte 419100 (avances et acomptes reçus) au bilan, réservation par réservation.
 export const fetchOutstandingDeposits = async (): Promise<OutstandingDeposit[]> => {
-  const { data } = await api.get<any[]>('/invoices/deposits/outstanding');
+  const { data } = await api.get<OutstandingDeposit[]>('/invoices/deposits/outstanding');
   return data.map(d => ({ ...d, validatedAt: d.validatedAt.split('T')[0] }));
 };

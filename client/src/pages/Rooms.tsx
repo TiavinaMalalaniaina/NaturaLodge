@@ -111,7 +111,7 @@ export const Rooms: React.FC = () => {
               onClick={() => setIsFeatureModalOpen(true)}
               className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Layers className="w-4 h-4" /> Attributes
+              <Layers className="w-4 h-4" /> {t('rooms.attributes')}
             </button>
           )}
           {can('extras.view') && (
@@ -119,7 +119,7 @@ export const Rooms: React.FC = () => {
               onClick={() => setIsExtraModalOpen(true)}
               className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" /> Suppléments
+              <Sparkles className="w-4 h-4" /> {t('rooms.extras')}
             </button>
           )}
           {can('rooms.create') && (
@@ -244,7 +244,7 @@ export const Rooms: React.FC = () => {
                 )}>
                   {t(`status.${room.status}`, room.status)}
                 </span>
-                <h3 className="font-display italic text-3xl text-primary mt-4 leading-none">Suite {room.number}</h3>
+                <h3 className="font-display italic text-3xl text-primary mt-4 leading-none">{room.number}</h3>
                 <p className="font-mono text-[9px] text-on-surface-variant/60 uppercase tracking-widest mt-2 truncate max-w-[210px]">{room.type}</p>
               </div>
               <div className="relative" onClick={e => e.stopPropagation()}>
@@ -301,7 +301,7 @@ export const Rooms: React.FC = () => {
               </div>
               <div className="flex items-center gap-2 text-on-surface-variant/60">
                 <Maximize className="w-4 h-4" />
-                <span className="text-[10px] font-bold tracking-widest uppercase">{room.area}m²</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase">{room.area + ' ' + t('rooms.surfaceUnit')}</span>
               </div>
             </div>
 
@@ -309,7 +309,7 @@ export const Rooms: React.FC = () => {
               <div className="flex items-center gap-3">
                 <p className="font-display text-2xl text-gold-500">
                   {formatCurrency(room.rate)}
-                  {room.rateOverride && <span className="text-[10px] text-on-surface-variant/40 font-sans ml-1">(spécifique)</span>}
+                  {room.rateOverride && <span className="text-[10px] text-on-surface-variant/40 font-sans ml-1">{t('rooms.rateOverrideSpecific')}</span>}
                 </p>
                 {room.status === 'available' && can('bookings.create') && (
                   <button

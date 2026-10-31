@@ -235,7 +235,9 @@ export const BookingDetail: React.FC = () => {
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[9px] font-mono text-on-surface-variant/40">{fmtDate(br.arrival)} → {fmtDate(br.departure)}</span>
                             <span className="text-stone-200">·</span>
-                            <span className="text-[9px] font-bold text-on-surface-variant/40">{nights}n</span>
+                            <span className="text-[9px] font-bold text-on-surface-variant/40">
+                              {t("common.nights", { count: nights })}
+                            </span>
                           </div>
                         </div>
                       </div>
