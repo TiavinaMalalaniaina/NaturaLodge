@@ -107,7 +107,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   {step === 'type' ? t('rooms.unitRegistration') : `${t('rooms.roomNumber')} — ${selectedType?.name ?? ''}`}
                 </h3>
                 <div className="flex gap-2 mt-2">
-                  {(['type', 'room'] as const).map((s, i) => (
+                  {(['type', 'room'] as const).map((s) => (
                     <div key={s} className={cn('h-1 w-16 rounded-full transition-all', step === s || (s === 'type' && step === 'room') ? 'bg-primary' : 'bg-stone-200')} />
                   ))}
                 </div>

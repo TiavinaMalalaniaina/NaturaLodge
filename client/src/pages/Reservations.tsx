@@ -26,6 +26,7 @@ import { getApiErrorMessage } from '../lib/apiError';
 import { useVirtualDayGrid } from '../hooks/useVirtualDayGrid';
 import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
 import { useAuth } from '../context/AuthContext';
+import i18n from '../i18n';
 
 // ── Block styles by effectiveStatus ──────────────────────────────
 
@@ -41,6 +42,11 @@ const BLOCK_CLS: Partial<Record<EffectiveStatus, string>> = {
   closed: 'bg-stone-100 text-stone-400 border-stone-200',           // Clôturé / Archivé
 };
 
+const DEFAULT_BLOCK_CLS =
+  "bg-stone-100 text-stone-400 border-stone-200";
+
+const CURRENCY_SUFFIX = " Ar";
+
 // ── Constants ─────────────────────────────────────────────────────
 
 const LIMIT = 20;
@@ -48,6 +54,8 @@ const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED
 const ROOM_STATUS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
 const LABEL_W = 176;  // px for room label column
+
+const SYSTEM_NOTIFICATION_SOURCE = "system" as const;
 
 // ── Main component ────────────────────────────────────────────────
 
@@ -57,6 +65,23 @@ export const Reservations: React.FC = () => {
 
   // View
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const viewOptions = [
+    {
+      v: "grid",
+      icon: <LayoutGrid className="w-4 h-4" />,
+      label: t("reservations.viewGrid"),
+    },
+    {
+      v: "list",
+      icon: <List className="w-4 h-4" />,
+      label: t("reservations.viewList"),
+    },
+    {
+      v: "calendar",
+      icon: <Calendar className="w-4 h-4" />,
+      label: t("reservations.calendar"),
+    },
+  ] as const;
 
   // Filters (shared)
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +114,21 @@ export const Reservations: React.FC = () => {
   const updateStatus = useUpdateBookingStatus();
   const closeBooking = useCloseBooking();
   const { addNotification } = useNotifications();
+
+  const visibleMonth = visibleDate.toLocaleString(
+    i18n.resolvedLanguage || i18n.language,
+    { month: "long" },
+  );
+
+  const visibleYear = visibleDate.getFullYear();
+
+  const locale = i18n.resolvedLanguage || i18n.language;
+
+  const formatShortMonth = (date: Date): string =>
+    date.toLocaleString(locale, { month: "short" });
+
+  const formatShortWeekday = (date: Date): string =>
+    date.toLocaleDateString(locale, { weekday: "short" });
 
   const changeBookingStatus = (id: string, status: string) => {
     updateStatus.mutate({ id, status }, {
@@ -181,6 +221,24 @@ export const Reservations: React.FC = () => {
       ? t('reservations.calendar')
       : t('reservations.bookingsRegistry');
 
+  const selectedBookingSummary = selectedBooking
+    ? [
+      selectedBooking.rooms
+        .map((br) => br.room.type)
+        .join(", "),
+
+      selectedBooking.rooms
+        .map((br) => `#${br.room.number}`)
+        .join(" · "),
+
+      `${selectedBooking.arrival} → ${selectedBooking.departure}`,
+
+      t("common.nights", {
+        count: selectedBooking.nights,
+      }),
+    ].join(" · ")
+    : "";
+
   return (
     <div className="space-y-8 h-full overflow-x-hidden">
 
@@ -194,11 +252,7 @@ export const Reservations: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
             {/* View toggle */}
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
-              {([
-                { v: 'grid', icon: <LayoutGrid className="w-4 h-4" />, label: t('reservations.viewGrid') },
-                { v: 'list', icon: <List className="w-4 h-4" />, label: t('reservations.viewList') },
-                { v: 'calendar', icon: <Calendar className="w-4 h-4" />, label: t('reservations.calendar') },
-              ] as const).map(({ v, icon, label }) => (
+              {viewOptions.map(({ v, icon, label }) => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('p-2 rounded-lg transition-all flex items-center gap-2',
                     viewMode === v ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant/40 hover:text-on-surface-variant/60')}>
@@ -219,7 +273,7 @@ export const Reservations: React.FC = () => {
                 {/* Visible date info */}
                 <div className="text-center min-w-[140px] select-none">
                   <p className="text-sm font-bold text-on-surface leading-tight capitalize">
-                    {visibleDate.toLocaleString('en', { month: 'long' })} {visibleDate.getFullYear()}
+                    {visibleMonth} {visibleYear}
                   </p>
                   <p className="text-[9px] font-mono text-on-surface-variant/40">
                     {toStr(visibleDate)} – {toStr(addDays(visibleDate, 20))}
@@ -228,7 +282,7 @@ export const Reservations: React.FC = () => {
 
                 <button onClick={scrollToToday}
                   className="px-3 py-1.5 rounded-lg border border-stone-200 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 hover:text-primary transition-colors text-on-surface-variant/60">
-                  Today
+                  {t('reservations.today')}
                 </button>
                 <button onClick={() => scrollByDays(14)}
                   className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
@@ -334,8 +388,9 @@ export const Reservations: React.FC = () => {
                   const entry = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
                   const isActive = visibleDate.getMonth() === i;
                   const isNow = new Date().getFullYear() === visibleDate.getFullYear() && new Date().getMonth() === i;
-                  const label = new Date(visibleDate.getFullYear(), i, 1)
-                    .toLocaleString('en', { month: 'short' }).toUpperCase();
+                  const label = formatShortMonth(
+                    new Date(visibleDate.getFullYear(), i, 1)
+                  )
                   return (
                     <button
                       key={i}
@@ -375,7 +430,7 @@ export const Reservations: React.FC = () => {
               {/* Corner: label */}
               <div className="shrink-0 border-r border-stone-100 px-3 flex items-center bg-white"
                 style={{ width: LABEL_W }}>
-                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">Mois</span>
+                <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">{t('reservations.month')}</span>
               </div>
               {/* Month chips — synced via monthBarRef, overflow hidden */}
               <div ref={monthBarRef} className="flex-1 overflow-hidden relative">
@@ -434,7 +489,7 @@ export const Reservations: React.FC = () => {
                   const i = virtualStartIdx + localI;
                   const isToday = toStr(date) === todayStr;
                   const isMonthStart = date.getDate() === 1;
-                  const dayName = date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+                  const dayName = formatShortWeekday(date);
                   return (
                     <div key={i} style={{ width: COL_W, minWidth: COL_W }}
                       className={cn(
@@ -452,7 +507,7 @@ export const Reservations: React.FC = () => {
                       {(isMonthStart || i === 0) && (
                         <p className={cn('text-[7px] font-bold uppercase tracking-widest mt-0.5',
                           isToday ? 'text-primary/60' : 'text-on-surface-variant/30')}>
-                          {date.toLocaleString('en', { month: 'short' }).toUpperCase()}
+                          {formatShortMonth(date)}
                         </p>
                       )}
                     </div>
@@ -537,7 +592,7 @@ export const Reservations: React.FC = () => {
                         {roomBookings.map(({ booking: b, room: br }) => {
                           const style = getBlockStyle(br);
                           if (!style) return null;
-                          const cls = BLOCK_CLS[b.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
+                          const cls = BLOCK_CLS[b.effectiveStatus] ?? DEFAULT_BLOCK_CLS;
                           const isVip = b.guest.status === 'VIP_ELITE' || b.guest.status === 'PLATINUM_TIER';
                           return (
                             <div
@@ -563,7 +618,8 @@ export const Reservations: React.FC = () => {
                                 )}
                               </div>
                               <p className="text-[8px] opacity-60 font-medium leading-tight mt-0.5">
-                                {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} · {b.nights}n
+                                {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])} ·{" "}
+                                {t("common.nights", { count: b.nights })}
                               </p>
                             </div>
                           );
@@ -665,7 +721,7 @@ export const Reservations: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-8 py-6 text-right">
-                        <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()} Ar</p>
+                        <p className="text-sm font-display italic text-on-surface">{b.totalAmount.toLocaleString()}{CURRENCY_SUFFIX}</p>
                         <div className="flex gap-1.5 opacity-40 justify-end mt-1">
                           <CreditCard className="w-3 h-3" /><Clock className="w-3 h-3" />
                         </div>
@@ -697,7 +753,7 @@ export const Reservations: React.FC = () => {
             </div>
 
             {/* Pagination */}
-            
+
             <div className="px-8 py-5 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between">
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">
                 {t('reservations.pageInfo', { page: meta?.page ?? 1, total: meta?.totalPages ?? 1, count: meta?.total ?? listBookings.length })}
@@ -762,11 +818,13 @@ export const Reservations: React.FC = () => {
                   </div>
                   <p className="font-semibold text-on-surface truncate">{selectedBooking.guestName}</p>
                   <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
-                    {selectedBooking.rooms.map(br => br.room.type).join(', ')} · {selectedBooking.rooms.map(br => `#${br.room.number}`).join(' · ')} · {selectedBooking.arrival} → {selectedBooking.departure} ({selectedBooking.nights}n)
+                    <p className="text-xs text-on-surface-variant/60 mt-0.5 truncate">
+                      {selectedBookingSummary}
+                    </p>
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} Ar</span>
+                  <span className="text-sm font-display italic font-bold text-primary">{selectedBooking.totalAmount.toLocaleString()} {t('common.ariary')}</span>
                   <button onClick={() => setSelectedBooking(null)}
                     className="p-1.5 text-on-surface-variant/40 hover:text-on-surface hover:bg-stone-50 rounded-lg transition-colors">
                     <X className="w-4 h-4" />
@@ -890,7 +948,7 @@ export const Reservations: React.FC = () => {
         onConfirm={() => {
           closeBooking.mutate(closeBookingId!, {
             onError: (err) => addNotification({
-              source: 'system', title: 'Action failed',
+              source: SYSTEM_NOTIFICATION_SOURCE, title: t('common.actionFailed'),
               subtitle: getApiErrorMessage(err), amount: '--',
             }),
           });

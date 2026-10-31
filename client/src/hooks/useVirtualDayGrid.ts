@@ -67,7 +67,6 @@ export function useVirtualDayGrid(active: boolean) {
 
   const visibleDayCount = useMemo(
     () => Math.round((bodyRef.current?.clientWidth ?? 800) / COL_W),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [visibleDate],
   );
 
