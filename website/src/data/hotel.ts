@@ -13,10 +13,13 @@ export const hotel = {
   deposit: 'Un acompte équivalent à une nuit est demandé pour confirmer votre réservation. Les modalités sont à convenir directement avec nous.',
 };
 
-// Tarifs et capacités provisoires communiqués par l’hôtel, indépendants de l’API.
+// `roomType` = nom exact du type de chambre dans l’admin (RoomType.name) : la page d’accueil y lit le
+// tarif et la capacité réels au chargement. `price`/`capacity` ne servent que de repli (API injoignable)
+// et pour le HTML statique indexé par les moteurs de recherche.
 export const rooms = [
   {
     name: 'Standard',
+    roomType: 'Standard',
     capacity: 5,
     price: 130000,
     description: 'Retrouver les siens, se reposer et profiter de vacances ensemble. Un hébergement pour accueillir votre famille jusqu’à cinq personnes.',
@@ -25,6 +28,7 @@ export const rooms = [
   },
   {
     name: 'Standard supérieur',
+    roomType: 'Standard Sup',
     capacity: 6,
     price: 150000,
     description: 'Le plaisir de partir avec toute la famille. Une capacité jusqu’à six personnes pour préparer votre prochaine parenthèse à Manambato.',

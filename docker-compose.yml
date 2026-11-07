@@ -29,6 +29,14 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-random-secret-min-32-chars}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 4000
+      WEBSITE_URL: ${WEBSITE_URL:-http://localhost:4321}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback, uniquelocal}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:${CLIENT_PORT:-8081}}
     ports:
       - "4000:4000"

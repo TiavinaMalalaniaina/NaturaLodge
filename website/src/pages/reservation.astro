@@ -1,0 +1,48 @@
+---
+import ClientLayout from '../layouts/ClientLayout.astro';
+
+
+---
+<ClientLayout title="Préparons votre séjour." eyebrow="Une escapade à Manambato">
+  <div class="client-grid">
+    <section class="client-panel">
+      <ol class="booking-steps" aria-label="Étapes de réservation"><li>1. Vos dates</li><li>2. Vos chambres</li><li>3. Votre contact principal</li></ol>
+      <h2>Quand venez-vous ?</h2><p>Commencez par vos dates pour découvrir les types de chambres proposés.</p>
+      <form id="availability-form" class="client-form">
+        <div class="form-row"><label>Arrivée<input name="arrival" type="date" required /></label><label>Départ<input name="departure" type="date" required /></label></div>
+        <label>Nombre total de voyageurs<input name="guests" type="number" min="1" max="100" value="2" required /></label>
+        <button class="button button-green" type="submit">Rechercher les chambres →</button>
+      </form>
+      <p id="availability-status" role="status" aria-live="polite"></p>
+      <form id="booking-form" class="client-form">
+        <fieldset id="room-options" hidden disabled><legend>Composez votre séjour</legend>
+          <p class="muted">Les disponibilités et tarifs proviennent de l’hôtel pour les dates choisies.</p><div id="live-room-options"></div><p id="selection-status" role="status" aria-live="polite"></p>
+        </fieldset>
+        <section id="login-required" class="booking-conditions" hidden>
+          <h3>Dernière étape : identifiez-vous</h3>
+          <p>Pour envoyer votre demande et suivre sa validation, connectez-vous avec votre adresse email. Pas de mot de passe : vous recevez un lien de connexion. Votre sélection est conservée.</p>
+          <button type="button" id="login-to-book" class="button button-green">Me connecter pour envoyer ma demande →</button>
+        </section>
+        <fieldset id="guest-details" hidden disabled><legend>Votre contact principal</legend>
+        <p class="muted">Une seule demande, un contact principal et une validation du gérant pour l’ensemble des chambres.</p>
+        <label>Nom complet<input name="name" autocomplete="name" required maxlength="80" /></label>
+        <label>Adresse e-mail<input name="email" type="email" autocomplete="email" required maxlength="254" /></label>
+        <label>Téléphone<input name="phone" type="tel" autocomplete="tel" required maxlength="30" pattern="[\+0-9 \(\)\.\-]{6,30}" title="Chiffres, espaces et + ( ) . - uniquement (6 à 30 caractères)" placeholder="+261…" /></label>
+        <label>Un souhait pour votre séjour ? <span class="optional">(facultatif)</span><textarea name="notes" rows="3" maxlength="1000" placeholder="Une arrivée tardive, une question…"></textarea></label>
+        <section class="booking-conditions" aria-label="Conditions de la demande">
+          <h3>Avant d’envoyer votre demande</h3>
+          <p>Aucun paiement à cette étape. Le gérant vérifie d’abord toutes les chambres. Après son accord, vous recevez les instructions pour régler un acompte équivalent à une nuit pour l’ensemble des chambres.</p>
+          <p>Après accord, le gérant indique le délai de paiement et bloque temporairement les chambres. Sans règlement dans ce délai, la demande expire.</p>
+          <p>Votre séjour est confirmé uniquement après vérification du paiement. Vous recevez les étapes par email et retrouvez le suivi dans votre espace client.</p>
+          <p><strong>Annulation :</strong> les modalités et les éventuels frais doivent encore être définis par l’hôtel. Ils devront vous être communiqués avant tout paiement réel.</p>
+        </section>
+        <p class="muted">Le gérant validera l’ensemble de la demande. Si une chambre devient indisponible, une alternative pourra vous être proposée ; toute modification des chambres ou du prix nécessitera votre accord.</p>
+        <label class="checkbox-label"><input type="checkbox" name="conditions" required /> J’ai lu le récapitulatif et les conditions de cette demande. Ma demande ne constitue pas une réservation confirmée.</label>
+        <button type="submit" class="button button-green">Envoyer ma demande de réservation →</button>
+        </fieldset>
+        <p data-error class="form-message" role="alert"></p>
+      </form>
+    </section>
+    <aside class="client-aside"><img id="summary-image" src="/images/house-2.png" alt="Natura Lodge et ses terrasses" width="480" height="300" /><div><p class="eyebrow green">Votre séjour en un regard</p><h2 id="summary-room">Votre prochaine escapade</h2><div id="summary-lines" class="summary-lines" aria-live="polite"></div><dl class="booking-summary"><div><dt>Dates et voyageurs</dt><dd id="summary-dates">&Agrave; d&eacute;finir</dd></div><div><dt>Durée</dt><dd id="summary-nights">Choisissez vos dates</dd></div><div><dt>Total par nuit</dt><dd id="summary-price">—</dd></div><div class="summary-total"><dt>Total estimé</dt><dd id="summary-total">—</dd></div><div><dt>Acompte d&rsquo;une nuit</dt><dd id="summary-deposit">&mdash;</dd></div><div><dt>Solde apr&egrave;s acompte</dt><dd id="summary-balance">&mdash;</dd></div></dl><p class="muted">Tarifs et disponibilités transmis par l’hôtel pour vos dates. Le séjour est confirmé après validation du gérant et vérification de l’acompte.</p></div></aside>
+  </div>
+</ClientLayout>

@@ -179,6 +179,8 @@ export async function create(data: BookingInput, createdById: string) {
   // empêche deux créations concurrentes de passer toutes les deux la vérification et de
   // double-réserver la même chambre.
   return prisma.$transaction(async (tx) => {
+    const ids = [...new Set(data.rooms.map(entry => entry.roomId))].sort();
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Room" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`);
     for (const entry of data.rooms) {
       const room = await tx.room.findUnique({
         where:  { id: entry.roomId },
@@ -273,6 +275,10 @@ export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | '
 // ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
 export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: string, actingUserId?: string, refundRatePercent?: number) {
   return prisma.$transaction(async (tx) => {
+    const webRequest = await tx.websiteRequest.findUnique({ where: { bookingId: id } });
+    if (webRequest?.status === 'AWAITING_PAYMENT' && requestedStatus !== 'AWAITING' && requestedStatus !== 'CANCELLED') {
+      throw new ConflictError('Confirmez d’abord l’acompte depuis la page des demandes du site.');
+    }
     let status: BookingStatus = requestedStatus;
     if (requestedStatus === 'CHECKED_OUT') {
       const current = await tx.booking.findUnique({ where: { id }, include: { invoices: invoicesForStatus } });
@@ -329,6 +335,10 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
 
     if (status === 'CANCELLED') {
       await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx, refundRatePercent);
+      await tx.websiteRequest.updateMany({
+        where: { bookingId: id, status: { in: ['AWAITING_PAYMENT', 'CONFIRMED'] } },
+        data: { status: 'REJECTED', decisionNote: 'Le séjour a été annulé par l’hôtel.' },
+      });
     }
 
     return { ...booking, paymentStatus: computePaymentStatus(booking) };

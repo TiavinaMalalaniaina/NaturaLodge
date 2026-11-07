@@ -98,7 +98,8 @@ API_UPSTREAM=naturalodge-server-container
 - Mise en page à l'impression de la facture : la barre latérale masquée ne laisse plus un tiers de
   page vide, marges de page ajoutées, une ligne du tableau ne se coupe plus entre deux pages.
 - Bloc des totaux de facture rendu responsive (largeur bornée + alignement `justify-between`
-  plutôt qu'un espacement fixe qui s'étirait sur grand écran).
+  plutôt qu'un espacement fi
+  xe qui s'étirait sur grand écran).
 
 ### Corrigé
 - Le mois sélectionné sur le tableau de bord KPI se réinitialisait en changeant d'onglet — le

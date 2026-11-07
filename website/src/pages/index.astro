@@ -46,8 +46,8 @@ const structuredData = {
       <nav id="navigation" aria-label="Navigation principale">
         <a href="#esprit">L’esprit Natura</a>
         <a href="#chambres">Nos chambres</a>
-        <a href="#destination">Manambato</a>
-        <a href="#contact" class="nav-contact">Préparer mon séjour <span aria-hidden="true">↗</span></a>
+        <a href="/connexion">Espace client</a>
+        <a href="/reservation" class="nav-contact">Préparer mon séjour <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
 
@@ -96,17 +96,17 @@ const structuredData = {
           </div>
           <div class="room-grid">
             {rooms.map((room, index) => (
-              <article class="room-card">
+              <article class="room-card" data-room-type={room.roomType}>
                 <div class="room-photo">
                   <img src={room.image} alt={room.alt} width="480" height="360" loading="lazy" />
-                  <span class="capacity">Jusqu’à {room.capacity} personnes</span>
+                  <span class="capacity">Jusqu’à <span data-capacity>{room.capacity}</span> personnes</span>
                   <span class="photo-label">Aperçu des chambres de l’hôtel</span>
                 </div>
                 <div class="room-body">
                   <div class="room-name"><span class="room-number">0{index + 1}</span><h3>{room.name}</h3></div>
                   <p>{room.description}</p>
-                  <div class="room-bottom"><div class="price">{formatPrice(room.price)} <span>{hotel.currency}</span><small>par nuit · par chambre</small></div>
-                    <a class="room-link" href={whatsappLink(`Bonjour Natura Lodge ! Je souhaite connaître les disponibilités de la chambre ${room.name} (${room.capacity} personnes, ${formatPrice(room.price)} Ar par nuit). Mes dates : `)} target="_blank" rel="noopener noreferrer" aria-label={`Demander les disponibilités de la chambre ${room.name} sur WhatsApp`}><span aria-hidden="true">↗</span></a>
+                  <div class="room-bottom"><div class="price"><span data-price>{formatPrice(room.price)}</span> <span>{hotel.currency}</span><small>par nuit · par chambre</small></div>
+                    <a class="room-link" href={`/reservation/?type=${encodeURIComponent(room.roomType)}`} aria-label={`Réserver la chambre ${room.name}`}><span aria-hidden="true">↗</span></a>
                   </div>
                 </div>
               </article>
@@ -167,6 +167,23 @@ const structuredData = {
         if (event.target instanceof Node && !navigation?.contains(event.target) && !toggle?.contains(event.target)) closeMenu();
       });
       window.matchMedia('(min-width: 861px)').addEventListener('change', event => { if (event.matches) closeMenu(); });
+    </script>
+    <script>
+      import { formatPrice } from '../data/hotel';
+      type RoomType = { name: string; price: number; capacity: number };
+      const api = (import.meta.env.PUBLIC_API_URL || 'http://localhost:4000/api/public').replace(/\/$/, '');
+      const normalize = (value: string) => value.trim().toLowerCase();
+      fetch(`${api}/room-types`, { cache: 'no-store' })
+        .then(res => res.ok ? res.json() as Promise<RoomType[]> : Promise.reject(res.status))
+        .then(types => {
+          document.querySelectorAll<HTMLElement>('[data-room-type]').forEach(card => {
+            const type = types.find(t => normalize(t.name) === normalize(card.dataset.roomType ?? ''));
+            if (!type) return;
+            card.querySelector('[data-price]')!.textContent = formatPrice(type.price);
+            card.querySelector('[data-capacity]')!.textContent = String(type.capacity);
+          });
+        })
+        .catch(() => { /* API unreachable: static prices from hotel.ts stay displayed */ });
     </script>
   </body>
 </html>

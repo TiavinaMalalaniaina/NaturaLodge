@@ -1,0 +1,33 @@
+---
+import '../styles/global.css';
+import '../styles/client.css';
+const { title, eyebrow = 'Votre espace client' } = Astro.props;
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#164d43" />
+    <title>{title} · Natura Lodge</title>
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="/favicon-rounded-32.png" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">Aller au contenu</a>
+    <header class="header client-header">
+      <a href="/" class="brand"><img src="/logo-symbol.png" alt="" width="88" height="44" /><span class="brand-name">Natura Lodge</span></a>
+      <nav aria-label="Espace client"><a href="/reservation">Réserver</a><a href="/mes-reservations">Mes réservations</a><a href="/connexion" data-account>Connexion</a><button type="button" data-logout hidden>Se déconnecter</button></nav>
+    </header>
+    <main id="contenu" class="wrap client-main">
+      <p class="eyebrow green">{eyebrow}</p><h1>{title}</h1>
+      <p class="demo-banner">Votre demande est transmise à l’hôtel. Le séjour est confirmé après validation du gérant et vérification de l’acompte.</p>
+      <noscript><p class="demo-banner">Activez JavaScript pour utiliser cet espace client.</p></noscript>
+      <slot />
+    </main>
+    <footer class="wrap client-footer"><a href="/">← Retour au site</a><span>Manambato, Madagascar · Natura Lodge</span></footer>
+    <script src="../scripts/client.ts"></script>
+  </body>
+</html>

@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { PageLoader } from './components/QueryLoader';
 import { LoginPage } from './pages/Login';
 
+const WebsiteRequests = lazy(() => import('./pages/WebsiteRequests').then(m => ({ default: m.WebsiteRequests })));
 const Dashboard      = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Reservations   = lazy(() => import('./pages/Reservations').then(m => ({ default: m.Reservations })));
 const NewReservation = lazy(() => import('./pages/NewReservation').then(m => ({ default: m.NewReservation })));
@@ -51,6 +52,7 @@ const App: React.FC = () => {
                 <Route element={<AppLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
+                  <Route element={<ProtectedRoute permission="bookings.view" />}><Route path="website-requests" element={<WebsiteRequests />} /></Route>
                   <Route path="reservations" element={<Reservations />} />
                   <Route element={<ProtectedRoute permission="bookings.create" />}>
                     <Route path="reservations/new" element={<NewReservation />} />
