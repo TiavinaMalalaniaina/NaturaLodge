@@ -5,11 +5,13 @@ import { ConflictError, NotFoundError } from '../errors/AppError';
 import { TERMINAL_STATUSES } from '../lib/bookingStatus';
 import { WebsiteRequestInput } from '../validation/websiteRequest.schema';
 import { applyRoomStatuses } from '../lib/roomStatus';
-import { sendRequestMail } from './websiteMail.service';
+import { enqueueRequestEmail, kickOutbox } from './websiteEmail.service';
 
 type Line = { roomTypeId: string; name: string; quantity: number; unitPrice: number; capacity: number };
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const include = { booking: { select: { id: true, status: true } } };
+// Admin view only: undelivered follow-up emails, so staff can call the guest when SMTP keeps failing.
+const adminInclude = { ...include, emails: { where: { sentAt: null, attempts: { gt: 0 } }, select: { status: true, attempts: true, lastError: true }, orderBy: { createdAt: 'desc' as const } } };
 const privateFields = (row: { accessTokenHash: string; payloadHash: string; [key: string]: unknown }) => {
   const { accessTokenHash: _token, payloadHash: _payload, ...safe } = row;
   return safe;
@@ -35,8 +37,10 @@ export async function expireRequests() {
         await applyRoomStatuses(rooms.map(room => room.roomId), tx);
       }
       await tx.websiteRequest.update({ where: { id: item.id }, data: { status: 'EXPIRED' } });
+      await enqueueRequestEmail(tx, item.id, 'EXPIRED');
     });
   }
+  if (expired.length) kickOutbox();
 }
 
 export async function roomTypes() {
@@ -79,9 +83,10 @@ export async function submit(input: WebsiteRequestInput, token: string, customer
       name: input.name, email: input.email, phone: input.phone, notes: input.notes,
       arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests,
       lines, totalAmount: depositAmount * nights, depositAmount,
+      emails: { create: { status: 'PENDING' } },
     } });
-    const emailSent = await sendRequestMail(row);
-    return { ...publicView(row), emailSent };
+    kickOutbox();
+    return publicView(row);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const retry = await prisma.websiteRequest.findUnique({ where: { accessTokenHash } });
@@ -105,10 +110,14 @@ export async function listForCustomer(customerId: string) {
 export async function list(status: string | undefined, page: number) {
   const where = status ? { status } : {};
   const [data, total] = await Promise.all([
-    prisma.websiteRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * 20, take: 20, include }),
+    prisma.websiteRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * 20, take: 20, include: adminInclude }),
     prisma.websiteRequest.count({ where }),
   ]);
   return { data: data.map(privateFields), total };
+}
+
+export async function pendingCount() {
+  return { pending: await prisma.websiteRequest.count({ where: { status: 'PENDING' } }) };
 }
 
 export async function approve(id: string, instructions: string, hours: number, actorId: string) {
@@ -136,16 +145,20 @@ export async function approve(id: string, instructions: string, hours: number, a
     const expiresAt = new Date(Math.min(Date.now() + hours * 3600000, arrivalEnd.getTime()));
     const result = await tx.websiteRequest.update({ where: { id }, data: { status: 'AWAITING_PAYMENT', bookingId: booking.id, paymentInstructions: instructions, expiresAt }, include });
     await applyRoomStatuses(allocated.map(room => room.roomId), tx);
+    await enqueueRequestEmail(tx, id, 'AWAITING_PAYMENT');
     return privateFields(result);
   }, { timeout: 15000 });
-  await notify(id);
+  kickOutbox();
   return result;
 }
 
 export async function reject(id: string, reason: string) {
-  const changed = await prisma.websiteRequest.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'REJECTED', decisionNote: reason } });
-  if (!changed.count) throw new ConflictError('Cette demande a déjà été traitée ou est introuvable.');
-  await notify(id);
+  await prisma.$transaction(async tx => {
+    const changed = await tx.websiteRequest.updateMany({ where: { id, status: 'PENDING' }, data: { status: 'REJECTED', decisionNote: reason } });
+    if (!changed.count) throw new ConflictError('Cette demande a déjà été traitée ou est introuvable.');
+    await enqueueRequestEmail(tx, id, 'REJECTED');
+  });
+  kickOutbox();
 }
 
 async function depositPaid(tx: Prisma.TransactionClient, bookingId: string) {
@@ -162,28 +175,36 @@ export async function confirm(id: string) {
     if (await depositPaid(tx, row.bookingId) < row.depositAmount) throw new ConflictError('Enregistrez d’abord l’acompte complet sur une facture d’acompte visée.');
     const booking = await tx.booking.updateMany({ where: { id: row.bookingId, status: 'AWAITING' }, data: { status: 'CONFIRMED' } });
     if (!booking.count) throw new ConflictError('Le séjour associé a été modifié. Vérifiez son statut.');
+    await enqueueRequestEmail(tx, id, 'CONFIRMED');
     return privateFields(await tx.websiteRequest.update({ where: { id }, data: { status: 'CONFIRMED' }, include }));
   });
-  await notify(id);
+  kickOutbox();
   return result;
 }
 
 // Called inside addPayment's transaction: once the full deposit is recorded on a validated deposit
-// invoice, the website request confirms itself. Returns the request id so the caller can send the
-// email after commit. A paid hold is never expired (see expireRequests), so the deadline is not rechecked.
-export async function confirmIfDepositPaid(bookingId: string, tx: Prisma.TransactionClient): Promise<string | null> {
+// invoice, the website request confirms itself (email queued in the same transaction; the caller
+// kicks the outbox after commit). A paid hold is never expired (see expireRequests), so the deadline
+// is not rechecked.
+export async function confirmIfDepositPaid(bookingId: string, tx: Prisma.TransactionClient): Promise<boolean> {
   const [locked] = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "WebsiteRequest" WHERE "bookingId" = ${bookingId} AND "status" = 'AWAITING_PAYMENT' FOR UPDATE`;
-  if (!locked) return null;
+  if (!locked) return false;
   const row = await tx.websiteRequest.findUnique({ where: { id: locked.id } });
-  if (!row || row.status !== 'AWAITING_PAYMENT' || await depositPaid(tx, bookingId) < row.depositAmount) return null;
+  if (!row || row.status !== 'AWAITING_PAYMENT' || await depositPaid(tx, bookingId) < row.depositAmount) return false;
   const booking = await tx.booking.updateMany({ where: { id: bookingId, status: 'AWAITING' }, data: { status: 'CONFIRMED' } });
-  if (!booking.count) return null;
+  if (!booking.count) return false;
   await tx.websiteRequest.update({ where: { id: row.id }, data: { status: 'CONFIRMED' } });
-  return row.id;
+  await enqueueRequestEmail(tx, row.id, 'CONFIRMED');
+  return true;
 }
 
-export async function notify(id: string) {
-  const row = await prisma.websiteRequest.findUnique({ where: { id } });
-  if (row) await sendRequestMail(row);
+// Called inside booking.updateStatus when the hotel cancels a stay that came from the website.
+export async function cancelForBooking(bookingId: string, tx: Prisma.TransactionClient) {
+  const rows = await tx.websiteRequest.findMany({ where: { bookingId, status: { in: ['AWAITING_PAYMENT', 'CONFIRMED'] } }, select: { id: true } });
+  for (const row of rows) {
+    await tx.websiteRequest.update({ where: { id: row.id }, data: { status: 'CANCELLED', decisionNote: 'Le séjour a été annulé par l’hôtel.' } });
+    await enqueueRequestEmail(tx, row.id, 'CANCELLED');
+  }
+  return rows.length > 0;
 }
 

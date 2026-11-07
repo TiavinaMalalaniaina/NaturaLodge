@@ -728,6 +728,9 @@
     "next": "Suivant",
     "page": "Page {{page}} · {{total}} demande(s)",
     "paymentHelp": "Enregistrez l’acompte complet sur une facture d’acompte visée : la demande se confirme automatiquement et le client est prévenu par email. Le bouton Confirmer reste disponible pour un acompte enregistré auparavant.",
-    "confirmHelp": "La confirmation vérifie le paiement enregistré et confirme le séjour."
+    "confirmHelp": "La confirmation vérifie le paiement enregistré et confirme le séjour.",
+    "CANCELLED": "Annulée par l’hôtel",
+    "emailUndelivered": "Email « {{status}} » non délivré au client ({{attempts}} tentative(s)) — nouvel essai automatique ; contactez le client par téléphone si besoin.",
+    "pendingBadge": "{{count}} demande(s) à traiter"
   }
 }

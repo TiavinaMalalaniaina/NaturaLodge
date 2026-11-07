@@ -214,11 +214,29 @@ model WebsiteRequest {
   expiresAt           DateTime?
   bookingId           String?  @unique
   booking             Booking? @relation(fields: [bookingId], references: [id])
+  emails              WebsiteEmail[]
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([customerId, createdAt])
+}
+
+// Outbox des emails de suivi : inséré dans la même transaction que le changement de statut, envoyé
+// par le scheduler avec réessais — un SMTP lent ou en panne ne bloque ni ne perd aucune notification.
+model WebsiteEmail {
+  id            String         @id @default(cuid())
+  requestId     String
+  request       WebsiteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status        String
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now())
+  sentAt        DateTime?
+  lastError     String         @default("")
+  createdAt     DateTime       @default(now())
+
+  @@index([sentAt, nextAttemptAt])
+  @@index([requestId])
 }
 
 model BookingRoom {

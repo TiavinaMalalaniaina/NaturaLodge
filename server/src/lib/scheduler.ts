@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { TERMINAL_STATUSES } from './bookingStatus';
 import { expireRequests } from '../services/websiteRequest.service';
+import { processOutbox } from '../services/websiteEmail.service';
 
 async function markArrivalsOccupied(): Promise<void> {
   const now   = new Date();
@@ -41,6 +42,7 @@ export function startScheduler(): void {
     if (expiring) return;
     expiring = true;
     try { await expireRequests(); } catch (error) { console.error('[Website requests]', error); }
+    try { await processOutbox(); } catch (error) { console.error('[Website emails]', error); }
     finally { expiring = false; }
   };
   void expire();

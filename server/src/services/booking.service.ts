@@ -9,6 +9,8 @@ import {
   ReassignInput, UpdateBookingRoomExtraInput,
 } from '../validation/booking.schema';
 import * as invoiceService from './invoice.service';
+import { cancelForBooking as cancelWebsiteRequestForBooking } from './websiteRequest.service';
+import { kickOutbox } from './websiteEmail.service';
 
 // `avatar` et `createdBy` sont sélectionnés nulle part ci-dessous : ni le type client
 // (client/src/api/bookings.ts) ni aucune page ne les lisent — retirés des deux formes.
@@ -274,7 +276,8 @@ export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | '
 // a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
 // ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
 export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: string, actingUserId?: string, refundRatePercent?: number) {
-  return prisma.$transaction(async (tx) => {
+  let notifyWebsite = false;
+  const result = await prisma.$transaction(async (tx) => {
     const webRequest = await tx.websiteRequest.findUnique({ where: { bookingId: id } });
     if (webRequest?.status === 'AWAITING_PAYMENT' && requestedStatus !== 'AWAITING' && requestedStatus !== 'CANCELLED') {
       throw new ConflictError('Confirmez d’abord l’acompte depuis la page des demandes du site.');
@@ -335,14 +338,13 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
 
     if (status === 'CANCELLED') {
       await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx, refundRatePercent);
-      await tx.websiteRequest.updateMany({
-        where: { bookingId: id, status: { in: ['AWAITING_PAYMENT', 'CONFIRMED'] } },
-        data: { status: 'REJECTED', decisionNote: 'Le séjour a été annulé par l’hôtel.' },
-      });
+      notifyWebsite = await cancelWebsiteRequestForBooking(id, tx);
     }
 
     return { ...booking, paymentStatus: computePaymentStatus(booking) };
   });
+  if (notifyWebsite) kickOutbox();
+  return result;
 }
 
 // Dernière étape, manuelle et réservée manager/admin (can('bookings.close')) : archive

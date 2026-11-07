@@ -102,8 +102,7 @@ async function start() {
         localStorage.setItem('naturalodge-pending-request', JSON.stringify(retry));
         saveDraft();
         sending = true; details.disabled = true; search.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input,button').forEach(el => { el.disabled = true; }); fail('');
-        const result = await api<RequestView & { emailSent?: boolean }>('/reservation-requests', JSON.parse(payload), retry!.token);
-        if (result.emailSent === false) sessionStorage.setItem('naturalodge-email-warning', 'Votre demande est enregistrée, mais l’email n’a pas pu être envoyé. Consultez le suivi dans votre espace client.');
+        await api<RequestView>('/reservation-requests', JSON.parse(payload), retry!.token);
         localStorage.removeItem('naturalodge-pending-request'); localStorage.removeItem(draftKey); location.assign('/mes-reservations/');
       } catch (err) { fail(message(err)); } finally { sending = false; details.disabled = false; search.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input,button').forEach(el => { el.disabled = false; }); }
     });
@@ -118,27 +117,56 @@ async function start() {
   }
   const list = document.querySelector('#reservations-list');
   if (list) {
-    const warning = sessionStorage.getItem('naturalodge-email-warning');
-    if (warning) { fail(warning); sessionStorage.removeItem('naturalodge-email-warning'); }
-    const labels: Record<string, string> = { PENDING: 'En attente de validation du gérant', AWAITING_PAYMENT: 'Acompte à régler', CONFIRMED: 'Réservation confirmée', REJECTED: 'Demande refusée', EXPIRED: 'Délai de paiement expiré' };
+    const labels: Record<string, string> = { PENDING: 'En attente de validation', AWAITING_PAYMENT: 'Acompte à régler', CONFIRMED: 'Réservation confirmée', REJECTED: 'Demande refusée', EXPIRED: 'Délai expiré', CANCELLED: 'Séjour annulé' };
+    const help: Record<string, string> = {
+      PENDING: 'L’hôtel vérifie la disponibilité de vos chambres. Vous recevrez un email dès sa réponse.',
+      AWAITING_PAYMENT: 'Vos chambres sont bloquées. Réglez l’acompte avant l’échéance pour confirmer votre séjour.',
+      CONFIRMED: 'Votre acompte est vérifié. À bientôt à Natura Lodge !',
+      REJECTED: 'L’hôtel n’a pas pu donner suite à cette demande.',
+      EXPIRED: 'L’acompte n’a pas été reçu à temps et les chambres ont été libérées. Vous pouvez refaire une demande.',
+      CANCELLED: 'Ce séjour a été annulé par l’hôtel. Contactez-nous pour toute question.',
+    };
+    // Stay dates are stored at UTC midnight: format in UTC so they never shift by a day.
+    const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+    const deadline = (iso: string) => new Date(iso).toLocaleString('fr-FR', { timeZone: 'Indian/Antananarivo', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const remaining = (iso: string) => {
+      const minutes = Math.max(0, Math.floor((Date.parse(iso) - Date.now()) / 60000));
+      const hours = Math.floor(minutes / 60);
+      return hours >= 24 ? `${Math.floor(hours / 24)} j ${hours % 24} h` : hours ? `${hours} h ${String(minutes % 60).padStart(2, '0')} min` : `${minutes} min`;
+    };
+    const el = (tag: string, className: string, text = '') => { const node = document.createElement(tag); if (className) node.className = className; node.textContent = text; return node; };
+    let rows: RequestView[] = [];
+    function render() {
+      if (!rows.length) { list!.textContent = 'Aucune demande de réservation pour le moment.'; return; }
+      list!.replaceChildren(...rows.map(row => {
+        const card = el('article', 'reservation-card');
+        const nights = Math.round((Date.parse(row.departure) - Date.parse(row.arrival)) / 86400000);
+        card.append(
+          el('span', `badge status-${row.status.toLowerCase().replace('_', '-')}`, labels[row.status] || row.status),
+          el('h3', '', `Du ${day(row.arrival)} au ${day(row.departure)}`),
+          el('p', 'muted', `${nights} nuit(s) · ${row.guests} voyageur(s) · ${row.lines.map(x => `${x.quantity} × ${x.name}`).join(', ')}`),
+          el('p', '', `Total du séjour : ${formatPrice(row.totalAmount)} Ar · Acompte : ${formatPrice(row.depositAmount)} Ar`),
+          el('p', 'muted', help[row.status] ?? ''),
+        );
+        if (row.status === 'AWAITING_PAYMENT') {
+          const box = el('div', 'payment-box');
+          box.append(el('p', 'payment-title', 'Instructions de paiement'), el('p', 'payment-instructions', row.paymentInstructions));
+          if (row.expiresAt) box.append(el('p', 'payment-deadline', `À régler avant le ${deadline(row.expiresAt)} (heure de Madagascar) — il reste ${remaining(row.expiresAt)}.`));
+          card.append(box);
+        }
+        if ((row.status === 'REJECTED' || row.status === 'CANCELLED') && row.decisionNote) card.append(el('p', 'payment-instructions', `Message de l’hôtel : ${row.decisionNote}`));
+        card.append(el('p', 'reference', `Référence à rappeler à l’hôtel : ${row.reference}`));
+        return card;
+      }));
+    }
     let refreshing = false;
     async function refresh() {
       if (refreshing) return; refreshing = true;
-      try {
-        const rows = await api<RequestView[]>('/reservation-requests');
-        if (!rows.length) { list!.textContent = 'Aucune demande de réservation pour le moment.'; return; }
-        const cards = rows.map(row => {
-          const card = document.createElement('article'); card.className = 'reservation-card';
-            const title = document.createElement('h3'); title.textContent = `${row.name} · ${labels[row.status] || row.status}`; card.append(title);
-            for (const text of [`${row.arrival.slice(0, 10)} → ${row.departure.slice(0, 10)} · ${row.guests} voyageur(s)`, ...row.lines.map(x => `${x.quantity} × ${x.name}`), `Total : ${formatPrice(row.totalAmount)} Ar · Acompte : ${formatPrice(row.depositAmount)} Ar`, row.paymentInstructions, row.decisionNote, row.expiresAt && row.status === 'AWAITING_PAYMENT' ? `À régler avant le ${new Date(row.expiresAt).toLocaleString('fr-FR')}` : '']) {
-              if (text) { const p = document.createElement('p'); p.textContent = text; p.style.whiteSpace = 'pre-wrap'; card.append(p); }
-            }
-          return card;
-        });
-        list!.replaceChildren(...cards);
-      } catch (err) { fail(message(err)); } finally { refreshing = false; }
+      try { rows = await api<RequestView[]>('/reservation-requests'); render(); }
+      catch (err) { fail(message(err)); } finally { refreshing = false; }
     }
-    void refresh(); setInterval(() => { if (!document.hidden) void refresh(); }, 30000);
+    void refresh();
+    setInterval(() => { if (!document.hidden) void refresh(); }, 30000);
   }
 
 }

@@ -7,8 +7,13 @@ import { useAuth } from '../context/AuthContext';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { formatCurrency, formatDate, formatDateTime } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
+import { cn } from '../lib/utils';
 
-const statuses: RequestStatus[] = ['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED'];
+const statuses: RequestStatus[] = ['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'CANCELLED'];
+const statusTone: Record<RequestStatus, string> = {
+  PENDING: 'bg-amber-100 text-amber-900', AWAITING_PAYMENT: 'bg-sky-100 text-sky-900', CONFIRMED: 'bg-emerald-100 text-emerald-900',
+  REJECTED: 'bg-stone-200 text-stone-700', EXPIRED: 'bg-stone-200 text-stone-700', CANCELLED: 'bg-red-100 text-red-900',
+};
 const button = 'rounded-xl border border-stone-200 px-4 py-2 text-sm hover:bg-stone-100 disabled:opacity-40';
 const field = 'block w-full rounded-xl border border-stone-200 bg-white p-3 mt-2';
 
@@ -45,11 +50,12 @@ export const WebsiteRequests: React.FC = () => {
     {message && <p role="status" className="rounded-xl bg-stone-100 p-4 text-sm">{message}</p>}
     {!query.data?.data.length && <p className="py-12 text-stone-500">{t('websiteRequests.empty')}</p>}
     {query.data?.data.map(row => <article key={row.id} className="space-y-4 rounded-3xl border border-stone-200 bg-white p-5 md:p-7">
-      <div className="flex flex-wrap justify-between gap-3"><div><h3 className="text-xl font-semibold">{row.name}</h3><p className="break-all text-xs text-stone-500">{row.reference}</p><p className="text-xs text-stone-500">{formatDateTime(row.createdAt)}</p></div><span className="h-fit rounded-full bg-stone-100 px-3 py-1 text-sm">{t(`websiteRequests.${row.status}`)}</span></div>
+      <div className="flex flex-wrap justify-between gap-3"><div><h3 className="text-xl font-semibold">{row.name}</h3><p className="break-all text-xs text-stone-500">{row.reference}</p><p className="text-xs text-stone-500">{formatDateTime(row.createdAt)}</p></div><span className={cn('h-fit rounded-full px-3 py-1 text-sm font-medium', statusTone[row.status])}>{t(`websiteRequests.${row.status}`)}</span></div>
       <p className="text-sm"><a href={`mailto:${row.email}`}>{row.email}</a> · <a href={`tel:${row.phone}`}>{row.phone}</a></p>
       <p>{formatDate(row.arrival)} → {formatDate(row.departure)} · {t('websiteRequests.guests', { count: row.guests })}</p>
       <ul className="text-sm space-y-1">{row.lines.map(line => <li key={line.roomTypeId}>{line.quantity} × {line.name} · {formatCurrency(line.unitPrice)}</li>)}</ul>
       <p>{t('websiteRequests.total')}: {formatCurrency(row.totalAmount)} · {t('websiteRequests.deposit')}: {formatCurrency(row.depositAmount)}</p>
+      {row.emails.length > 0 && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-900">{t('websiteRequests.emailUndelivered', { status: t(`websiteRequests.${row.emails[0].status}`), attempts: row.emails[0].attempts })}</p>}
       {row.notes && <p className="whitespace-pre-wrap text-sm">{row.notes}</p>}
       {row.paymentInstructions && <p className="whitespace-pre-wrap text-sm">{row.paymentInstructions}</p>}
       {row.expiresAt && <p className="text-sm">{t('websiteRequests.deadline')}: {formatDateTime(row.expiresAt)}</p>}

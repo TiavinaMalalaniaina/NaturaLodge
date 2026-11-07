@@ -52,6 +52,19 @@ services:
     ports:
       - "${CLIENT_PORT:-8081}:80"
 
+  # Site public. PUBLIC_API_URL est figé dans le JS au build : c'est l'URL vue par le navigateur du
+  # visiteur, pas le nom de service Docker. WEBSITE_URL (serveur) doit correspondre à l'origine du site.
+  website:
+    build:
+      context: ./website
+      args:
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:4000/api/public}
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "${WEBSITE_PORT:-4321}:80"
+
 volumes:
   db_data:
 

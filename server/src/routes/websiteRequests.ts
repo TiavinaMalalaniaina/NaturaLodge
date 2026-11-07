@@ -68,8 +68,11 @@ websiteRequestsRouter.use(authenticate, asyncHandler(async (req: AuthRequest, _r
   req.user!.role = user.role.name;
   next();
 }));
+websiteRequestsRouter.get('/pending-count', can('bookings.view'), asyncHandler(async (_req, res) => {
+  res.json(await service.pendingCount());
+}));
 websiteRequestsRouter.get('/', can('bookings.view'), asyncHandler(async (req, res) => {
-  const query = z.object({ status: z.enum(['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED']).optional(), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
+  const query = z.object({ status: z.enum(['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'CANCELLED']).optional(), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
   res.json(await service.list(query.status, query.page));
 }));
 websiteRequestsRouter.post('/:id/approve', can('bookings.create'), can('bookings.update_status'), asyncHandler(async (req: AuthRequest, res) => {

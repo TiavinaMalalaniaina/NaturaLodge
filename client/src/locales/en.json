@@ -728,6 +728,9 @@
     "next": "Next",
     "page": "Page {{page}} · {{total}} request(s)",
     "paymentHelp": "Record the full deposit against an approved deposit invoice: the request confirms automatically and the guest is notified by email. The Confirm button remains available for a deposit recorded earlier.",
-    "confirmHelp": "Confirmation checks the recorded payment and confirms the booking."
+    "confirmHelp": "Confirmation checks the recorded payment and confirms the booking.",
+    "CANCELLED": "Cancelled by the hotel",
+    "emailUndelivered": "“{{status}}” email not delivered to the guest ({{attempts}} attempt(s)) — retrying automatically; call the guest if needed.",
+    "pendingBadge": "{{count}} request(s) to handle"
   }
 }
