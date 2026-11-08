@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, BedDouble, CalendarDays, Clock, ExternalLink, FileText, Globe, Mail, MessageSquare, Paperclip, PenLine, Phone, RefreshCw } from 'lucide-react';
+import { AlertTriangle, BedDouble, CalendarDays, Clock, ExternalLink, FileText, Globe, Mail, MessageSquare, Paperclip, PenLine, Phone, RefreshCw, Search, X } from 'lucide-react';
 import { fetchPaymentSheet, fetchPendingWebsiteRequests, fetchProof, fetchRoomOptions, ProofMeta, fetchWebsiteRequests, processWebsiteRequest, RequestStatus, RoomChoiceLine, WebsiteRequest } from '../api/websiteRequests';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { formatCurrency, formatDate, formatDateTime, nightsBetween } from '../lib/format';
 import { getApiErrorMessage } from '../lib/apiError';
 import { useNow } from '../hooks/useNow';
+import { useDebounce } from '../hooks/useDebounce';
 import { PaymentSheetEditor } from '../components/PaymentSheetEditor';
 import { buildInstructions, requestLang } from '../lib/paymentInstructions';
 import { cn } from '../lib/utils';
@@ -82,6 +83,8 @@ export const WebsiteRequests: React.FC = () => {
   const qc = useQueryClient();
   const now = useNow(30_000);
   const [status, setStatus] = useState<RequestStatus | ''>('');
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search.trim());
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<{ id: string; action: Action } | null>(null);
   const [text, setText] = useState('');
@@ -97,7 +100,8 @@ export const WebsiteRequests: React.FC = () => {
   // At least one payment method, or a note telling the guest how to pay.
   const instructionsValid = (row: WebsiteRequest) => (methodIds.length > 0 || approveNote.trim().length > 0) && instructionsFor(row).length >= 10;
   const [message, setMessage] = useState<{ id: string; text: string; error: boolean } | null>(null);
-  const query = useQuery({ queryKey: ['website-requests', status, page], queryFn: () => fetchWebsiteRequests(status, page), refetchInterval: 30000 });
+  // keepPreviousData: a new search must not swap the page (and the focused search field) for the loader.
+  const query = useQuery({ queryKey: ['website-requests', status, page, debouncedSearch], queryFn: () => fetchWebsiteRequests(status, page, debouncedSearch), refetchInterval: 30000, placeholderData: keepPreviousData });
   const pending = useQuery({ queryKey: ['website-requests', 'pending-count'], queryFn: fetchPendingWebsiteRequests, refetchInterval: 60000 });
   const approving = editing?.action === 'approve' ? editing.id : null;
   const roomQuery = useQuery({ queryKey: ['website-requests', 'rooms', approving], queryFn: () => fetchRoomOptions(approving!), enabled: !!approving, refetchInterval: 30000 });
@@ -292,12 +296,19 @@ export const WebsiteRequests: React.FC = () => {
       ))}
     </div>
 
+    <div className="relative max-w-sm">
+      <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" />
+      <input type="search" value={search} onChange={e => { setSearch(e.target.value); setPage(1); setEditing(null); }} placeholder={t('websiteRequests.searchName')} aria-label={t('websiteRequests.searchName')} maxLength={80}
+        className="w-full rounded-2xl border border-stone-200 bg-white py-3 pl-11 pr-10 text-sm outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 [&::-webkit-search-cancel-button]:hidden" />
+      {search && <button type="button" onClick={() => { setSearch(''); setPage(1); }} aria-label={t('websiteRequests.clearSearch')} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 hover:bg-stone-100"><X className="h-3.5 w-3.5 text-on-surface-variant/50" /></button>}
+    </div>
+
     {!query.data?.data.length
       ? <div className="rounded-3xl border border-stone-200 bg-white p-16 text-center">
           <Globe className="mx-auto mb-4 h-10 w-10 stroke-1 text-on-surface-variant/20" />
-          <p className="text-sm font-medium text-on-surface-variant/50">{t('websiteRequests.empty')}</p>
+          <p className="text-sm font-medium text-on-surface-variant/50">{debouncedSearch ? t('websiteRequests.noMatch', { search: debouncedSearch }) : t('websiteRequests.empty')}</p>
         </div>
-      : <div className="space-y-4">{query.data.data.map(card)}</div>}
+      : <div className={cn('space-y-4 transition-opacity', query.isPlaceholderData && 'opacity-60')}>{query.data.data.map(card)}</div>}
 
     {total > 20 && <div className="flex items-center justify-center gap-3">
       <button className={secondary} disabled={page === 1} onClick={() => { setPage(page - 1); setEditing(null); }}>{t('websiteRequests.previous')}</button>

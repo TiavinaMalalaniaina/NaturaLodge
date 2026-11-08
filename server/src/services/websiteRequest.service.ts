@@ -114,8 +114,11 @@ export async function listForCustomer(customerId: string) {
   return rows.map(publicView);
 }
 
-export async function list(status: WebsiteRequestStatus | undefined, page: number) {
-  const where = status ? { status } : {};
+export async function list(status: WebsiteRequestStatus | undefined, page: number, search?: string) {
+  const where: Prisma.WebsiteRequestWhereInput = {
+    ...(status ? { status } : {}),
+    ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
+  };
   const [data, total] = await Promise.all([
     prisma.websiteRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * 20, take: 20, include: adminInclude }),
     prisma.websiteRequest.count({ where }),

@@ -96,8 +96,8 @@ websiteRequestsRouter.get('/pending-count', can('bookings.view'), asyncHandler(a
   res.json(await service.pendingCount());
 }));
 websiteRequestsRouter.get('/', can('bookings.view'), asyncHandler(async (req, res) => {
-  const query = z.object({ status: z.enum(['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'CANCELLED']).optional(), page: z.coerce.number().int().min(1).default(1) }).parse(req.query);
-  res.json(await service.list(query.status, query.page));
+  const query = z.object({ status: z.enum(['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'CANCELLED']).optional(), page: z.coerce.number().int().min(1).default(1), search: z.string().trim().max(80).optional() }).parse(req.query);
+  res.json(await service.list(query.status, query.page, query.search));
 }));
 // Push notifications for staff devices (works with the admin closed, via the PWA service worker).
 const pushSubscriptionSchema = z.object({ endpoint: z.string().url().max(1000).refine(url => url.startsWith('https://'), 'Endpoint push invalide'), keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }) });

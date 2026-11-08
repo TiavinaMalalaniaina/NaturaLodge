@@ -799,7 +799,10 @@
     "proofError": "Could not open the proof.",
     "proofHelp": "Check the payment received, then record the deposit on the invoice: the request confirms automatically.",
     "proofsToCheck": "{{count}} payment(s) with a proof to check",
-    "next_PROOF": "To do: check the proof and record the deposit"
+    "next_PROOF": "To do: check the proof and record the deposit",
+    "searchName": "Search by guest name",
+    "clearSearch": "Clear search",
+    "noMatch": "No request matching “{{search}}” for this filter."
   },
   "websiteEvents": {
     "REQUEST_RECEIVED": "New website request",

@@ -21,8 +21,8 @@ export interface RoomChoiceLine { roomTypeId: string; name: string; quantity: nu
 export async function fetchRoomOptions(id: string) {
   return (await api.get<RoomChoiceLine[]>(`/website-requests/${id}/rooms`)).data;
 }
-export async function fetchWebsiteRequests(status: RequestStatus | '', page: number) {
-  return (await api.get<{ data: WebsiteRequest[]; total: number }>('/website-requests', { params: { status: status || undefined, page } })).data;
+export async function fetchWebsiteRequests(status: RequestStatus | '', page: number, search = '') {
+  return (await api.get<{ data: WebsiteRequest[]; total: number }>('/website-requests', { params: { status: status || undefined, page, search: search || undefined } })).data;
 }
 export async function fetchPendingWebsiteRequests() {
   return (await api.get<{ pending: number; proofs: number }>('/website-requests/pending-count')).data;
