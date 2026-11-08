@@ -29,6 +29,17 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-random-secret-min-32-chars}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       PORT: 4000
+      WEBSITE_URL: ${WEBSITE_URL:-http://localhost:4321}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback, uniquelocal}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:${CLIENT_PORT:-8081}}
     ports:
       - "4000:4000"
@@ -43,6 +54,19 @@ services:
       - server
     ports:
       - "${CLIENT_PORT:-8081}:80"
+
+  # Site public. PUBLIC_API_URL est figé dans le JS au build : c'est l'URL vue par le navigateur du
+  # visiteur, pas le nom de service Docker. WEBSITE_URL (serveur) doit correspondre à l'origine du site.
+  website:
+    build:
+      context: ./website
+      args:
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:4000/api/public}
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "${WEBSITE_PORT:-4321}:80"
 
 volumes:
   db_data:

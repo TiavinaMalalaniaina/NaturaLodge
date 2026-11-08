@@ -36,6 +36,8 @@ model User {
   auditLogs         AuditLog[]
 
   @@index([roleId])
+  websiteSettings WebsiteSetting[]
+  pushSubscriptions StaffPushSubscription[]
 }
 
 // Rôles configurables par l'ADMIN (écran Permissions) — les 4 rôles historiques (isSystem: true)
@@ -145,6 +147,7 @@ model RoomFeature {
 // ─── Bookings ────────────────────────────────────────────────────
 
 model Booking {
+  websiteRequest WebsiteRequest?
   id           String        @id @default(cuid())
   guest        Guest         @relation(fields: [guestId], references: [id])
   guestId      String
@@ -165,6 +168,160 @@ model Booking {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   bookingNotes BookingNote[]
+}
+
+model WebsiteCustomer {
+  id        String @id @default(cuid())
+  email     String @unique
+  createdAt DateTime @default(now())
+  requests  WebsiteRequest[]
+  sessions  WebsiteSession[]
+}
+
+model WebsiteLogin {
+  tokenHash String @id
+  email     String
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model WebsiteSession {
+  tokenHash  String @id
+  customerId String
+  customer   WebsiteCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  @@index([expiresAt])
+}
+
+// Langue du site au moment de la demande : emails de suivi et liens envoyés dans cette langue.
+enum WebsiteLocale {
+  FR
+  EN
+}
+
+enum WebsiteRequestStatus {
+  PENDING
+  AWAITING_PAYMENT
+  CONFIRMED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model WebsiteRequest {
+  id                  String   @id @default(cuid())
+  reference           String   @unique
+  // Hash of customerId + Idempotency-Key header: a retried submission returns the same request.
+  idempotencyKeyHash  String   @unique
+  payloadHash         String
+  customerId          String?
+  customer            WebsiteCustomer? @relation(fields: [customerId], references: [id])
+  name                String
+  email               String
+  phone               String
+  arrival             DateTime
+  departure           DateTime
+  guests              Int
+  lines               Json
+  totalAmount         Int
+  depositAmount       Int
+  notes               String   @default("")
+  locale              WebsiteLocale @default(FR)
+  status              WebsiteRequestStatus @default(PENDING)
+  paymentInstructions String   @default("")
+  decisionNote        String   @default("")
+  expiresAt           DateTime?
+  bookingId           String?  @unique
+  booking             Booking? @relation(fields: [bookingId], references: [id])
+  emails              WebsiteEmail[]
+  proofs              WebsitePaymentProof[]
+  events              WebsiteEvent[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+}
+
+// Événements du site à signaler au personnel (cloche de l'admin). Écrits dans la même transaction que
+// l'action, lus par les postes ouverts (polling) ; purgés après 30 jours par le scheduler.
+enum WebsiteEventKind {
+  REQUEST_RECEIVED
+  PROOF_UPLOADED
+  CANCELLED_BY_GUEST
+  EXPIRED
+  DEPOSIT_CONFIRMED
+}
+
+model WebsiteEvent {
+  id        String           @id @default(cuid())
+  kind      WebsiteEventKind
+  requestId String
+  request   WebsiteRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  // Null until sent as a push notification to subscribed staff devices.
+  pushedAt  DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([createdAt])
+  @@index([pushedAt])
+}
+
+// Appareil d'un membre du personnel abonné aux notifications push (navigateur ou PWA installée).
+// Un même utilisateur peut avoir plusieurs appareils ; supprimé quand le service push répond 404/410.
+model StaffPushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Preuve de paiement déposée par le client depuis son espace (capture MVola, reçu PDF…). Stockée en base
+// (petits fichiers, 5 Mo max., 5 par demande) : pas de volume disque à gérer, incluse dans les sauvegardes Postgres.
+model WebsitePaymentProof {
+  id        String         @id @default(cuid())
+  requestId String
+  request   WebsiteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fileName  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  note      String         @default("")
+  createdAt DateTime       @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// Réglages du site public modifiables depuis l'admin (clé/valeur), ex. modèles d'instructions de
+// paiement par langue ("paymentInstructions.fr", "paymentInstructions.en").
+model WebsiteSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime @updatedAt
+}
+
+// Outbox des emails de suivi : inséré dans la même transaction que le changement de statut, envoyé
+// par le scheduler avec réessais — un SMTP lent ou en panne ne bloque ni ne perd aucune notification.
+model WebsiteEmail {
+  id            String         @id @default(cuid())
+  requestId     String
+  request       WebsiteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status        WebsiteRequestStatus
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now())
+  sentAt        DateTime?
+  lastError     String         @default("")
+  createdAt     DateTime       @default(now())
+
+  @@index([sentAt, nextAttemptAt])
+  @@index([requestId])
 }
 
 model BookingRoom {

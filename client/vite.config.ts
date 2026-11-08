@@ -33,6 +33,8 @@ export default defineConfig(({mode}) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
           navigateFallbackDenylist: [/^\/api\//],
+          // Handlers for staff push notifications (public/push-sw.js).
+          importScripts: ['push-sw.js'],
         },
       }),
     ],
