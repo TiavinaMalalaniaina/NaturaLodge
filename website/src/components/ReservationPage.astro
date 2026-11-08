@@ -1,0 +1,48 @@
+---
+import ClientLayout from '../layouts/ClientLayout.astro';
+import type { Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = ui[lang].reservation;
+---
+<ClientLayout lang={lang} title={t.title} eyebrow={t.eyebrow}>
+  <div class="client-grid">
+    <section class="client-panel">
+      <ol class="booking-steps" aria-label={t.steps}><li>{t.step1}</li><li>{t.step2}</li><li>{t.step3}</li></ol>
+      <h2>{t.when}</h2><p>{t.whenText}</p>
+      <form id="availability-form" class="client-form">
+        <div class="form-row"><label>{t.arrival}<input name="arrival" type="date" required /></label><label>{t.departure}<input name="departure" type="date" required /></label></div>
+        <label>{t.guests}<input name="guests" type="number" min="1" max="100" value="2" required /></label>
+        <button class="button button-green" type="submit">{t.search}</button>
+      </form>
+      <p id="availability-status" role="status" aria-live="polite"></p>
+      <form id="booking-form" class="client-form">
+        <fieldset id="room-options" hidden disabled><legend>{t.compose}</legend>
+          <p class="muted">{t.composeText}</p><div id="live-room-options"></div><p id="selection-status" role="status" aria-live="polite"></p>
+        </fieldset>
+        <section id="login-required" class="booking-conditions" hidden>
+          <h3>{t.loginTitle}</h3>
+          <p>{t.loginText}</p>
+          <button type="button" id="login-to-book" class="button button-green">{t.loginButton}</button>
+        </section>
+        <fieldset id="guest-details" hidden disabled><legend>{t.contact}</legend>
+        <p class="muted">{t.contactText}</p>
+        <label>{t.name}<input name="name" autocomplete="name" required maxlength="80" /></label>
+        <label>{t.email}<input name="email" type="email" autocomplete="email" required maxlength="254" /></label>
+        <label>{t.phone}<input name="phone" type="tel" autocomplete="tel" required maxlength="30" pattern="[\+0-9 \(\)\.\-]{6,30}" title={t.phoneTitle} placeholder="+261…" /></label>
+        <label>{t.notes} <span class="optional">{t.optional}</span><textarea name="notes" rows="3" maxlength="1000" placeholder={t.notesPlaceholder}></textarea></label>
+        <section class="booking-conditions" aria-label={t.conditionsLabel}>
+          <h3>{t.conditionsTitle}</h3>
+          {t.conditions.map(text => <p set:html={text} />)}
+        </section>
+        <p class="muted">{t.alternative}</p>
+        <label class="checkbox-label"><input type="checkbox" name="conditions" required /> {t.accept}</label>
+        <button type="submit" class="button button-green">{t.submit}</button>
+        </fieldset>
+        <p data-error class="form-message" role="alert"></p>
+      </form>
+    </section>
+    <aside class="client-aside"><img id="summary-image" src="/images/house-2.png" alt={t.asideAlt} width="480" height="300" /><div><p class="eyebrow green">{t.asideEyebrow}</p><h2 id="summary-room">{t.asideTitle}</h2><div id="summary-lines" class="summary-lines" aria-live="polite"></div><dl class="booking-summary"><div><dt>{t.sumDates}</dt><dd id="summary-dates">{t.sumToDefine}</dd></div><div><dt>{t.sumNights}</dt><dd id="summary-nights">{t.sumChooseDates}</dd></div><div><dt>{t.sumNightly}</dt><dd id="summary-price">—</dd></div><div class="summary-total"><dt>{t.sumTotal}</dt><dd id="summary-total">—</dd></div><div><dt>{t.sumDeposit}</dt><dd id="summary-deposit">—</dd></div><div><dt>{t.sumBalance}</dt><dd id="summary-balance">—</dd></div></dl><p class="muted">{t.asideNote}</p></div></aside>
+  </div>
+</ClientLayout>

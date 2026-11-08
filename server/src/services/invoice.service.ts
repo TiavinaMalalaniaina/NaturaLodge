@@ -8,6 +8,9 @@ import {
 import * as ledgerService from './ledger.service';
 import { assertCanViewCashAccount } from '../lib/treasuryAccess';
 import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
+import { confirmIfDepositPaid } from './websiteRequest.service';
+import { kickOutbox } from './websiteEmail.service';
+import { kickPush } from './staffPush.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -695,7 +698,7 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
   }
   // Enregistrement du paiement + resynchronisation du statut de la facture dans une seule
   // transaction : évite qu'une facture reste dans un statut périmé si le process meurt entre les deux.
-  return prisma.$transaction(async (tx) => {
+  const { updated, confirmed } = await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) throw new NotFoundError('Facture');
     if (!invoice.validatedAt) {
@@ -771,9 +774,12 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
 
     await syncInvoiceStatus(invoiceId, tx);
     await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
+    const confirmed = invoice.kind === 'DEPOSIT' && await confirmIfDepositPaid(invoice.bookingId, tx);
 
-    return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
+    return { updated: await tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude }), confirmed };
   });
+  if (confirmed) { kickOutbox(); kickPush(); }
+  return updated;
 }
 
 export async function voidPayment(invoiceId: string, paymentId: string, voidedById?: string) {

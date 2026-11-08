@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
+// Validation schema for resetting password
 export const resetPasswordSchema = z.object({
-  token: z.string().uuid('Token de réinitialisation invalide'),
+  token: z.string().min(1, 'Token de réinitialisation invalide'),
   password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
 });
 

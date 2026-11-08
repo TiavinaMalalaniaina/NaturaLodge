@@ -118,6 +118,11 @@ export const LoginPage: React.FC = () => {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
 
+          <p className="text-xs text-on-surface-variant/60 text-center">
+            Identifiant de test administrateur : admin
+            <br />
+            Mot de passe de test : Admin@1234
+          </p>
         </form>
       </motion.div>
     </motion.main>

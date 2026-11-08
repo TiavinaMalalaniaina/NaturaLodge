@@ -3,6 +3,25 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.3.0] — 2026-10-29
+
+> `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.3.0`.
+>
+> Version **mineure** : uniquement additive — nouvelles colonnes/table nullables, nouvelle
+> côté API ou UI existante. Aucune rupture de compatibilité.
+
+### Ajouté
+
+**Fonction de définition de mot de passe à la première connection**
+- Migration SQL
+  - colonne `resetPasswordToken`,`resetPasswordExpiries`,`isFirstLogin` sur la table user
+- 
+
+**Mis en place d'eslint**
+- Vérification des plain-text
+
+
+
 ## [2.2.0] — 2026-09-15
 
 > `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.2.0`.
@@ -79,7 +98,8 @@ API_UPSTREAM=naturalodge-server-container
 - Mise en page à l'impression de la facture : la barre latérale masquée ne laisse plus un tiers de
   page vide, marges de page ajoutées, une ligne du tableau ne se coupe plus entre deux pages.
 - Bloc des totaux de facture rendu responsive (largeur bornée + alignement `justify-between`
-  plutôt qu'un espacement fixe qui s'étirait sur grand écran).
+  plutôt qu'un espacement fi
+  xe qui s'étirait sur grand écran).
 
 ### Corrigé
 - Le mois sélectionné sur le tableau de bord KPI se réinitialisait en changeant d'onglet — le

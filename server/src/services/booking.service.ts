@@ -9,6 +9,8 @@ import {
   ReassignInput, UpdateBookingRoomExtraInput,
 } from '../validation/booking.schema';
 import * as invoiceService from './invoice.service';
+import { cancelForBooking as cancelWebsiteRequestForBooking } from './websiteRequest.service';
+import { kickOutbox } from './websiteEmail.service';
 
 // `avatar` et `createdBy` sont sélectionnés nulle part ci-dessous : ni le type client
 // (client/src/api/bookings.ts) ni aucune page ne les lisent — retirés des deux formes.
@@ -179,6 +181,8 @@ export async function create(data: BookingInput, createdById: string) {
   // empêche deux créations concurrentes de passer toutes les deux la vérification et de
   // double-réserver la même chambre.
   return prisma.$transaction(async (tx) => {
+    const ids = [...new Set(data.rooms.map(entry => entry.roomId))].sort();
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Room" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`);
     for (const entry of data.rooms) {
       const room = await tx.room.findUnique({
         where:  { id: entry.roomId },
@@ -271,8 +275,39 @@ export type RequestedBookingStatus = 'CONFIRMED' | 'CHECKED_IN' | 'AWAITING' | '
 // Transactionnelle : le passage en CANCELLED annule aussi la facture de la réservation s'il y en
 // a une (voir invoiceService.cancelInvoiceForBooking) — les deux doivent réussir ou échouer
 // ensemble, sinon une réservation annulée pourrait laisser une facture active derrière elle.
+// Revenir d'un statut terminal (annulé, check-outé) vers un statut actif réoccupe les chambres : entre-
+// temps elles ont pu être attribuées à quelqu'un d'autre. Sans ce contrôle, « Annuler l'annulation »
+// créait un double booking.
+async function assertRoomsStillFree(tx: Prisma.TransactionClient, bookingId: string, next: BookingStatus, websiteStatus?: string) {
+  const current = await tx.booking.findUnique({ where: { id: bookingId }, select: { status: true, rooms: { select: { roomId: true, arrival: true, departure: true } } } });
+  if (!current || !TERMINAL_STATUSES.includes(current.status) || TERMINAL_STATUSES.includes(next)) return;
+  if (websiteStatus && ['CANCELLED', 'EXPIRED', 'REJECTED'].includes(websiteStatus)) {
+    throw new ConflictError('Cette réservation vient d’une demande du site annulée ou expirée : le client doit faire une nouvelle demande depuis le site.');
+  }
+  const roomIds = [...new Set(current.rooms.map(r => r.roomId))].sort();
+  if (!roomIds.length) return;
+  await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "Room" WHERE "id" IN (${Prisma.join(roomIds)}) ORDER BY "id" FOR UPDATE`);
+  const conflicts = await tx.bookingRoom.findMany({
+    where: {
+      bookingId: { not: bookingId },
+      booking:   { status: { notIn: TERMINAL_STATUSES } },
+      OR: current.rooms.map(r => ({ roomId: r.roomId, arrival: { lt: r.departure }, departure: { gt: r.arrival } })),
+    },
+    select: { room: { select: { number: true } } },
+  });
+  if (conflicts.length) {
+    const numbers = [...new Set(conflicts.map(c => c.room.number))].join(', ');
+    throw new ConflictError(`Impossible : chambre(s) ${numbers} déjà réservée(s) entre-temps sur ces dates. Réassignez d’abord une autre chambre ou créez une nouvelle réservation.`);
+  }
+}
+
 export async function updateStatus(id: string, requestedStatus: RequestedBookingStatus, actingUserRole: string, actingUserId?: string, refundRatePercent?: number) {
-  return prisma.$transaction(async (tx) => {
+  let notifyWebsite = false;
+  const result = await prisma.$transaction(async (tx) => {
+    const webRequest = await tx.websiteRequest.findUnique({ where: { bookingId: id } });
+    if (webRequest?.status === 'AWAITING_PAYMENT' && requestedStatus !== 'AWAITING' && requestedStatus !== 'CANCELLED') {
+      throw new ConflictError('Confirmez d’abord l’acompte depuis la page des demandes du site.');
+    }
     let status: BookingStatus = requestedStatus;
     if (requestedStatus === 'CHECKED_OUT') {
       const current = await tx.booking.findUnique({ where: { id }, include: { invoices: invoicesForStatus } });
@@ -286,6 +321,8 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
       }
       status = isPaid ? 'CHECKED_OUT_PAID' : 'CHECKED_OUT_UNPAID';
     }
+
+    await assertRoomsStillFree(tx, id, status, webRequest?.status);
 
     const isCheckout = status === 'CHECKED_OUT_UNPAID' || status === 'CHECKED_OUT_PAID';
 
@@ -329,10 +366,13 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
 
     if (status === 'CANCELLED') {
       await invoiceService.cancelInvoiceForBooking(id, actingUserId, tx, refundRatePercent);
+      notifyWebsite = await cancelWebsiteRequestForBooking(id, tx);
     }
 
     return { ...booking, paymentStatus: computePaymentStatus(booking) };
   });
+  if (notifyWebsite) kickOutbox();
+  return result;
 }
 
 // Dernière étape, manuelle et réservée manager/admin (can('bookings.close')) : archive
@@ -422,6 +462,10 @@ export async function reassign(bookingId: string, data: ReassignInput, actingUse
     const newDeparture = data.departure ? new Date(data.departure) : bookingRoom.departure;
     if (newDeparture <= newArrival) throw new ConflictError("La date de départ doit être après l'arrivée");
 
+    // Verrou avant la vérification de conflit (même ordre que create/approve) : sinon une création
+    // concurrente sur cette chambre passerait aussi la vérification.
+    await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${newRoomId} FOR UPDATE`;
+
     // Valider la nouvelle chambre
     const newRoom = await tx.room.findUnique({
       where:  { id: newRoomId },
@@ -477,6 +521,7 @@ export async function addRoom(bookingId: string, data: AddBookingRoomInput, acti
     const departure = data.departure ? new Date(data.departure) : booking.departure;
     if (departure <= arrival) throw new ConflictError("La date de départ doit être après l'arrivée");
 
+    await tx.$queryRaw`SELECT "id" FROM "Room" WHERE "id" = ${data.roomId} FOR UPDATE`;
     const room = await tx.room.findUnique({
       where:  { id: data.roomId },
       select: { status: true, number: true, rateOverride: true, roomType: { select: { rate: true } } },

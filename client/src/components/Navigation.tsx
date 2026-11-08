@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock, Landmark, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock, Landmark, BarChart3, Globe } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchPendingWebsiteRequests } from '../api/websiteRequests';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -9,17 +11,22 @@ import { useAuth } from '../context/AuthContext';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useNow } from '../hooks/useNow';
 import { formatRelativeTime } from '../lib/relativeTime';
+import { PushToggle } from './PushToggle';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const badgeOf = (item: object): number => ('badge' in item && typeof item.badge === 'number' ? item.badge : 0);
+
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { user, logout, can } = useAuth();
   const { t }     = useTranslation();
+  // Même préfixe de clé que la page : les mutations de demandes invalident aussi ce compteur.
+  const pendingWeb = useQuery({ queryKey: ['website-requests', 'pending-count'], queryFn: fetchPendingWebsiteRequests, enabled: can('bookings.view'), refetchInterval: 60000 });
 
   // `permission` optionnel = item toujours visible à tout personnel authentifié (dashboard,
   // réservations...). Sinon filtré sur la même permission que celle qui protège la route
@@ -31,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       items: [
         { path: '/dashboard',    label: t('nav.dashboard'),    icon: LayoutDashboard },
         { path: '/reservations', label: t('nav.reservations'), icon: CalendarDays    },
+        { path: '/website-requests', label: t('websiteRequests.title'), icon: Globe, permission: 'bookings.view', badge: (pendingWeb.data?.pending ?? 0) + (pendingWeb.data?.proofs ?? 0) },
         { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
         { path: '/guests',       label: t('nav.guests'),       icon: Users           },
         // { path: '/amenities', label: t('nav.amenities'),    icon: Star            },
@@ -163,6 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                           >
                             <item.icon className={cn("w-5 h-5", isActive ? "fill-primary/10" : "")} />
                             {item.label}
+                            {badgeOf(item) ? <span className="ml-auto min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[11px] font-semibold text-white" aria-label={t('websiteRequests.pendingBadge', { count: badgeOf(item) })}>{badgeOf(item)}</span> : null}
                           </button>
                         );
                       })}
@@ -282,6 +291,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                   <div>
                     <h5 className="text-xs font-bold text-on-surface uppercase tracking-wider">{t('topbar.alertCenter')}</h5>
                     <p className="text-[9px] text-on-surface-variant/60 tracking-wider font-semibold uppercase">{t('topbar.unreadAlerts', { count: unreadCount })}</p>
+                    <PushToggle />
                   </div>
                   {unreadCount > 0 && (
                     <button 
@@ -308,7 +318,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                           "p-4 hover:bg-stone-50/75 transition-all cursor-pointer flex gap-3 relative group/item",
                           !notif.read && "bg-teal-50/20"
                         )}
-                        onClick={() => markAsRead(notif.id)}
+                        onClick={() => { markAsRead(notif.id); if (notif.link) { setIsDropdownOpen(false); navigate(notif.link); } }}
                       >
                         <div className={cn(
                           "w-2 h-2 rounded-full mt-1.5 shrink-0",

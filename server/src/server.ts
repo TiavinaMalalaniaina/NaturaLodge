@@ -17,6 +17,7 @@ import { expensesRouter } from './routes/expenses';
 import { auditLogsRouter } from './routes/auditLogs';
 import { permissionsRouter } from './routes/permissions';
 import { rolesRouter } from './routes/roles';
+import { publicRequestsRouter, websiteRequestsRouter } from './routes/websiteRequests';
 import { startScheduler } from './lib/scheduler';
 import { errorHandler } from './middleware/errorHandler';
 import { auditLogger } from './middleware/auditLog';
@@ -26,7 +27,13 @@ import { logger } from './lib/logger';
 const app = express();
 const PORT = process.env.PORT ?? 4000;
 
-app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:3000', credentials: true }));
+// Behind nginx/Docker, req.ip is the proxy's address unless the proxy is trusted; the public
+// rate limit would then be shared by every visitor.
+const trustProxy = process.env.TRUST_PROXY ?? 'loopback, uniquelocal';
+app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === 'false' ? false : trustProxy);
+
+const allowedOrigins =[process.env.FRONTEND_URL ?? 'http://localhost:3000', process.env.WEBSITE_URL ?? 'http://localhost:4321'];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/metrics' || req.url === '/health' } }));
 app.use(metricsMiddleware);
@@ -35,7 +42,7 @@ app.use(metricsMiddleware);
 // chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
 app.use(auditLogger);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.2.0' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.3.0' }));
 
 // Scrapé par Prometheus (monitoring/prometheus.yml) via le réseau Docker interne
 // (naturalodge-network) — jamais publié sur un port exposé à l'hôte, donc jamais accessible
@@ -46,6 +53,8 @@ app.get('/metrics', async (_req, res) => {
 });
 
 app.use('/api/auth', authRouter);
+app.use('/api/public', publicRequestsRouter);
+app.use('/api/website-requests', websiteRequestsRouter);
 app.use('/api/rooms', roomsRouter);
 app.use('/api/room-types', roomTypesRouter);
 app.use('/api/invoices', invoicesRouter);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../api/client';
+import { disablePush } from '../lib/push';
 
 // Rôles configurables (table dynamique côté serveur) — plus un enum figé, voir hooks/useRoles.ts.
 export type UserRole = string;
@@ -60,8 +61,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('naturalodge_token');
     setUser(null);
+    // Unsubscribe this device from push first (needs the token), at most 3 s, then drop the token.
+    void Promise.race([disablePush(), new Promise(resolve => setTimeout(resolve, 3000))])
+      .finally(() => localStorage.removeItem('naturalodge_token'));
   }, []);
 
   const can = useCallback(
