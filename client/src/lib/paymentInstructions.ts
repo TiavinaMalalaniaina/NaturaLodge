@@ -9,12 +9,14 @@ const words = {
     reference: 'Référence à indiquer dans le motif du paiement',
     proof: 'Après le paiement, déposez la preuve (capture ou reçu) dans votre espace client, rubrique « Mes réservations ».',
     whatsapp: (n: string) => ` Vous pouvez aussi l’envoyer par WhatsApp au ${n}.`,
+    cancellation: 'Annulation : l’acompte est remboursé si vous annulez au moins 3 jours avant la date d’arrivée ; en deçà, ou en cas de non-présentation, il reste acquis à l’hôtel.',
   },
   en: {
     sep: ':', deposit: 'Deposit to pay', methods: 'Payment methods', holder: 'account name',
     reference: 'Reference to quote with your payment',
     proof: 'Once paid, upload the proof (screenshot or receipt) in your guest account, under “My bookings”.',
     whatsapp: (n: string) => ` You can also send it on WhatsApp to ${n}.`,
+    cancellation: 'Cancellation: the deposit is refunded if you cancel at least 3 days before the arrival date; later than that, or in case of no-show, it is kept by the hotel.',
   },
 };
 
@@ -30,6 +32,8 @@ export function buildInstructions(sheet: PaymentSheet, methodIds: string[], note
     methods.length ? `${w.methods}${w.sep}\n${methods.map(m => `- ${m.label}${w.sep} ${m.account}${m.holder ? ` (${w.holder}${w.sep} ${m.holder})` : ''}`).join('\n')}` : '',
     `${w.reference}${w.sep} ${row.reference}`,
     w.proof + (sheet.whatsapp ? w.whatsapp(sheet.whatsapp) : ''),
+    // Keep in sync with website/src/data/hotel.ts (policy.refundDaysBeforeArrival) and the booking terms page.
+    w.cancellation,
     hotelNote,
     note.trim(),
   ].filter(Boolean).join('\n\n');

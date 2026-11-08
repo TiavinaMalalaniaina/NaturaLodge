@@ -47,6 +47,14 @@ export async function remove(requestId: string, proofId: string, customerId: str
   await prisma.websitePaymentProof.delete({ where: { id: proofId } });
 }
 
+// Retention stated in the privacy policy: 1 year after the scheduled departure (website/src/i18n/legal.ts).
+export async function purgeExpiredProofs() {
+  const limit = new Date();
+  limit.setUTCFullYear(limit.getUTCFullYear() - 1);
+  const { count } = await prisma.websitePaymentProof.deleteMany({ where: { request: { departure: { lt: limit } } } });
+  return count;
+}
+
 export async function download(requestId: string, proofId: string) {
   const proof = await prisma.websitePaymentProof.findUnique({ where: { id: proofId } });
   if (!proof || proof.requestId !== requestId) throw new NotFoundError('Preuve');

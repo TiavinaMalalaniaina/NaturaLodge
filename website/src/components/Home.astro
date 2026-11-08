@@ -4,6 +4,7 @@ import { hotel, rooms, whatsappLink } from '../data/hotel';
 import { formatPrice, localePath, alternatePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import Alternates from './Alternates.astro';
+import LegalLinks from './LegalLinks.astro';
 
 const { lang } = Astro.props as { lang: Lang };
 const t = ui[lang].home;
@@ -146,7 +147,7 @@ const structuredData = {
 
     <footer class="footer wrap">
       <div class="footer-top"><a href="#accueil" class="footer-brand"><img src="/logo-symbol.png" alt="Natura Lodge Manambato" width="1774" height="887" /></a><p>{t.footerTagline}<br /><span>Manambato, Madagascar.</span></p><div><a href={hotel.facebook} target="_blank" rel="noopener noreferrer">{t.facebook} <span aria-hidden="true">↗</span></a><a href={`tel:${hotel.phoneLink}`}>{hotel.phone}</a></div></div>
-      <div class="footer-bottom"><span>© {new Date().getFullYear()} {hotel.name}</span><a href="#photos">{t.aboutPhotos}</a><a href="#accueil">{t.backTop}</a></div>
+      <div class="footer-bottom"><span>© {new Date().getFullYear()} {hotel.name}</span><a href="#photos">{t.aboutPhotos}</a><LegalLinks lang={lang} /><a href="#accueil">{t.backTop}</a></div>
       <p id="photos" class="photo-notice">{t.photoNotice}</p>
     </footer>
 

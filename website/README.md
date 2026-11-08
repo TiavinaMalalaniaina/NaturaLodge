@@ -53,7 +53,7 @@ Configurer ensuite le reverse proxy du VPS vers `http://127.0.0.1:8081`. Le cont
 
 ## Avant publication
 
-Confirmer l’affectation des photos aux catégories de chambres, les tarifs, capacités, unité de facturation et le point Google Maps. Ajouter les mentions légales de l’exploitant une fois les informations disponibles. Définir le domaine dans `astro.config.mjs` (`site`) puis ajouter canonical, URL absolue Open Graph et sitemap avec le domaine réel. Il n’y a pas de faux domaine configuré.
+Confirmer l’affectation des photos aux catégories de chambres, les tarifs, capacités, unité de facturation et le point Google Maps. Compléter l’identité de l’exploitant dans `src/data/hotel.ts` (`legal` : raison sociale, NIF, STAT, adresse, responsable de la publication, email pour les données personnelles, hébergeur, service d’emails) : les pages `/mentions-legales/`, `/confidentialite/` et `/conditions/` (et leurs versions `/en/`) affichent « [à compléter] » et le build l’avertit tant qu’un champ est vide. La règle d’annulation (acompte remboursé si annulation au moins 3 jours avant l’arrivée) figure dans les conditions, le formulaire de réservation et les instructions de paiement ; la changer aux trois endroits (`policy` dans `hotel.ts`, `src/i18n/ui.ts`, `client/src/lib/paymentInstructions.ts`). Les preuves de paiement sont supprimées automatiquement 1 an après la date de départ prévue. Faire relire les pages légales par un juriste avant publication. Définir le domaine dans `astro.config.mjs` (`site`) puis ajouter canonical, URL absolue Open Graph et sitemap avec le domaine réel. Il n’y a pas de faux domaine configuré.
 
 ## Réservations reliées à la gestion
 

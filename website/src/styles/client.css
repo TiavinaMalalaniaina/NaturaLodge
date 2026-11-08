@@ -80,3 +80,11 @@
 .reservation-card .proof-form .button { justify-self: start; }
 .reservation-card .proof-status { font-size: 13px; margin: 0; }
 .reservation-card .proof-status:empty { display: none; }
+
+/* Pages légales */
+.legal-page { max-width: 760px; }
+.legal-page .legal-section { margin-top: 32px; }
+.legal-page .legal-section h2 { font-size: 26px; margin-bottom: 10px; }
+.legal-page .legal-section p { line-height: 1.75; margin: 0 0 10px; overflow-wrap: anywhere; }
+.legal-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.legal-links a[aria-current="page"] { font-weight: 600; text-decoration: underline; }

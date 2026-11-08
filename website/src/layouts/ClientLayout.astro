@@ -4,6 +4,7 @@ import '../styles/client.css';
 import { localePath, alternatePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import Alternates from '../components/Alternates.astro';
+import LegalLinks from '../components/LegalLinks.astro';
 
 const { title, eyebrow, lang } = Astro.props as { title: string; eyebrow?: string; lang: Lang };
 const t = ui[lang].layout;
@@ -41,7 +42,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr';
       <noscript><p class="demo-banner">{t.noscript}</p></noscript>
       <slot />
     </main>
-    <footer class="wrap client-footer"><a href={localePath(lang, '/')}>{t.back}</a><span>Manambato, Madagascar · Natura Lodge</span></footer>
+    <footer class="wrap client-footer"><a href={localePath(lang, '/')}>{t.back}</a><LegalLinks lang={lang} /><span>Manambato, Madagascar · Natura Lodge</span></footer>
     <script src="../scripts/client.ts"></script>
   </body>
 </html>

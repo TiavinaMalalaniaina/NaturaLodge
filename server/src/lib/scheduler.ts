@@ -4,6 +4,7 @@ import { expireRequests } from '../services/websiteRequest.service';
 import { processOutbox } from '../services/websiteEmail.service';
 import { purgeOldEvents } from '../services/websiteEvent.service';
 import { processPendingPushes } from '../services/staffPush.service';
+import { purgeExpiredProofs } from '../services/websiteProof.service';
 
 async function markArrivalsOccupied(): Promise<void> {
   const now   = new Date();
@@ -46,6 +47,7 @@ export function startScheduler(): void {
     try { await expireRequests(); } catch (error) { console.error('[Website requests]', error); }
     try { await processOutbox(); } catch (error) { console.error('[Website emails]', error); }
     try { await purgeOldEvents(); } catch (error) { console.error('[Website events]', error); }
+    try { await purgeExpiredProofs(); } catch (error) { console.error('[Payment proofs]', error); }
     try { await processPendingPushes(); } catch (error) { console.error('[Staff push]', error); }
     finally { expiring = false; }
   };
