@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 
 const input = 'block w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 read-only:bg-stone-50';
 const small = 'text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50';
-const SAMPLE = { depositAmount: 280000, reference: 'NL-6835A26E-304E-4D1B-8AF5-B487E9D0AAEB' };
+const SAMPLE = { depositAmount: 280000, reference: 'NL-7K3F9Q' };
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 const toSheet = (view: PaymentSheetView): PaymentSheet => ({ methods: view.methods, whatsapp: view.whatsapp, noteFr: view.noteFr, noteEn: view.noteEn });
 

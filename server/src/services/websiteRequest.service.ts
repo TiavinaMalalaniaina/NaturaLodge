@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'crypto';
+import { createHash, randomInt } from 'crypto';
 import { Prisma, WebsiteRequestStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ConflictError, NotFoundError } from '../errors/AppError';
@@ -63,6 +63,12 @@ export async function availability(arrival: string, departure: string) {
   }));
 }
 
+// Short reference the guest copies into a mobile-money payment reason or reads out on the phone:
+// 6 characters without look-alikes (0/O, 1/I/L), about a billion combinations. Uniqueness is enforced
+// by the database; a collision simply draws another one.
+const REFERENCE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const newReference = () => `NL-${Array.from({ length: 6 }, () => REFERENCE_ALPHABET[randomInt(REFERENCE_ALPHABET.length)]).join('')}`;
+
 export async function submit(input: WebsiteRequestInput, token: string, customerId: string) {
   const idempotencyKeyHash = hash(`${customerId}:${token}`);
   const payloadHash = hash(JSON.stringify(input));
@@ -82,23 +88,29 @@ export async function submit(input: WebsiteRequestInput, token: string, customer
   if (capacity < input.guests || lines.reduce((sum, line) => sum + line.quantity, 0) > input.guests) throw new ConflictError('Capacité incompatible avec les voyageurs.');
   const nights = (Date.parse(input.departure) - Date.parse(input.arrival)) / 86400000;
   const depositAmount = lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-  try {
-    const row = await prisma.websiteRequest.create({ data: {
-      reference: `NL-${randomUUID().toUpperCase()}`, idempotencyKeyHash, payloadHash, customerId,
-      name: input.name, email: input.email, phone: input.phone, notes: input.notes, locale: input.locale === 'en' ? 'EN' : 'FR',
-      arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests,
-      lines, totalAmount: depositAmount * nights, depositAmount,
-      emails: { create: { status: 'PENDING' } },
-      events: { create: { kind: 'REQUEST_RECEIVED' } },
-    } });
-    kickOutbox(); kickPush();
-    return publicView(row);
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const row = await prisma.websiteRequest.create({ data: {
+        reference: newReference(), idempotencyKeyHash, payloadHash, customerId,
+        name: input.name, email: input.email, phone: input.phone, notes: input.notes, locale: input.locale === 'en' ? 'EN' : 'FR',
+        arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests,
+        lines, totalAmount: depositAmount * nights, depositAmount,
+        emails: { create: { status: 'PENDING' } },
+        events: { create: { kind: 'REQUEST_RECEIVED' } },
+      } });
+      kickOutbox(); kickPush();
+      return publicView(row);
+    } catch (error) {
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+      // Same submission sent twice concurrently: return the request the other call created.
       const retry = await prisma.websiteRequest.findUnique({ where: { idempotencyKeyHash } });
-      if (retry && retry.payloadHash === payloadHash) return publicView(retry);
+      if (retry) {
+        if (retry.payloadHash === payloadHash) return publicView(retry);
+        throw new ConflictError('Cette clé a déjà été utilisée pour une autre demande.');
+      }
+      // Otherwise the random reference collided with an existing one: draw another.
+      if (attempt >= 4) throw error;
     }
-    throw error;
   }
 }
 
@@ -117,7 +129,11 @@ export async function listForCustomer(customerId: string) {
 export async function list(status: WebsiteRequestStatus | undefined, page: number, search?: string) {
   const where: Prisma.WebsiteRequestWhereInput = {
     ...(status ? { status } : {}),
-    ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
+    // Guest name, or reference (with or without the "NL-" prefix, as read out by the guest).
+    ...(search ? { OR: [
+      { name: { contains: search, mode: 'insensitive' as const } },
+      { reference: { contains: search.replace(/\s+/g, ''), mode: 'insensitive' as const } },
+    ] } : {}),
   };
   const [data, total] = await Promise.all([
     prisma.websiteRequest.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * 20, take: 20, include: adminInclude }),

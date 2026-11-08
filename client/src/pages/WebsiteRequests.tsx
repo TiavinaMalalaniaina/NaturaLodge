@@ -170,7 +170,7 @@ export const WebsiteRequests: React.FC = () => {
             <span className={cn('rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest', statusTone[row.status])}>{t(`websiteRequests.${row.status}`)}</span>
           </div>
           <p className="mt-1 text-xs text-on-surface-variant/60">
-            {t('websiteRequests.receivedAt', { date: formatDateTime(row.createdAt) })} · <span className="font-mono" title={row.reference}>{row.reference.slice(0, 11)}</span>
+            {t('websiteRequests.receivedAt', { date: formatDateTime(row.createdAt) })} · <span className="font-mono font-semibold text-on-surface" title={row.reference}>{row.reference.length > 12 ? row.reference.slice(0, 11) : row.reference}</span>
           </p>
         </div>
         <p className="text-sm text-on-surface-variant"><span className="font-semibold text-on-surface">{t(row.status === 'AWAITING_PAYMENT' && row.proofs.length ? 'websiteRequests.next_PROOF' : `websiteRequests.next_${row.status}`)}</span></p>

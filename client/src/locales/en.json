@@ -800,7 +800,7 @@
     "proofHelp": "Check the payment received, then record the deposit on the invoice: the request confirms automatically.",
     "proofsToCheck": "{{count}} payment(s) with a proof to check",
     "next_PROOF": "To do: check the proof and record the deposit",
-    "searchName": "Search by guest name",
+    "searchName": "Search by name or reference",
     "clearSearch": "Clear search",
     "noMatch": "No request matching “{{search}}” for this filter."
   },

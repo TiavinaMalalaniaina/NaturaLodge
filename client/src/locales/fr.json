@@ -800,9 +800,9 @@
     "proofHelp": "Vérifiez le paiement reçu, puis enregistrez l’acompte sur la facture : la demande se confirme automatiquement.",
     "proofsToCheck": "{{count}} paiement(s) avec preuve à vérifier",
     "next_PROOF": "À faire : vérifier la preuve et enregistrer l’acompte",
-    "searchName": "Rechercher par nom du client",
+    "searchName": "Rechercher par nom ou référence",
     "clearSearch": "Effacer la recherche",
-    "noMatch": "Aucune demande au nom de « {{search}} » pour ce filtre."
+    "noMatch": "Aucune demande pour « {{search}} » avec ce filtre."
   },
   "websiteEvents": {
     "REQUEST_RECEIVED": "Nouvelle demande du site",
