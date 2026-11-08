@@ -9,8 +9,13 @@ export const legalSlugs: Record<LegalKind, string> = { notice: '/mentions-legale
 
 // Empty fields are shown as a visible placeholder so an incomplete page is never mistaken for a final one.
 const missing = (lang: Lang) => (lang === 'en' ? '[to be completed]' : '[à compléter]');
-const v = (value: string, lang: Lang) => value.trim() || missing(lang);
-export const missingLegalFields = () => Object.entries(legal).filter(([, value]) => !String(value).trim()).map(([key]) => key);
+const pending = (lang: Lang) => (lang === 'en' ? 'being assigned' : 'en cours d’attribution');
+const registration = (lang: Lang) => (lang === 'en' ? 'registration in progress' : 'immatriculation en cours');
+const form = (lang: Lang) => (legal.legalForm.trim() === 'pending' ? registration(lang) : v(legal.legalForm, lang));
+const v = (value: string, lang: Lang) => (value.trim() === 'pending' ? pending(lang) : value.trim() || missing(lang));
+export const missingLegalFields = () => Object.entries(legal)
+  .filter(([, value]) => !String(value).trim() || value === 'pending')
+  .map(([key, value]) => (value === 'pending' ? `${key} (en cours)` : key));
 
 const days = policy.refundDaysBeforeArrival;
 const date = (lang: Lang) => new Date(`${legal.updatedAt}T00:00:00Z`).toLocaleDateString(lang === 'en' ? 'en-GB' : 'fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' });
@@ -28,7 +33,7 @@ function fr(kind: LegalKind, company: string, contact: string): LegalPage {
     title: 'Mentions légales', eyebrow: 'Informations légales', intro: updated,
     sections: [
       { title: 'Éditeur du site', paragraphs: [
-        `${company} — ${v(legal.legalForm, 'fr')}`,
+        `${company} — ${form('fr')}`,
         `NIF : ${v(legal.nif, 'fr')} · STAT : ${v(legal.stat, 'fr')} · RCS : ${v(legal.rcs, 'fr')}`,
         `Adresse : ${v(legal.address, 'fr')}`,
         `Téléphone : ${hotel.phone} · Email : ${contact}`,
@@ -105,7 +110,7 @@ function en(kind: LegalKind, company: string, contact: string): LegalPage {
     title: 'Legal notice', eyebrow: 'Legal information', intro: updated,
     sections: [
       { title: 'Website publisher', paragraphs: [
-        `${company} — ${v(legal.legalForm, 'en')}`,
+        `${company} — ${form('en')}`,
         `Tax ID (NIF): ${v(legal.nif, 'en')} · STAT: ${v(legal.stat, 'en')} · Trade register (RCS): ${v(legal.rcs, 'en')}`,
         `Address: ${v(legal.address, 'en')}`,
         `Phone: ${hotel.phone} · Email: ${contact}`,

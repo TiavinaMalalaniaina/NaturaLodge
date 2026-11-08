@@ -19,17 +19,18 @@ export const hotel = {
 
 // Informations légales de l'exploitant, affichées dans les mentions légales et la politique de
 // confidentialité. Tant qu'un champ est vide, la page affiche « [à compléter] » et le build l'avertit.
+// « pending » = numéro pas encore attribué : affiché « en cours d'attribution », toujours signalé au build.
 export const legal = {
-  company: '',          // Raison sociale ou nom de l'exploitant
-  legalForm: '',        // Forme juridique (SARL, entreprise individuelle…)
-  nif: '',              // Numéro d'identification fiscale
-  stat: '',             // Numéro statistique
-  rcs: '',              // Registre du commerce (si applicable)
-  address: '',          // Adresse du siège / de l'établissement
-  publisher: '',        // Directeur ou directrice de la publication
-  privacyEmail: '',     // Adresse pour les demandes liées aux données personnelles
-  host: '',             // Hébergeur du site : nom et adresse
-  emailProvider: '',    // Service d'envoi des emails (ex. fournisseur SMTP)
+  company: 'Natura Lodge', // Raison sociale ou nom de l'exploitant
+  legalForm: 'pending', // Forme juridique (SARL, entreprise individuelle…) — « pending » : immatriculation en cours
+  nif: 'pending',       // Numéro d'identification fiscale
+  stat: 'pending',      // Numéro statistique
+  rcs: 'pending',       // Registre du commerce (si applicable)
+  address: 'Manambato, Brickaville, Madagascar', // Adresse du siège / de l'établissement
+  publisher: 'Tiavina Malalaniaina RAMIANDRISOA', // Directeur ou directrice de la publication
+  privacyEmail: 'naturalodge.manambato@gmail.com', // Adresse dédiée à l'hôtel (pas une adresse personnelle) pour les demandes liées aux données
+  host: 'Contabo GmbH, Aschauer Straße 32a, 81549 Munich, Allemagne', // Hébergeur du site : nom et adresse
+  emailProvider: 'Google (Gmail)', // Service d'envoi des emails
   updatedAt: '2026-11-08', // Date de dernière mise à jour des pages légales
 };
 
