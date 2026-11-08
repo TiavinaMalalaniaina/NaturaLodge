@@ -47,7 +47,7 @@ async function connect(email) {
     assert.equal((await call('/auth/email', { email: emails[0] }, undefined, 'https://other.invalid')).status, 403);
     for (const email of emails) {
       await prisma.websiteRequest.create({ data: {
-        reference: `${prefix}-${email === emails[0] ? 'a' : 'b'}`, accessTokenHash: hash(email), payloadHash: hash(email),
+        reference: `${prefix}-${email === emails[0] ? 'a' : 'b'}`, idempotencyKeyHash: hash(email), payloadHash: hash(email),
         email, name: 'Integration check', phone: '+261000000000', arrival: new Date('2030-01-01'), departure: new Date('2030-01-02'),
         guests: 1, lines: [], totalAmount: 100, depositAmount: 100,
       } });
@@ -62,7 +62,7 @@ async function connect(email) {
       const rows = await response.json();
       assert.equal(rows.length, 1);
       assert.equal(rows[0].reference, `${prefix}-${index ? 'b' : 'a'}`);
-      assert.equal(rows[0].accessTokenHash, undefined);
+      assert.equal(rows[0].idempotencyKeyHash, undefined);
     }
     const expired = randomBytes(32).toString('hex');
     await prisma.websiteLogin.create({ data: { tokenHash: hash(expired), email: emails[0], expiresAt: new Date(Date.now() - 1000) } });

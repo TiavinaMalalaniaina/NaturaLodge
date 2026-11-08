@@ -27,13 +27,13 @@ export async function currentCustomer(req: Request) {
   return { id: session.customer.id, email: session.customer.email };
 }
 
-export async function requestLogin(email: string, next = '/mes-reservations') {
+export async function requestLogin(email: string, next = '/mes-reservations', locale: 'fr' | 'en' = 'fr') {
   const now = new Date();
   await prisma.websiteLogin.deleteMany({ where: { expiresAt: { lte: now } } });
   await prisma.websiteSession.deleteMany({ where: { expiresAt: { lte: now } } });
   const token = randomBytes(32).toString('hex');
   await prisma.websiteLogin.create({ data: { tokenHash: hash(token), email, expiresAt: new Date(Date.now() + 15 * 60000) } });
-  if (!await sendLoginMail(email, token, next)) {
+  if (!await sendLoginMail(email, token, next, locale)) {
     await prisma.websiteLogin.deleteMany({ where: { tokenHash: hash(token) } });
     throw new ForbiddenError('L’email de connexion n’a pas pu être envoyé. Réessayez plus tard ou contactez l’hôtel.');
   }

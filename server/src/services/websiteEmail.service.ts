@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, WebsiteRequestStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { logger } from '../lib/logger';
 import { sendRequestMail } from './websiteMail.service';
@@ -13,7 +13,7 @@ type Client = Prisma.TransactionClient | typeof prisma;
 
 // Always call inside the transaction that changes the request status: the notification is then
 // committed (or rolled back) together with the change it describes.
-export async function enqueueRequestEmail(client: Client, requestId: string, status: string) {
+export async function enqueueRequestEmail(client: Client, requestId: string, status: WebsiteRequestStatus) {
   await client.websiteEmail.create({ data: { requestId, status } });
 }
 
@@ -29,7 +29,7 @@ export async function processOutbox(): Promise<void> {
       // Claim with a lease (SKIP LOCKED) instead of holding a transaction open during the SMTP call.
       // Columns are `timestamp` holding UTC (Prisma convention): plain NOW() would follow the session
       // TimeZone and shift every comparison by the server's UTC offset.
-      const batch = await prisma.$queryRaw<{ id: string; requestId: string; status: string; attempts: number }[]>`
+      const batch = await prisma.$queryRaw<{ id: string; requestId: string; status: WebsiteRequestStatus; attempts: number }[]>`
         UPDATE "WebsiteEmail" SET "attempts" = "attempts" + 1, "nextAttemptAt" = (NOW() AT TIME ZONE 'UTC') + ${`${LEASE_MINUTES} minutes`}::interval
         WHERE "id" IN (
           SELECT "id" FROM "WebsiteEmail"

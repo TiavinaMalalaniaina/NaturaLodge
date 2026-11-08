@@ -1,4 +1,4 @@
 ---
-import ClientLayout from '../layouts/ClientLayout.astro';
+import AccountPage from '../components/AccountPage.astro';
 ---
-<ClientLayout title="Vos moments à venir."><section class="client-panel" data-customer-content hidden><div class="reservations-heading"><h2>Mes demandes de réservation</h2><a href="/reservation" class="button button-green">Préparer un séjour →</a></div><p>Retrouvez ici toutes les demandes de votre compte. Le statut est actualisé auprès de l’hôtel toutes les 30 secondes.</p><div id="reservations-list"></div><p data-error role="alert"></p></section></ClientLayout>
+<AccountPage lang="fr" />

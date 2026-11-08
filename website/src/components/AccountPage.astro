@@ -1,0 +1,9 @@
+---
+import ClientLayout from '../layouts/ClientLayout.astro';
+import { localePath, type Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = ui[lang].account;
+---
+<ClientLayout lang={lang} title={t.title}><section class="client-panel" data-customer-content hidden><div class="reservations-heading"><h2>{t.heading}</h2><a href={localePath(lang, '/reservation/')} class="button button-green">{t.book}</a></div><p>{t.text}</p><div id="reservations-list"></div><p data-error role="alert"></p></section></ClientLayout>

@@ -190,6 +190,8 @@ Chaque handler de route est enveloppé dans `asyncHandler(...)`, qui capture les
 ### Transactions
 Les écritures multi-étapes non atomiques passent par `prisma.$transaction` : création de réservation (vérification de conflit + create + statut chambres), réassignation (idem + recalcul montant/dates), génération de facture (vérification d'existence + génération du numéro + create), paiement (create/update + resynchronisation du statut facture). `lib/roomStatus.ts` accepte un client Prisma optionnel (`tx`) pour participer à ces transactions.
 
+⚠️ **Double booking** : sous READ COMMITTED, une vérification de conflit dans une transaction ne suffit pas — deux transactions concurrentes peuvent la passer toutes les deux. Toute écriture qui occupe une chambre (création, acceptation d'une demande du site, réassignation, ajout de chambre, retour d'un statut terminal vers un statut actif comme « Annuler l'annulation ») verrouille d'abord les lignes `Room` concernées (`SELECT ... FOR UPDATE`, triées par `id` pour éviter les interblocages) puis vérifie les conflits. À reproduire dans tout nouveau chemin qui attribue une chambre.
+
 ### Validation
 Toutes les entrées sont validées avec **Zod** avant toute opération métier, schémas centralisés dans `validation/*.schema.ts`. Pattern dans les routes :
 ```ts

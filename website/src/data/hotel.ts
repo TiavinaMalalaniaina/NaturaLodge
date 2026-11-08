@@ -1,3 +1,5 @@
+import type { Lang } from '../i18n';
+
 // Les contenus de la vitrine se modifient ici. Aucun accès à la base de gestion.
 export const hotel = {
   name: 'Natura Lodge Manambato',
@@ -8,37 +10,47 @@ export const hotel = {
   facebook: 'https://www.facebook.com/p/Natura-Lodge-Manambato-61574327443486/',
   // Recherche par nom : le point précis du code 65Q2+V7 Manambolo reste à confirmer.
   maps: 'https://www.google.com/maps/search/?api=1&query=Natura%20Lodge%20Manambato',
-  description: 'Une maison moderne, une ambiance conviviale et le lac tout près. Découvrez Natura Lodge Manambato pour vos vacances en famille.',
+  description: {
+    fr: 'Une maison moderne, une ambiance conviviale et le lac tout près. Découvrez Natura Lodge Manambato pour vos vacances en famille.',
+    en: 'A modern house, a friendly atmosphere and the lake close by. Discover Natura Lodge Manambato for your family holidays.',
+  } satisfies Record<Lang, string>,
   currency: 'Ar',
-  deposit: 'Un acompte équivalent à une nuit est demandé pour confirmer votre réservation. Les modalités sont à convenir directement avec nous.',
 };
 
 // `roomType` = nom exact du type de chambre dans l’admin (RoomType.name) : la page d’accueil y lit le
 // tarif et la capacité réels au chargement. `price`/`capacity` ne servent que de repli (API injoignable)
 // et pour le HTML statique indexé par les moteurs de recherche.
-export const rooms = [
+export const rooms: { roomType: string; capacity: number; price: number; image: string; name: Record<Lang, string>; description: Record<Lang, string>; alt: Record<Lang, string> }[] = [
   {
-    name: 'Standard',
     roomType: 'Standard',
     capacity: 5,
     price: 130000,
-    description: 'Retrouver les siens, se reposer et profiter de vacances ensemble. Un hébergement pour accueillir votre famille jusqu’à cinq personnes.',
     image: '/images/interior.png',
-    alt: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et un lit simple',
+    name: { fr: 'Standard', en: 'Standard' },
+    description: {
+      fr: 'Retrouver les siens, se reposer et profiter de vacances ensemble. Un hébergement pour accueillir votre famille jusqu’à cinq personnes.',
+      en: 'Get together, rest and enjoy your holidays. A room that welcomes your family of up to five.',
+    },
+    alt: {
+      fr: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et un lit simple',
+      en: 'Inside a Natura Lodge room, with a double bed and a single bed',
+    },
   },
   {
-    name: 'Standard supérieur',
     roomType: 'Standard Sup',
     capacity: 6,
     price: 150000,
-    description: 'Le plaisir de partir avec toute la famille. Une capacité jusqu’à six personnes pour préparer votre prochaine parenthèse à Manambato.',
     image: '/images/interior-2.png',
-    alt: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et une fenêtre',
+    name: { fr: 'Standard supérieur', en: 'Superior Standard' },
+    description: {
+      fr: 'Le plaisir de partir avec toute la famille. Une capacité jusqu’à six personnes pour préparer votre prochaine parenthèse à Manambato.',
+      en: 'The joy of travelling with the whole family. Room for up to six for your next break in Manambato.',
+    },
+    alt: {
+      fr: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et une fenêtre',
+      en: 'Inside a Natura Lodge room, with a double bed and a window',
+    },
   },
 ];
 
-export function whatsappLink(message = 'Bonjour Natura Lodge ! Je souhaite connaître vos disponibilités pour un séjour en famille.') {
-  return `https://wa.me/${hotel.whatsappNumber}?text=${encodeURIComponent(message)}`;
-}
-
-export const formatPrice = (price: number) => new Intl.NumberFormat('fr-FR').format(price);
+export const whatsappLink = (message: string) => `https://wa.me/${hotel.whatsappNumber}?text=${encodeURIComponent(message)}`;

@@ -1,0 +1,9 @@
+---
+import ClientLayout from '../layouts/ClientLayout.astro';
+import type { Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+
+const { lang } = Astro.props as { lang: Lang };
+const t = ui[lang].login;
+---
+<ClientLayout lang={lang} title={t.title}><section class="client-panel"><h2>{t.heading}</h2><p>{t.text}</p><button id="confirm-login" class="button button-green" type="button" hidden>{t.confirm}</button><form id="login-form" class="client-form"><label>{t.email}<input name="email" type="email" required maxlength="254" autocomplete="email" /></label><button class="button button-green">{t.send}</button><p data-error role="alert"></p><p data-success role="status"></p></form></section></ClientLayout>

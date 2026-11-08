@@ -1,0 +1,6 @@
+CREATE TABLE "WebsiteSetting" (
+  "key" TEXT NOT NULL PRIMARY KEY,
+  "value" TEXT NOT NULL,
+  "updatedById" TEXT REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+  "updatedAt" TIMESTAMP(3) NOT NULL
+);

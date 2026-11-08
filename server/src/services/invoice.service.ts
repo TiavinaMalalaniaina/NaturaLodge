@@ -10,6 +10,7 @@ import { assertCanViewCashAccount } from '../lib/treasuryAccess';
 import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
 import { confirmIfDepositPaid } from './websiteRequest.service';
 import { kickOutbox } from './websiteEmail.service';
+import { kickPush } from './staffPush.service';
 
 type PrismaOrTx = Prisma.TransactionClient | typeof prisma;
 
@@ -777,7 +778,7 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
 
     return { updated: await tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude }), confirmed };
   });
-  if (confirmed) kickOutbox();
+  if (confirmed) { kickOutbox(); kickPush(); }
   return updated;
 }
 

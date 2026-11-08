@@ -1,0 +1,8 @@
+CREATE TYPE "WebsiteEventKind" AS ENUM ('REQUEST_RECEIVED', 'PROOF_UPLOADED', 'CANCELLED_BY_GUEST', 'EXPIRED', 'DEPOSIT_CONFIRMED');
+CREATE TABLE "WebsiteEvent" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "kind" "WebsiteEventKind" NOT NULL,
+  "requestId" TEXT NOT NULL REFERENCES "WebsiteRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX "WebsiteEvent_createdAt_idx" ON "WebsiteEvent"("createdAt");

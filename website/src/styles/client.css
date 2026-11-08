@@ -66,3 +66,17 @@
 .reservation-card .payment-instructions { white-space: pre-wrap; }
 .reservation-card .payment-deadline { font-weight: 600; color: #8a2a20; margin-top: 10px; }
 .reservation-card .reference { font-size: 12px; color: #6f7069; overflow-wrap: anywhere; margin-top: 12px; }
+.reservation-card .cancel-request { margin-top: 14px; background: none; border: 1px solid #b9b3a5; padding: 10px 16px; font: inherit; font-size: 13px; color: #8a2a20; cursor: pointer; }
+.reservation-card .cancel-request:hover { background: #f6dcd8; }
+.reservation-card .cancel-request:disabled { opacity: .5; cursor: wait; }
+
+/* Preuves de paiement */
+.reservation-card .proof-list { margin-top: 14px; }
+.reservation-card .proof-item { font-size: 13px; overflow-wrap: anywhere; margin-top: 4px; }
+.reservation-card .proof-delete { background: none; border: 0; padding: 0; font: inherit; font-size: 12px; color: #8a2a20; text-decoration: underline; cursor: pointer; }
+.reservation-card .proof-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e3dccb; display: grid; gap: 10px; }
+.reservation-card .proof-form label { display: grid; gap: 6px; font-size: 13px; }
+.reservation-card .proof-form input[type="text"] { border: 1px solid #cdd5ca; padding: 10px 12px; font: inherit; background: #fff; }
+.reservation-card .proof-form .button { justify-self: start; }
+.reservation-card .proof-status { font-size: 13px; margin: 0; }
+.reservation-card .proof-status:empty { display: none; }

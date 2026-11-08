@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, TopBar } from './Navigation';
 import { motion } from 'motion/react';
+import { WebsiteEventsWatcher } from './WebsiteEventsWatcher';
 
 export const AppLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -9,6 +10,7 @@ export const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 flex overflow-x-hidden">
+      <WebsiteEventsWatcher />
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}

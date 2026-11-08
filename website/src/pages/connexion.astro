@@ -1,4 +1,4 @@
 ---
-import ClientLayout from '../layouts/ClientLayout.astro';
+import LoginPage from '../components/LoginPage.astro';
 ---
-<ClientLayout title="Bienvenue dans votre espace client."><section class="client-panel"><h2>Se connecter ou créer mon compte</h2><p>Votre adresse email suffit. Recevez un lien de connexion pour réserver et retrouver tous vos séjours, sans mot de passe ni référence à saisir.</p><button id="confirm-login" class="button button-green" type="button" hidden>Confirmer ma connexion</button><form id="login-form" class="client-form"><label>Adresse email<input name="email" type="email" required maxlength="254" autocomplete="email" /></label><button class="button button-green">Recevoir mon lien de connexion</button><p data-error role="alert"></p><p data-success role="status"></p></form></section></ClientLayout>
+<LoginPage lang="fr" />
