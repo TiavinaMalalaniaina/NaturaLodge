@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import { appEnv } from './lib/env';
 import express from 'express';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
@@ -42,7 +42,7 @@ app.use(metricsMiddleware);
 // chaque router — est déjà disponible à ce moment-là malgré l'ordre de montage.
 app.use(auditLogger);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.3.0' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '2.3.0', env: appEnv }));
 
 // Scrapé par Prometheus (monitoring/prometheus.yml) via le réseau Docker interne
 // (naturalodge-network) — jamais publié sur un port exposé à l'hôte, donc jamais accessible

@@ -31,6 +31,10 @@
     "quietDay": "Quiet day. No active notifications.",
     "clearAllLogs": "Clear all logs"
   },
+  "envBanner": {
+    "preprod": "Preprod — test data",
+    "development": "Development"
+  },
   "common": {
     "add": "Add",
     "edit": "Edit",

@@ -31,6 +31,10 @@
     "quietDay": "Tsy misy fampandrenesana.",
     "clearAllLogs": "Esory avokoa"
   },
+  "envBanner": {
+    "preprod": "Préprod — angona fitsapana",
+    "development": "Fampandrosoana"
+  },
   "common": {
     "add": "Manampy",
     "edit": "Hanova",

@@ -36,6 +36,13 @@ cd client && npm run dev
 
 ⚠️ **CORS** : le serveur n'autorise qu'une seule origine (`FRONTEND_URL`, défaut `http://localhost:3000`). `vite preview` (build de prod local) est donc épinglé sur le port 3000 dans `client/vite.config.ts` — sinon il tourne sur 4173 par défaut et tous les appels API sont bloqués silencieusement par le navigateur. Ne peut pas tourner en même temps que `npm run dev` (même port).
 
+### Environnements (`APP_ENV`)
+Trois environnements : `development` (local), `preprod` (branche `preprod`, Coolify) et `production` (branche `main`, Coolify). Détail complet dans `ENVIRONNEMENTS.md`.
+- `APP_ENV` ≠ `NODE_ENV` : la préprod tourne en `NODE_ENV=production` et se distingue uniquement par `APP_ENV`. Pour un comportement propre à un environnement, tester `appEnv`/`isPreprod`/`isProduction` (`server/src/lib/env.ts`) ou `APP_ENV` (`client/src/lib/appEnv.ts`), jamais `NODE_ENV`.
+- `server/src/lib/env.ts` est importé en premier dans `server.ts`. Hors développement, il fait échouer le démarrage si la configuration est dangereuse (secret JWT faible, URLs non https…).
+- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO`. Tout nouvel envoi doit passer par cette fonction.
+- Le seed de démo (`prisma/seed.ts`) est bloqué si `APP_ENV=production`.
+
 ---
 
 ## Docker (optionnel)
