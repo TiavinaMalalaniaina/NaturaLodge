@@ -285,14 +285,14 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
               {activeRoom && (
                 <div className="flex items-center gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
                   <div className="flex flex-col items-center shrink-0">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">Current</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{t('reassign.current')}</span>
                     <div className="px-5 py-2 bg-white rounded-xl border border-amber-200 font-display italic text-xl text-amber-900">
                       {activeRoom.roomNumber}
                     </div>
                   </div>
                   <ArrowRight className="w-5 h-5 text-amber-300 shrink-0" />
                   <div className="flex flex-col items-center flex-1 min-w-0">
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">New unit</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{t('reassign.newUnit')}</span>
                     <button
                       onClick={() => selectedRoom && setShowList(v => !v)}
                       className={cn(
@@ -302,7 +302,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                           : 'bg-stone-100 border-stone-200 border-dashed text-stone-300 cursor-default',
                       )}
                     >
-                      {selectedRoom ? `${selectedRoom.number} — ${selectedRoom.type}` : 'Select a unit'}
+                      {selectedRoom ? `${selectedRoom.number} — ${selectedRoom.type}` : t('reassign.selectUnit')}
                     </button>
                   </div>
                 </div>
@@ -324,10 +324,10 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
 
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">
-                        Unit Comparison
+                        {t('reassign.comparison')}
                       </span>
                       <button onClick={() => setShowList(true)} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
-                        ← Change selection
+                        {t('reassign.changeSelection')}
                       </button>
                     </div>
 
@@ -338,7 +338,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                           {currentRoom.number}
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">Current</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('reassign.current')}</p>
                           <p className="text-xs font-semibold text-on-surface truncate max-w-[100px]">{currentRoom.type}</p>
                         </div>
                       </div>
@@ -347,52 +347,52 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                           {selectedRoom.number}
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">New</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('reassign.new')}</p>
                           <p className="text-xs font-semibold text-on-surface truncate max-w-[100px]">{selectedRoom.type}</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-3">
-                      <CompareRow label="Dates"
+                      <CompareRow label={t('reassign.dates')}
                         oldVal={`${activeRoom.arrival} → ${activeRoom.departure}`}
                         newVal={`${newArrival} → ${newDeparture}`}
                         delta={datesChanged ? 'diff' : 'same'} highlight />
 
-                      <CompareRow label="Nights"
-                        oldVal={`${oldNights}n`} newVal={`${newNights}n`}
+                      <CompareRow label={t('reassign.nights')}
+                        oldVal={t('reassign.nightsShort', { count: oldNights })} newVal={t('reassign.nightsShort', { count: newNights })}
                         delta={numDelta(oldNights, newNights)}
-                        deltaLbl={newNights !== oldNights ? `${newNights > oldNights ? '+' : ''}${newNights - oldNights}n` : ''} />
+                        deltaLbl={newNights !== oldNights ? `${newNights > oldNights ? '+' : ''}${t('reassign.nightsShort', { count: newNights - oldNights })}` : ''} />
 
                       {/* Rate — éditable */}
                       <div className="grid grid-cols-[120px_1fr_1fr] gap-x-4 py-2.5 border-b border-stone-100 items-center">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">Rate / night</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('reassign.rate')}</span>
                         <span className="text-xs text-on-surface-variant/60 line-through decoration-stone-300">{fmtAmount(oldRate)}</span>
                         <input type="number" min={1} value={manualRate}
                           onChange={e => setManualRate(e.target.value)}
                           className="w-full h-9 px-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
                       </div>
 
-                      <CompareRow label="Total"
+                      <CompareRow label={t('common.total')}
                         oldVal={fmtAmount(oldTotal)} newVal={fmtAmount(newTotal)}
                         delta={numDelta(oldTotal, newTotal)}
                         deltaLbl={newTotal !== oldTotal ? `${newTotal > oldTotal ? '+' : ''}${fmtAmount(Math.abs(newTotal - oldTotal))}` : ''}
                         highlight />
 
-                      <CompareRow label="Area"
-                        oldVal={`${currentRoom.area} m²`} newVal={`${selectedRoom.area} m²`}
+                      <CompareRow label={t('reassign.area')}
+                        oldVal={t('reassign.areaValue', { count: currentRoom.area })} newVal={t('reassign.areaValue', { count: selectedRoom.area })}
                         delta={numDelta(currentRoom.area, selectedRoom.area)}
-                        deltaLbl={selectedRoom.area !== currentRoom.area ? `${selectedRoom.area > currentRoom.area ? '+' : ''}${selectedRoom.area - currentRoom.area} m²` : ''} />
+                        deltaLbl={selectedRoom.area !== currentRoom.area ? `${selectedRoom.area > currentRoom.area ? '+' : ''}${t('reassign.areaValue', { count: selectedRoom.area - currentRoom.area })}` : ''} />
 
-                      <CompareRow label="Capacity"
-                        oldVal={`${currentRoom.capacity} guests`} newVal={`${selectedRoom.capacity} guests`}
+                      <CompareRow label={t('reassign.capacity')}
+                        oldVal={t('reassign.capacityValue', { count: currentRoom.capacity })} newVal={t('reassign.capacityValue', { count: selectedRoom.capacity })}
                         delta={numDelta(currentRoom.capacity, selectedRoom.capacity)}
                         deltaLbl={selectedRoom.capacity !== currentRoom.capacity ? `${selectedRoom.capacity > currentRoom.capacity ? '+' : ''}${selectedRoom.capacity - currentRoom.capacity}` : ''} />
 
-                      <CompareRow label="View" oldVal={currentRoom.view} newVal={selectedRoom.view}
+                      <CompareRow label={t('reassign.view')} oldVal={currentRoom.view} newVal={selectedRoom.view}
                         delta={currentRoom.view !== selectedRoom.view ? 'diff' : 'same'} />
 
-                      <CompareRow label="Bedding" oldVal={currentRoom.bedType} newVal={selectedRoom.bedType}
+                      <CompareRow label={t('reassign.bedding')} oldVal={currentRoom.bedType} newVal={selectedRoom.bedType}
                         delta={currentRoom.bedType !== selectedRoom.bedType ? 'diff' : 'same'} />
                     </div>
 
@@ -401,15 +401,15 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                         newTotal > oldTotal ? 'bg-rose-50 border border-rose-100 text-rose-700' : 'bg-teal-50 border border-teal-100 text-teal-700')}>
                         {newTotal > oldTotal ? <TrendingUp className="w-4 h-4 shrink-0" /> : <TrendingDown className="w-4 h-4 shrink-0" />}
                         {newTotal > oldTotal
-                          ? `Total increase of ${fmtAmount(newTotal - oldTotal)}`
-                          : `Total decrease of ${fmtAmount(Math.abs(newTotal - oldTotal))}`}
+                          ? t('reassign.totalIncrease', { amount: fmtAmount(newTotal - oldTotal) })
+                          : t('reassign.totalDecrease', { amount: fmtAmount(Math.abs(newTotal - oldTotal)) })}
                         <span className="ml-auto text-[9px] font-bold uppercase tracking-widest opacity-60">{t('common.total')}</span>
                       </div>
                     )}
 
                     {newTotal === oldTotal && selectedRoom.id === activeRoom.roomId && !datesChanged && (
                       <div className="mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-stone-50 border border-stone-100 text-stone-500">
-                        <Minus className="w-4 h-4 shrink-0" /> No changes yet
+                        <Minus className="w-4 h-4 shrink-0" /> {t('reassign.noChanges')}
                       </div>
                     )}
                   </div>
@@ -430,22 +430,22 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                 >
                   <div className="px-8 py-5 border-b border-stone-100 bg-white space-y-1 max-h-[45vh] overflow-y-auto no-scrollbar">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">Summary</span>
+                      <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('reassign.summary')}</span>
                       <button onClick={() => setShowList(true)} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">
-                        ← Change selection
+                        {t('reassign.changeSelection')}
                       </button>
                     </div>
-                    <CompareRow label="Unit" oldVal="—" newVal={`${selectedRoom.number} — ${selectedRoom.type}`} />
-                    <CompareRow label="Dates" oldVal="—" newVal={`${newArrival} → ${newDeparture}`} />
-                    <CompareRow label="Nights" oldVal="—" newVal={`${newNights}n`} />
+                    <CompareRow label={t('reassign.unit')} oldVal="—" newVal={`${selectedRoom.number} — ${selectedRoom.type}`} />
+                    <CompareRow label={t('reassign.dates')} oldVal="—" newVal={`${newArrival} → ${newDeparture}`} />
+                    <CompareRow label={t('reassign.nights')} oldVal="—" newVal={t('reassign.nightsShort', { count: newNights })} />
                     <div className="grid grid-cols-[120px_1fr_1fr] gap-x-4 py-2.5 border-b border-stone-100 items-center">
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">Rate / night</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('reassign.rate')}</span>
                       <span />
                       <input type="number" min={1} value={manualRate}
                         onChange={e => setManualRate(e.target.value)}
                         className="w-full h-9 px-2 bg-stone-50 border border-stone-200 rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" />
                     </div>
-                    <CompareRow label="Total" oldVal="—" newVal={fmtAmount(newTotal)} />
+                    <CompareRow label={t('common.total')} oldVal="—" newVal={fmtAmount(newTotal)} />
                   </div>
                 </motion.div>
               )}
@@ -519,12 +519,12 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                               <span className="text-sm font-semibold text-on-surface">{room.type}</span>
                               {activeRoom && room.id === activeRoom.roomId && (
                                 <span className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border bg-amber-50 text-amber-700 border-amber-200">
-                                  Current
+                                  {t('reassign.current')}
                                 </span>
                               )}
                             </div>
                             <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-                              {room.view} · {room.bedType} · {room.capacity} {t('common.guests_count')} · {room.area}m²
+                              {room.view} · {room.bedType} · {room.capacity} {t('common.guests_count')} · {t('reassign.areaValue', { count: room.area })}
                             </p>
                           </div>
                         </div>
@@ -566,7 +566,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                 {isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> {t('common.saving')}</>
                 ) : activeRoom ? (
-                  <><Check className="w-4 h-4" /> Confirm Reassignment</>
+                  <><Check className="w-4 h-4" /> {t('reassign.confirm')}</>
                 ) : (
                   <><Plus className="w-4 h-4" /> {t('reservations.addRoomToBooking')}</>
                 )}

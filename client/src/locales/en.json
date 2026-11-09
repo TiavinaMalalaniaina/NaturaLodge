@@ -29,7 +29,8 @@
     "unreadAlerts": "{{count}} unread alert(s)",
     "markAllRead": "Mark all read",
     "quietDay": "Quiet day. No active notifications.",
-    "clearAllLogs": "Clear all logs"
+    "clearAllLogs": "Clear all logs",
+    "profile": "Profile"
   },
   "envBanner": {
     "preprod": "Preprod — test data",
@@ -109,7 +110,8 @@
     "forgotPassword": "Forgot?",
     "orAccessVia": "OR ACCESS VIA",
     "usernamePlaceholder": "e.g. john.doe",
-    "passwordPlaceholder": "Your secure password"
+    "passwordPlaceholder": "Your secure password",
+    "demoCredentials": "Demo account — username: admin\nPassword: Admin@1234"
   },
   "resetPassword": {
     "title": "New Password",
@@ -123,7 +125,8 @@
     "invalidTokenMessage": "The reset token is invalid or has expired.",
     "successTitle": "Password Updated!",
     "successMessage": "Redirecting to the login page...",
-    "saveButton": "Save password"
+    "saveButton": "Save password",
+    "newPasswordPlaceholder": "At least 8 characters"
   },
   "dashboard": {
     "title": "Overview",
@@ -373,7 +376,8 @@
     "deactivateError": "Error deactivating this extra.",
     "reactivateError": "Error reactivating this extra.",
     "createError": "Error creating this extra.",
-    "updateError": "Error updating this extra."
+    "updateError": "Error updating this extra.",
+    "pricePlaceholder": "e.g. 15000"
   },
   "accounts": {
     "title": "Accounts",
@@ -405,7 +409,8 @@
     "deactivateError": "Error deactivating this account.",
     "reactivateError": "Error reactivating this account.",
     "createError": "Error creating this account.",
-    "updateError": "Error updating this account."
+    "updateError": "Error updating this account.",
+    "codePlaceholder": "e.g. 512600"
   },
   "invoice": {
     "title": "Invoice",
@@ -506,7 +511,8 @@
     "discountValuePercent": "Percentage (%)",
     "discountValueFixed": "Amount",
     "discountHint": "A percentage tracks the invoice total automatically; a fixed amount stays put. VAT is not recalculated.",
-    "discountBadge": "Discount"
+    "discountBadge": "Discount",
+    "logoAlt": "{{brand}} logo"
   },
   "invoices": {
     "title": "Invoices",
@@ -523,7 +529,8 @@
     "status_completed": "Completed",
     "status_pending": "Unpaid",
     "status_failed": "Failed",
-    "status_refunded": "Refunded"
+    "status_refunded": "Refunded",
+    "referenceSuffix": " · #{{reference}}"
   },
   "expenses": {
     "title": "Expenses",
@@ -808,7 +815,12 @@
     "next_PROOF": "To do: check the proof and record the deposit",
     "searchName": "Search by name or reference",
     "clearSearch": "Clear search",
-    "noMatch": "No request matching “{{search}}” for this filter."
+    "noMatch": "No request matching “{{search}}” for this filter.",
+    "sheetLabelPlaceholder": "e.g. MVola",
+    "sheetAccountPlaceholder": "e.g. 034 12 345 67",
+    "sheetHolderPlaceholder": "e.g. Natura Lodge",
+    "sheetWhatsappPlaceholder": "e.g. +261 32 37 634 99",
+    "proofMeta": "· {{size}} KB · {{date}}"
   },
   "websiteEvents": {
     "REQUEST_RECEIVED": "New website request",
@@ -829,5 +841,112 @@
     "error_permission-denied": "Permission refused by the browser.",
     "error_generic": "Could not turn on notifications. Please try again.",
     "devMode": "Push notifications are not available in development mode: run the production build (npm run build, then npm run preview)."
+  },
+  "reassign": {
+    "current": "Current",
+    "new": "New",
+    "newUnit": "New room",
+    "selectUnit": "Select a room",
+    "comparison": "Comparison",
+    "changeSelection": "← Change selection",
+    "summary": "Summary",
+    "unit": "Room",
+    "dates": "Dates",
+    "nights": "Nights",
+    "nightsShort": "{{count}} n",
+    "rate": "Rate / night",
+    "area": "Area",
+    "areaValue": "{{count}} m²",
+    "capacity": "Capacity",
+    "capacityValue": "{{count}} guests",
+    "view": "View",
+    "bedding": "Bedding",
+    "totalIncrease": "Total increase of {{amount}}",
+    "totalDecrease": "Total decrease of {{amount}}",
+    "noChanges": "No changes yet",
+    "confirm": "Confirm reassignment"
+  },
+  "addStaff": {
+    "title": "New staff member",
+    "subtitle": "Staff access control",
+    "securityTitle": "Security",
+    "securityText": "Assign roles carefully: each role determines exactly what the member can view and change.",
+    "identification": "Member details",
+    "fullName": "Full name",
+    "fullNamePlaceholder": "e.g. Rasoa Rakoto",
+    "usernamePlaceholder": "e.g. rasoa",
+    "email": "Work email address",
+    "emailPlaceholder": "e.g. rasoa@naturalodge.mg",
+    "tempPassword": "Temporary password",
+    "passwordPlaceholder": "At least 8 characters",
+    "confirmPlaceholder": "Re-enter password",
+    "role": "Role",
+    "submit": "Create member"
+  },
+  "addRoom": {
+    "existingTypes": "Existing types ({{count}})",
+    "typeSummary": "{{capacity}} guests · {{rate}}/n",
+    "roomCount_one": "{{count}} room",
+    "roomCount_other": "{{count}} rooms",
+    "newType": "New type",
+    "newTypeTitle": "New room type",
+    "pickExisting": "← Pick an existing type",
+    "typeNamePlaceholder": "e.g. Natura Suite",
+    "ratePlaceholder": "e.g. 1,500,000",
+    "surfaceLabel": "{{label}} (m²)",
+    "nextStep": "Next — Room number",
+    "perNight": "{{rate}}/n",
+    "numberPlaceholder": "e.g. 402",
+    "rateOverride": "Specific rate (MGA)"
+  },
+  "features": {
+    "title": "Room features",
+    "subtitle": "Features catalogue",
+    "id": "ID: {{id}}",
+    "label": "Feature name",
+    "labelPlaceholder": "e.g. Mini bar",
+    "icon": "Icon",
+    "add": "New feature",
+    "manageHint": "Changes apply to every room offering this feature.",
+    "readOnlyHint": "Read-only catalogue: your role cannot change it."
+  },
+  "calendar": {
+    "today": "Today",
+    "arrivals": "Arrivals ({{count}})",
+    "departures": "Departures ({{count}})",
+    "inHouse": "In-house ({{count}})",
+    "noActivity": "No activity",
+    "miniCard": "{{rooms}} · {{nights}} n"
+  },
+  "addGuest": {
+    "intro": "A complete guest profile helps anticipate preferences and improve every stay.",
+    "confidential": "Confidential data",
+    "namePlaceholder": "e.g. Rasoa Rakoto",
+    "emailPlaceholder": "guest@example.com",
+    "phonePlaceholder": "+261 34 ...",
+    "cityPlaceholder": "Antananarivo",
+    "countryPlaceholder": "Madagascar",
+    "preferencesPlaceholder": "High floor, feather-free pillows…"
+  },
+  "editRoom": {
+    "sharedType": "Shared type — {{type}}",
+    "sharedTypeHint": "Type properties (base rate, area, bedding…) apply to every room of this type. Use the type manager to change them.",
+    "baseRate": "{{rate}}/n (base)",
+    "basePlaceholder": "Base: {{rate}}",
+    "overrideHint": "→ {{rate}}/n for this room only"
+  },
+  "activityFeed": {
+    "title": "Recent activity",
+    "live": "Live",
+    "empty": "No recent activity.",
+    "clear": "Clear alert",
+    "new": "New"
+  },
+  "layout": {
+    "footer": "{{brand}} — Hotel management"
+  },
+  "roomImage": {
+    "previewAlt": "Preview",
+    "urlPlaceholder": "https://…"
   }
 }

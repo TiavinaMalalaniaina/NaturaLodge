@@ -12,6 +12,7 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { useNow } from '../hooks/useNow';
 import { formatRelativeTime } from '../lib/relativeTime';
 import { PushToggle } from './PushToggle';
+import { BRAND_NAME } from '../lib/brand';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -41,7 +42,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { path: '/website-requests', label: t('websiteRequests.title'), icon: Globe, permission: 'websiteRequests.view', badge: (pendingWeb.data?.pending ?? 0) + (pendingWeb.data?.proofs ?? 0) },
         { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
         { path: '/guests',       label: t('nav.guests'),       icon: Users           },
-        // { path: '/amenities', label: t('nav.amenities'),    icon: Star            },
       ],
     },
     {
@@ -126,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       )}>
         <div className="p-8 flex items-center justify-between">
           <div>
-            <h1 className="font-display italic text-primary text-3xl leading-none">Natura Lodge</h1>
+            <h1 className="font-display italic text-primary text-3xl leading-none">{BRAND_NAME}</h1>
             <p className="text-[10px] font-sans uppercase tracking-[0.2em] text-on-surface-variant opacity-70 mt-2">{t('nav.portal')}</p>
           </div>
           <button onClick={onClose} className="lg:hidden p-2 text-on-surface-variant hover:bg-teal-50 rounded-full">
@@ -188,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="bg-stone-50 rounded-xl border border-outline-variant/30 p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-teal-100 border border-outline-variant flex items-center justify-center shrink-0">
             {user?.avatar ? (
-              <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt="Profile" />
+              <img src={user.avatar} className="w-full h-full object-cover rounded-full" alt={t('topbar.profile')} />
             ) : (
               <span className="text-xs font-bold text-primary">{user?.name?.split(' ').map(n => n[0]).join('') ?? 'U'}</span>
             )}
@@ -266,7 +266,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
               "p-2 text-on-surface-variant hover:bg-teal-50 rounded-full transition-colors relative",
               isDropdownOpen && "bg-teal-50 text-primary"
             )}
-            title="Notifications"
+            title={t('topbar.notifications')}
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
@@ -346,7 +346,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                               clearNotification(notif.id);
                             }}
                             className="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-red-500 transition-colors"
-                            title="Dismiss Notification"
+                            title={t('activityFeed.clear')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

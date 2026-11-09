@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { Zap, Check, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -7,6 +8,7 @@ import { useNow } from '../hooks/useNow';
 import { formatRelativeTime } from '../lib/relativeTime';
 
 export const NewBookingsFeed: React.FC = () => {
+  const { t } = useTranslation();
   const { notifications, markAsRead, clearNotification } = useNotifications();
   const now = useNow();
 
@@ -14,9 +16,9 @@ export const NewBookingsFeed: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center px-1">
         <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase flex items-center gap-2">
-          <Zap className="w-3.5 h-3.5 text-gold-500 fill-gold-500" /> Recent Activity
+          <Zap className="w-3.5 h-3.5 text-gold-500 fill-gold-500" /> {t('activityFeed.title')}
         </h4>
-        <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest leading-none">Live Sync</span>
+        <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest leading-none">{t('activityFeed.live')}</span>
       </div>
 
       <div className="space-y-3">
@@ -28,7 +30,7 @@ export const NewBookingsFeed: React.FC = () => {
               exit={{ opacity: 0 }}
               className="p-6 text-center border border-dashed border-stone-200 rounded-2xl bg-white/50"
             >
-              <p className="text-xs text-on-surface-variant/50">No recent activities available.</p>
+              <p className="text-xs text-on-surface-variant/50">{t('activityFeed.empty')}</p>
             </motion.div>
           ) : (
             notifications.slice(0, 5).map((notif) => (
@@ -51,7 +53,7 @@ export const NewBookingsFeed: React.FC = () => {
                     clearNotification(notif.id);
                   }}
                   className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-red-500 transition-all"
-                  title="Clear alert"
+                  title={t('activityFeed.clear')}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -66,7 +68,7 @@ export const NewBookingsFeed: React.FC = () => {
                     )} />
                     <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest leading-none">{notif.title}</span>
                     {!notif.read && (
-                      <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase text-[7px] font-bold tracking-wider leading-none">New</span>
+                      <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase text-[7px] font-bold tracking-wider leading-none">{t('activityFeed.new')}</span>
                     )}
                   </div>
                   <span className="text-[9px] font-mono text-on-surface-variant/30 group-hover:opacity-0 transition-opacity whitespace-nowrap">{formatRelativeTime(notif.createdAt, now)}</span>
