@@ -62,6 +62,7 @@ make dev-client    # client en local, hot-reload (port 3000)
 - Le client est servi par nginx en prod (`client/Dockerfile`, `client/nginx.conf`), qui proxy `/api/*` vers le service `server`.
 - Le site public (`website/`) suit le même principe : son nginx relaie `/api/public/*` vers `API_UPSTREAM`, et `PUBLIC_API_URL` vaut `/api/public` par défaut. Le cookie de session client est `SameSite=Lax` et suppose que le site et l'API sont sur le même site : ne jamais faire pointer le site vers une API sur un autre domaine.
 - Le serveur applique les migrations Prisma automatiquement au démarrage du conteneur (`prisma migrate deploy`).
+- Préprod : `docker-compose.preprod.yml` (+ `.env.preprod`, modèle `.env.preprod.example`) lance une stack isolée de la prod (projet, réseau, volume, identifiants propres ; base et API jamais publiées ; emails redirigés vers `MAIL_REDIRECT_TO`). `make preprod-up` / `preprod-seed` / `preprod-logs`. Voir `ENVIRONNEMENTS.md`.
 - Sous Windows sans Git Bash configuré comme `SHELL` de `make`, les recettes s'exécutent via `cmd.exe` : éviter `trap`/`&`/`wait`/`awk` dans le Makefile (syntaxe POSIX indisponible).
 
 ### Monitoring (VPS de production)

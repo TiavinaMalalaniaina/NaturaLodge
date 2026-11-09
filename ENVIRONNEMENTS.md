@@ -50,6 +50,21 @@ jamais les committer remplis.
 `VITE_*` et `PUBLIC_*` sont figés dans le JS au **build** : dans Coolify, ce sont des *build
 variables*, pas des variables d'exécution. Changer d'environnement impose un rebuild.
 
+## Préprod avec Docker Compose (`docker-compose.preprod.yml`)
+
+Alternative aux ressources Coolify : toute la préprod dans une stack Compose isolée, sur le même VPS que la prod.
+
+```bash
+cp .env.preprod.example .env.preprod   # remplir : identifiants, URLs https, SMTP, MAIL_REDIRECT_TO
+make preprod-up                         # build + démarrage
+make preprod-seed                       # données de démo
+```
+
+- **Isolation** : nom de projet, réseau (`naturalodge-preprod-network`) et volume propres, identifiants de base obligatoires et distincts. Aucun service `db` ou `server` n'est partagé avec la prod.
+- **Exposition** : la base et l'API ne sont jamais publiées. Seuls l'admin (`PREPROD_CLIENT_PORT`, 8181) et le site (`PREPROD_WEBSITE_PORT`, 4421) le sont, sur `127.0.0.1`, derrière le reverse proxy TLS du VPS. Protéger ces deux domaines (authentification HTTP ou liste d'IP) : la préprod contient des comptes de démo.
+- **Emails** : envoyés réellement, mais tous vers `PREPROD_MAIL_REDIRECT_TO`, avec le vrai destinataire dans le sujet. Les liens de connexion de l'espace client y arrivent aussi.
+- **Ressources** : limites CPU/mémoire par service, pour ne jamais affamer la prod.
+
 ## Mise en place de la préprod sur Coolify
 
 1. Dans le même projet Coolify, créer un environnement **preprod** avec ses propres ressources :
