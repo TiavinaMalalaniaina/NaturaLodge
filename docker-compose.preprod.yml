@@ -1,21 +1,21 @@
-# Préprod — stack complète isolée de la prod, même sur le même VPS.
+# Préprod — ressource « Docker Compose » Coolify, isolée de la prod (même VPS possible).
 #
-#   cp .env.preprod.example .env.preprod   # puis remplir (jamais committé)
-#   make preprod-up                         # = docker compose -f docker-compose.preprod.yml --env-file .env.preprod up -d --build
+# Coolify : nouveau Projet/Environnement « preprod » → ressource Docker Compose depuis ce dépôt,
+# branche `preprod`, fichier `/docker-compose.preprod.yml`. Saisir les variables de
+# .env.preprod.example dans Environment Variables (celles en `${VAR:?}` sont obligatoires),
+# puis attribuer un domaine aux services `client` (admin) et `website` (port 80). Laisser
+# « Connect To Predefined Network » désactivé.
 #
 # Isolation vis-à-vis de la prod :
-#  - nom de projet, réseau et volume propres (`naturalodge-preprod*`) : aucun service `db`/`server`
-#    partagé avec la stack de prod, jamais de résolution DNS croisée ;
-#  - base et API jamais publiées sur la machine : seuls l'admin et le site le sont, sur 127.0.0.1,
-#    derrière le reverse proxy TLS du VPS ;
-#  - identifiants de base propres à la préprod, obligatoires ;
-#  - limites CPU/mémoire pour ne jamais affamer la prod.
+#  - réseau et volumes propres à la ressource (créés par Coolify) : aucun service `db`/`server`
+#    partagé avec la prod ; la prod (ressources séparées sur le réseau `coolify`) est injoignable ;
+#  - base et API jamais exposées : seuls l'admin et le site sont routés par Traefik ;
+#  - identifiants de base, secret JWT, URLs https et SMTP propres à la préprod, obligatoires ;
+#  - APP_ENV=preprod imposé, limites CPU/mémoire pour ne jamais affamer la prod.
 #
 # Emails : envoyés pour de vrai via SMTP, mais TOUS redirigés vers MAIL_REDIRECT_TO (sujet préfixé
 # « [PREPROD → destinataire] », voir server/src/services/websiteMail.service.ts). Aucun client réel
 # ne peut recevoir un email de la préprod.
-
-name: naturalodge-preprod
 
 services:
   db:
@@ -65,7 +65,8 @@ services:
       VAPID_PUBLIC_KEY: ${PREPROD_VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${PREPROD_VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${PREPROD_VAPID_SUBJECT:-}
-    # Pas de `ports` : l'API (et /metrics) ne sont joignables que par les nginx de l'admin et du site.
+    # Aucun domaine à lui attribuer dans Coolify : l'API (et /metrics) ne sont joignables que par les
+    # nginx de l'admin et du site, qui relaient /api et /api/public.
     deploy:
       resources:
         limits: { cpus: "1", memory: 512M }
@@ -81,8 +82,6 @@ services:
       - server
     environment:
       API_UPSTREAM: server
-    ports:
-      - "127.0.0.1:${PREPROD_CLIENT_PORT:-8181}:80"
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 128M }
@@ -98,15 +97,9 @@ services:
       - server
     environment:
       API_UPSTREAM: server
-    ports:
-      - "127.0.0.1:${PREPROD_WEBSITE_PORT:-4421}:80"
     deploy:
       resources:
         limits: { cpus: "0.5", memory: 128M }
 
 volumes:
   db_data:
-
-networks:
-  default:
-    name: naturalodge-preprod-network

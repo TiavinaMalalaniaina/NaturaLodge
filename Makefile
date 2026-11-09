@@ -2,8 +2,7 @@ COMPOSE = docker compose
 
 .PHONY: help build up down restart stop logs logs-server logs-client ps clean migrate seed studio sh-server sh-client sh-db \
 	test install install-server install-client dev dev-server dev-client db-up db-down local-migrate local-seed local-studio \
-	monitoring-up monitoring-down monitoring-logs \
-	preprod-up preprod-down preprod-logs preprod-ps preprod-seed preprod-sh-db
+	monitoring-up monitoring-down monitoring-logs
 
 help: ## Affiche cette aide
 	@echo Cibles disponibles :
@@ -28,13 +27,6 @@ help: ## Affiche cette aide
 	@echo     monitoring-up    Demarre Prometheus/Grafana/Loki/exporters/Uptime Kuma (voir monitoring/README.md)
 	@echo     monitoring-down  Arrete le stack de monitoring (donnees conservees)
 	@echo     monitoring-logs  Suit les logs du stack de monitoring
-	@echo   [Preprod - docker-compose.preprod.yml + .env.preprod]
-	@echo     preprod-up       Build puis demarre la preprod isolee (voir .env.preprod.example)
-	@echo     preprod-down     Arrete la preprod (donnees conservees)
-	@echo     preprod-logs     Suit les logs de la preprod
-	@echo     preprod-ps       Liste les conteneurs de la preprod
-	@echo     preprod-seed     Injecte les donnees de demo dans la base de preprod
-	@echo     preprod-sh-db    Shell psql dans la base de preprod
 	@echo   [Local, sans Docker]
 	@echo     install       Installe les dependances npm (client + serveur)
 	@echo     dev           Lance serveur+client en parallele (meme terminal)
@@ -106,34 +98,6 @@ monitoring-down: ## Arrête le stack de monitoring (données conservées)
 
 monitoring-logs: ## Suit les logs du stack de monitoring
 	$(COMPOSE) -f docker-compose.monitoring.yml logs -f
-
-# ─── Préprod (docker-compose.preprod.yml) ──────────────────────────────────
-# Stack isolée de la prod (projet, réseau, volume et identifiants propres). Exige .env.preprod.
-
-PREPROD = $(COMPOSE) -f docker-compose.preprod.yml --env-file .env.preprod
-
-preprod-up: ## Build puis démarre la préprod
-	$(PREPROD) up -d --build
-
-preprod-down: ## Arrête la préprod (données conservées)
-	$(PREPROD) down
-
-preprod-logs: ## Suit les logs de la préprod
-	$(PREPROD) logs -f
-
-preprod-ps: ## Liste les conteneurs de la préprod
-	$(PREPROD) ps
-
-preprod-seed: ## Injecte les données de démo dans la base de préprod
-	$(PREPROD) exec server npx tsx prisma/seed.ts
-
-# Mêmes défauts que docker-compose.preprod.yml ; surcharger si .env.preprod les change :
-# make preprod-sh-db PREPROD_DB_USER=... PREPROD_DB_NAME=...
-PREPROD_DB_USER ?= naturalodge_preprod
-PREPROD_DB_NAME ?= naturalodge_preprod
-
-preprod-sh-db: ## Shell psql dans la base de préprod
-	$(PREPROD) exec db psql -U $(PREPROD_DB_USER) -d $(PREPROD_DB_NAME)
 
 # ─── Lancement en local (sans Docker) ──────────────────────────────────────
 # Utilise npm run dev directement (client + serveur tournent sur la machine hôte).
