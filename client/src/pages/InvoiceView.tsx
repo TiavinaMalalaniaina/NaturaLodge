@@ -80,11 +80,9 @@ export const InvoiceView: React.FC = () => {
     setItemPrice('');
   };
 
-  // Filtre le sélecteur de compte selon la méthode choisie (ex: Mvola -> seul le compte Mvola) —
-  // repli sur tous les comptes si aucun n'est associé à cette méthode (ex: carte/virement, pas
-  // encore de banque configurée) pour ne jamais bloquer l'enregistrement d'un paiement.
-  const accountsForMethod = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
-  const availableAccounts = accountsForMethod.length > 0 ? accountsForMethod : (cashAccounts ?? []);
+  // Seuls les comptes associés à la méthode choisie (ex: Mvola -> compte Mvola) : le serveur refuse
+  // tout autre compte (invoice.service.ts: assertPaymentAccount). Aucun compte = paiement impossible.
+  const availableAccounts = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
   const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
 
   const handleGenerate = () => {
@@ -215,6 +213,12 @@ export const InvoiceView: React.FC = () => {
     ? invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     : 0;
   const remaining = invoice ? Math.max(0, invoice.totalAmount - totalPaid) : 0;
+  const payAmountValue = parseInt(payAmount, 10) || 0;
+  const overpaid = payAmountValue > remaining ? payAmountValue - remaining : 0;
+  const overpayBlocked = overpaid > 0 && !can('invoices.overpay');
+  const payNotice = overpaid === 0 ? undefined : overpayBlocked
+    ? { tone: 'error' as const, text: t('invoice.overpayBlocked', { amount: fmtAmount(remaining) }) }
+    : { tone: 'warning' as const, text: t('invoice.overpayWarning', { amount: fmtAmount(overpaid) }) };
   // Une facture doit être visée avant de pouvoir recevoir un paiement (voir invoice.service.ts:
   // addPayment) — tant qu'elle est brouillon, aucun encaissement n'est possible.
   const canReceivePayment = invoice && !isDraft && invoice.status !== 'paid' && invoice.status !== 'cancelled';
@@ -614,7 +618,8 @@ export const InvoiceView: React.FC = () => {
                     onCancel={() => setShowPayForm(false)}
                     onSubmit={handleRecordPayment}
                     isPending={recordPayment.isPending}
-                    submitDisabled={!payAmount || !selectedAccountId}
+                    submitDisabled={!payAmount || !selectedAccountId || overpayBlocked}
+                    notice={payNotice}
                   />
                 )}
               </div>

@@ -10,6 +10,12 @@ ENV PUBLIC_API_URL=$PUBLIC_API_URL
 RUN API_ORIGIN=$(node -e "console.log(new URL(process.env.PUBLIC_API_URL).origin)") \
  && sed "s|__API_ORIGIN__|$API_ORIGIN|" security-headers.conf > security-headers.generated.conf
 RUN npm run build
+# Hors production (préprod) : le site ne doit jamais être indexé ni concurrencer le vrai site.
+ARG PUBLIC_APP_ENV=production
+RUN if [ "$PUBLIC_APP_ENV" != "production" ]; then \
+      echo 'add_header X-Robots-Tag "noindex, nofollow" always;' >> security-headers.generated.conf \
+      && printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt; \
+    fi
 
 FROM nginx:stable-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf

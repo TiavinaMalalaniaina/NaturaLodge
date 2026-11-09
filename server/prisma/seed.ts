@@ -169,6 +169,10 @@ const STAFF_DATA = [
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
+  // Données factices + comptes staff aux mots de passe connus : jamais en production (utiliser seed.init.ts).
+  if (process.env.APP_ENV === 'production') {
+    throw new Error('seed.ts (démo) est interdit en production — utiliser npm run db:seed:init')
+  }
   await seedChartOfAccounts(prisma)
   await seedExpenseCategories(prisma)
   await seedRoles(prisma)

@@ -31,6 +31,10 @@
     "quietDay": "Aucune notification.",
     "clearAllLogs": "Tout effacer"
   },
+  "envBanner": {
+    "preprod": "Préprod — données de test",
+    "development": "Développement"
+  },
   "common": {
     "add": "Ajouter",
     "edit": "Modifier",
@@ -424,6 +428,8 @@
     "stayCheckOut": "Départ",
     "remaining": "Reste à payer",
     "recordPayment": "Enregistrer un paiement",
+    "overpayBlocked": "Le montant dépasse le reste dû ({{amount}}).",
+    "overpayWarning": "Trop-perçu : {{amount}} au-delà du reste dû resteront au crédit du client.",
     "paymentHistory": "Historique des paiements",
     "noPayments": "Aucun paiement enregistré",
     "recordRefund": "Enregistrer un remboursement",

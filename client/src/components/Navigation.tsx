@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, logout, can } = useAuth();
   const { t }     = useTranslation();
   // Même préfixe de clé que la page : les mutations de demandes invalident aussi ce compteur.
-  const pendingWeb = useQuery({ queryKey: ['website-requests', 'pending-count'], queryFn: fetchPendingWebsiteRequests, enabled: can('bookings.view'), refetchInterval: 60000 });
+  const pendingWeb = useQuery({ queryKey: ['website-requests', 'pending-count'], queryFn: fetchPendingWebsiteRequests, enabled: can('websiteRequests.view'), refetchInterval: 60000 });
 
   // `permission` optionnel = item toujours visible à tout personnel authentifié (dashboard,
   // réservations...). Sinon filtré sur la même permission que celle qui protège la route
@@ -38,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       items: [
         { path: '/dashboard',    label: t('nav.dashboard'),    icon: LayoutDashboard },
         { path: '/reservations', label: t('nav.reservations'), icon: CalendarDays    },
-        { path: '/website-requests', label: t('websiteRequests.title'), icon: Globe, permission: 'bookings.view', badge: (pendingWeb.data?.pending ?? 0) + (pendingWeb.data?.proofs ?? 0) },
+        { path: '/website-requests', label: t('websiteRequests.title'), icon: Globe, permission: 'websiteRequests.view', badge: (pendingWeb.data?.pending ?? 0) + (pendingWeb.data?.proofs ?? 0) },
         { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
         { path: '/guests',       label: t('nav.guests'),       icon: Users           },
         // { path: '/amenities', label: t('nav.amenities'),    icon: Star            },
@@ -213,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification, clearAll } = useNotifications();
   const now = useNow();
-  const { logout } = useAuth();
+  const { logout, can } = useAuth();
   const navigate   = useNavigate();
   const { t }      = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -291,7 +291,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                   <div>
                     <h5 className="text-xs font-bold text-on-surface uppercase tracking-wider">{t('topbar.alertCenter')}</h5>
                     <p className="text-[9px] text-on-surface-variant/60 tracking-wider font-semibold uppercase">{t('topbar.unreadAlerts', { count: unreadCount })}</p>
-                    <PushToggle />
+                    {can('websiteRequests.view') && <PushToggle />}
                   </div>
                   {unreadCount > 0 && (
                     <button 

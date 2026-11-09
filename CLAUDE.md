@@ -36,6 +36,13 @@ cd client && npm run dev
 
 ⚠️ **CORS** : le serveur n'autorise qu'une seule origine (`FRONTEND_URL`, défaut `http://localhost:3000`). `vite preview` (build de prod local) est donc épinglé sur le port 3000 dans `client/vite.config.ts` — sinon il tourne sur 4173 par défaut et tous les appels API sont bloqués silencieusement par le navigateur. Ne peut pas tourner en même temps que `npm run dev` (même port).
 
+### Environnements (`APP_ENV`)
+Trois environnements : `development` (local), `preprod` (branche `preprod`, Coolify) et `production` (branche `main`, Coolify). Détail complet dans `ENVIRONNEMENTS.md`.
+- `APP_ENV` ≠ `NODE_ENV` : la préprod tourne en `NODE_ENV=production` et se distingue uniquement par `APP_ENV`. Pour un comportement propre à un environnement, tester `appEnv`/`isPreprod`/`isProduction` (`server/src/lib/env.ts`) ou `APP_ENV` (`client/src/lib/appEnv.ts`), jamais `NODE_ENV`.
+- `server/src/lib/env.ts` est importé en premier dans `server.ts`. Hors développement, il fait échouer le démarrage si la configuration est dangereuse (secret JWT faible, URLs non https…).
+- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO`. Tout nouvel envoi doit passer par cette fonction.
+- Le seed de démo (`prisma/seed.ts`) est bloqué si `APP_ENV=production`.
+
 ---
 
 ## Docker (optionnel)
@@ -183,6 +190,7 @@ Toutes les routes sont protégées par `authenticate`. La plupart nécessitent e
 ### Middleware auth
 - `authenticate` — vérifie le token JWT Bearer, injecte `req.user`
 - `can(permissionKey)` — vérifie que le rôle de `req.user` a la permission demandée, via la matrice `Permission`/`RolePermission` en base (cache mémoire, voir `lib/permissions.ts`) — remplace l'ancien `authorize(...roles)` codé en dur, configurable sans redéploiement depuis l'écran `/permissions` (ADMIN uniquement)
+- **Nouvelle permission** : la déclarer dans `prisma/seedPermissions.ts` **et** ajouter une migration SQL idempotente (`INSERT ... ON CONFLICT DO NOTHING` sur `Permission` + `RolePermission`, voir `20261109110000_add_website_requests_view_permission`). Le seed n'est jamais rejoué en prod ; seule la migration (`migrate deploy` au démarrage du conteneur) l'y fait arriver.
 
 ### Gestion des erreurs (`errors/`, `middleware/asyncHandler.ts`, `middleware/errorHandler.ts`)
 Chaque handler de route est enveloppé dans `asyncHandler(...)`, qui capture les rejets de promesses et les transmet à `errorHandler` (monté en dernier dans `server.ts`) — **Express 4 ne rattrape pas nativement les rejets async**, sans ce wrapper une seule requête invalide plante tout le process. Les services lèvent des `AppError` (`NotFoundError`, `ConflictError`, `ForbiddenError`, `UnauthorizedError`) que `errorHandler` traduit en réponse JSON avec le bon code HTTP ; les erreurs Prisma connues (P2025/P2002/P2003) sont aussi mappées en filet de sécurité. Un `process.on('unhandledRejection', ...)` couvre le code hors cycle de requête (ex. `lib/scheduler.ts`).
@@ -273,6 +281,25 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 
 - `main` — branche de production stable
 - `develop` — branche d'intégration ; les branches `feature/*` et `bugfix/*` sont mergées ici via PR avant d'être portées sur `main`
+
+---
+
+## Tests (serveur)
+
+Vitest + Supertest contre un **vrai Postgres** : une base simulée ne prouverait ni le verrou anti double booking ni les transactions.
+
+```bash
+cd server
+cp .env.test.example .env.test   # une fois : TEST_DATABASE_URL vers une base locale *_test
+npm test                          # ou `make test`
+npm run test:typecheck
+```
+
+- La base de test est **supprimée et recréée** à chaque lancement (`tests/globalSetup.ts` : `migrate deploy` + seeds de référence rôles/permissions/plan comptable). `vitest.config.ts` refuse de démarrer si la base ne finit pas par `_test`, et ne lit jamais `server/.env` pour la base, qui peut pointer vers une base distante.
+- `tests/helpers/db.ts` (`resetDb`, appelé en `beforeEach`) vide les tables métier et garde les tables de référence. `tests/helpers/factories.ts` crée staff + jeton JWT, clients, chambres, et insère des réservations ou factures directement dans un état donné.
+- Les tests importent `app` depuis `src/app.ts` (Express sans `listen` ni scheduler) ; `src/server.ts` ne fait que démarrer.
+- CI : `.github/workflows/server-tests.yml` lance tsc et les tests sur chaque PR vers `develop`/`preprod`/`main`.
+- Pour toute nouvelle règle métier, en particulier un chemin qui attribue une chambre, ajouter un test d'intégration. Un bug corrigé reçoit un test qui le reproduit.
 
 ---
 

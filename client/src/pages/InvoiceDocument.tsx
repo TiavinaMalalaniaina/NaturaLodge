@@ -70,14 +70,20 @@ export const InvoiceDocument: React.FC = () => {
     : invoice.totalAmount;
   const remaining = Math.max(0, refundCeiling - totalPaid);
   const nothingToRefund = isRefundDoc && !isDraft && refundCeiling === 0;
+  const payAmountValue = parseInt(payAmount, 10) || 0;
+  const overpaid = payAmountValue > remaining ? payAmountValue - remaining : 0;
+  // Un remboursement ne dépasse jamais le plafond ; un encaissement (acompte) seulement avec la permission.
+  const overpayBlocked = overpaid > 0 && (isRefundDoc || !can('invoices.overpay'));
+  const payNotice = overpaid === 0 || isRefundDoc ? undefined : overpayBlocked
+    ? { tone: 'error' as const, text: t('invoice.overpayBlocked', { amount: fmtAmount(remaining) }) }
+    : { tone: 'warning' as const, text: t('invoice.overpayWarning', { amount: fmtAmount(overpaid) }) };
   // Un acompte s'encaisse directement ; un avoir, une fois visé, se rembourse (mouvement de sens
   // inverse — voir invoice.service.ts: addPayment). Dans les deux cas le document doit être visé.
   const canReceivePayment = (invoice.kind === 'deposit' || isRefundDoc) && !isDraft
     && invoice.status !== 'paid' && invoice.status !== 'cancelled'
     && (!isRefundDoc || remaining > 0);
 
-  const accountsForMethod = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
-  const availableAccounts = accountsForMethod.length > 0 ? accountsForMethod : (cashAccounts ?? []);
+  const availableAccounts = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
   const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
 
   const handleValidate = () => {
@@ -302,7 +308,8 @@ export const InvoiceDocument: React.FC = () => {
                     onCancel={() => setShowPayForm(false)}
                     onSubmit={handleRecordPayment}
                     isPending={recordPayment.isPending}
-                    submitDisabled={!payAmount || !selectedAccountId || (isRefundDoc && parseInt(payAmount, 10) > remaining)}
+                    submitDisabled={!payAmount || !selectedAccountId || overpayBlocked}
+                    notice={payNotice}
                   />
                 )}
               </div>

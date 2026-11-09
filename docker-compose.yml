@@ -24,6 +24,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      APP_ENV: ${APP_ENV:-development}
       DATABASE_URL: postgresql://naturalodge:naturalodge@db:5432/naturalodge?schema=public
       DATABASE_SSL: "false"
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-random-secret-min-32-chars}
@@ -49,6 +50,7 @@ services:
       context: ./client
       args:
         VITE_API_URL: /api
+        VITE_APP_ENV: ${APP_ENV:-development}
     restart: unless-stopped
     depends_on:
       - server

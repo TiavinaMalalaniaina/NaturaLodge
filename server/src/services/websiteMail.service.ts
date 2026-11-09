@@ -1,8 +1,11 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import { logger } from '../lib/logger';
+import { env, isPreprod } from '../lib/env';
 
 type Lang = 'fr' | 'en';
-const configured = () => !!(process.env.SMTP_HOST && process.env.MAIL_FROM && process.env.WEBSITE_URL);
+// En preprod, aucun email ne doit partir vers un vrai client : tout est redirigé vers MAIL_REDIRECT_TO,
+// et rien n'est envoyé si cette adresse n'est pas définie.
+const configured = () => !!(process.env.SMTP_HOST && process.env.MAIL_FROM && process.env.WEBSITE_URL && (!isPreprod || env.MAIL_REDIRECT_TO));
 let cached: Transporter | null = null;
 function transport(): Transporter {
   cached ??= nodemailer.createTransport({
@@ -11,6 +14,15 @@ function transport(): Transporter {
     connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000,
   });
   return cached;
+}
+function send(to: string, subject: string, body: string) {
+  const redirect = isPreprod ? env.MAIL_REDIRECT_TO : undefined;
+  return transport().sendMail({
+    from: process.env.MAIL_FROM,
+    to: redirect ?? to,
+    subject: redirect ? `[PREPROD → ${to}] ${subject}` : subject,
+    text: body,
+  });
 }
 // English pages live under /en/ on the website, French ones at the root.
 const siteUrl = (lang: Lang, path: string) => new URL(`${lang === 'en' ? '/en' : ''}${path}`, process.env.WEBSITE_URL);
@@ -64,7 +76,7 @@ export async function sendLoginMail(email: string, token: string, next = '/mes-r
     const link = siteUrl(lang, '/connexion/');
     if (next === '/reservation') link.searchParams.set('next', '/reservation');
     link.hash = new URLSearchParams({ login: token }).toString();
-    await transport().sendMail({ from: process.env.MAIL_FROM, to: email, subject: text[lang].loginSubject, text: text[lang].login(link.toString()) });
+    await send(email, text[lang].loginSubject, text[lang].login(link.toString()));
     return true;
   } catch { logger.error('Échec de l’envoi de l’email de connexion'); return false; }
 }
@@ -94,7 +106,7 @@ export async function sendRequestMail(row: RequestMail): Promise<boolean> {
       row.status === 'REJECTED' || row.status === 'CANCELLED' ? (lang === 'en' ? systemNotesEn[row.decisionNote] ?? row.decisionNote : row.decisionNote) : '',
       `${t.view}${sep} ${siteUrl(lang, '/mes-reservations/').toString()}`, t.signIn, 'Natura Lodge',
     ].filter(Boolean).join('\n\n');
-    await transport().sendMail({ from: process.env.MAIL_FROM, to: row.email, subject: `Natura Lodge — ${t.subjects[row.status] ?? t.fallbackSubject} — ${row.reference}`, text: body });
+    await send(row.email, `Natura Lodge — ${t.subjects[row.status] ?? t.fallbackSubject} — ${row.reference}`, body);
     return true;
   } catch {
     // Do not log SMTP credentials, recipient details or the private tracking link.

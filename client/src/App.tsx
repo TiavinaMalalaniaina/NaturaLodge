@@ -52,7 +52,7 @@ const App: React.FC = () => {
                 <Route element={<AppLayout />}>
                   <Route index element={<Navigate to="/dashboard" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
-                  <Route element={<ProtectedRoute permission="bookings.view" />}><Route path="website-requests" element={<WebsiteRequests />} /></Route>
+                  <Route element={<ProtectedRoute permission="websiteRequests.view" />}><Route path="website-requests" element={<WebsiteRequests />} /></Route>
                   <Route path="reservations" element={<Reservations />} />
                   <Route element={<ProtectedRoute permission="bookings.create" />}>
                     <Route path="reservations/new" element={<NewReservation />} />
