@@ -57,13 +57,15 @@ services:
     ports:
       - "${CLIENT_PORT:-8081}:80"
 
-  # Site public. PUBLIC_API_URL est figé dans le JS au build : c'est l'URL vue par le navigateur du
-  # visiteur, pas le nom de service Docker. WEBSITE_URL (serveur) doit correspondre à l'origine du site.
+  # Site public. Il appelle l'API via sa propre origine (/api/public, relayé par son nginx vers le
+  # service `server`) : le cookie de session client reste un cookie de premier niveau.
+  # WEBSITE_URL (serveur) doit correspondre à l'origine du site.
   website:
     build:
       context: ./website
       args:
-        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:4000/api/public}
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-/api/public}
+        PUBLIC_APP_ENV: ${APP_ENV:-development}
     restart: unless-stopped
     depends_on:
       - server

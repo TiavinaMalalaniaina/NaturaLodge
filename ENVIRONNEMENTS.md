@@ -42,7 +42,7 @@ faut donc **ajouter `APP_ENV` dans Coolify** sur les ressources existantes.
 |---|---|---|---|
 | server | `server/.env.example` → copier en `server/.env` | `server/.env.preprod.example` | `server/.env.production.example` |
 | client | `client/.env.example` → copier en `client/.env` | build arg `VITE_APP_ENV=preprod` | build arg `VITE_APP_ENV=production` (défaut) |
-| website | `website/.env.example` | build args `PUBLIC_APP_ENV=preprod` + `PUBLIC_API_URL` | `PUBLIC_API_URL` |
+| website | `website/.env.example` | build arg `PUBLIC_APP_ENV=preprod` ; `API_UPSTREAM` = conteneur server de préprod | `API_UPSTREAM` = conteneur server de prod |
 
 Les modèles préprod/prod servent de **liste de contrôle des variables à saisir dans Coolify**. Ne
 jamais les committer remplis.
@@ -56,7 +56,7 @@ variables*, pas des variables d'exécution. Changer d'environnement impose un re
    `db` (Postgres 16), `server`, `client` et `website`, toutes branchées sur la branche Git `preprod`.
 2. **server** : reporter `server/.env.preprod.example`, avec un `DATABASE_URL` pointant vers la db de préprod.
 3. **client** : build variable `VITE_APP_ENV=preprod` ; `API_UPSTREAM` = nom du conteneur server de préprod.
-4. **website** : build variables `PUBLIC_APP_ENV=preprod` et `PUBLIC_API_URL=https://<api-preprod>/api/public`.
+4. **website** : build variable `PUBLIC_APP_ENV=preprod` ; variable d'exécution `API_UPSTREAM` = nom du conteneur server de préprod. Le site appelle l'API via sa propre origine (`/api/public`, relayé par son nginx) : ne pas définir `PUBLIC_API_URL` vers un autre domaine, le cookie de session client (`SameSite=Lax`) ne serait plus envoyé.
 5. Attribuer les domaines (par ex. `admin-preprod.…` et `preprod.…`), qui doivent correspondre à
    `FRONTEND_URL` et `WEBSITE_URL`.
 6. Premier déploiement, puis `npx tsx prisma/seed.ts` (démo) depuis le terminal du conteneur server.

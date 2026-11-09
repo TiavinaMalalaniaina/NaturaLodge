@@ -60,6 +60,7 @@ make dev-client    # client en local, hot-reload (port 3000)
 ```
 
 - Le client est servi par nginx en prod (`client/Dockerfile`, `client/nginx.conf`), qui proxy `/api/*` vers le service `server`.
+- Le site public (`website/`) suit le même principe : son nginx relaie `/api/public/*` vers `API_UPSTREAM`, et `PUBLIC_API_URL` vaut `/api/public` par défaut. Le cookie de session client est `SameSite=Lax` et suppose que le site et l'API sont sur le même site : ne jamais faire pointer le site vers une API sur un autre domaine.
 - Le serveur applique les migrations Prisma automatiquement au démarrage du conteneur (`prisma migrate deploy`).
 - Sous Windows sans Git Bash configuré comme `SHELL` de `make`, les recettes s'exécutent via `cmd.exe` : éviter `trap`/`&`/`wait`/`awk` dans le Makefile (syntaxe POSIX indisponible).
 

@@ -7,7 +7,10 @@ import { sendLoginMail } from './websiteMail.service';
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const cookieName = 'naturalodge_customer';
 const sessionDuration = 7 * 86400000;
-const cookieOptions = () => ({ httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const, path: '/api/public' });
+// Le site appelle l'API via sa propre origine (nginx du site : /api/public → serveur) : cookie de
+// premier niveau, Lax suffit et n'est pas bloqué comme cookie tiers (Safari, Firefox, Chrome).
+// SameSite=None ne fonctionnerait plus de façon fiable si le site et l'API étaient sur deux sites distincts.
+const cookieOptions = () => ({ httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/api/public' });
 
 export function checkWebsiteOrigin(req: Request) {
   const origin = process.env.WEBSITE_URL || 'http://localhost:4321';
