@@ -1,0 +1,105 @@
+# Préprod — ressource « Docker Compose » Coolify, isolée de la prod (même VPS possible).
+#
+# Coolify : nouveau Projet/Environnement « preprod » → ressource Docker Compose depuis ce dépôt,
+# branche `preprod`, fichier `/docker-compose.preprod.yml`. Saisir les variables de
+# .env.preprod.example dans Environment Variables (celles en `${VAR:?}` sont obligatoires),
+# puis attribuer un domaine aux services `client` (admin) et `website` (port 80). Laisser
+# « Connect To Predefined Network » désactivé.
+#
+# Isolation vis-à-vis de la prod :
+#  - réseau et volumes propres à la ressource (créés par Coolify) : aucun service `db`/`server`
+#    partagé avec la prod ; la prod (ressources séparées sur le réseau `coolify`) est injoignable ;
+#  - base et API jamais exposées : seuls l'admin et le site sont routés par Traefik ;
+#  - identifiants de base, secret JWT, URLs https et SMTP propres à la préprod, obligatoires ;
+#  - APP_ENV=preprod imposé, limites CPU/mémoire pour ne jamais affamer la prod.
+#
+# Emails : envoyés pour de vrai via SMTP, mais TOUS redirigés vers MAIL_REDIRECT_TO (sujet préfixé
+# « [PREPROD → destinataire] », voir server/src/services/websiteMail.service.ts). Aucun client réel
+# ne peut recevoir un email de la préprod.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PREPROD_DB_USER:-naturalodge_preprod}
+      POSTGRES_PASSWORD: ${PREPROD_DB_PASSWORD:?PREPROD_DB_PASSWORD obligatoire}
+      POSTGRES_DB: ${PREPROD_DB_NAME:-naturalodge_preprod}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 512M }
+
+  server:
+    build:
+      context: ./server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: preprod
+      NODE_ENV: production
+      LOG_LEVEL: ${PREPROD_LOG_LEVEL:-debug}
+      PORT: 4000
+      DATABASE_URL: postgresql://${PREPROD_DB_USER:-naturalodge_preprod}:${PREPROD_DB_PASSWORD:?PREPROD_DB_PASSWORD obligatoire}@db:5432/${PREPROD_DB_NAME:-naturalodge_preprod}?schema=public
+      DATABASE_SSL: "false"
+      JWT_SECRET: ${PREPROD_JWT_SECRET:?PREPROD_JWT_SECRET obligatoire (openssl rand -hex 32)}
+      JWT_EXPIRES_IN: ${PREPROD_JWT_EXPIRES_IN:-1d}
+      FRONTEND_URL: ${PREPROD_FRONTEND_URL:?PREPROD_FRONTEND_URL obligatoire (https://admin-preprod.votre-domaine.com)}
+      WEBSITE_URL: ${PREPROD_WEBSITE_URL:?PREPROD_WEBSITE_URL obligatoire (https://preprod.votre-domaine.com)}
+      TRUST_PROXY: ${PREPROD_TRUST_PROXY:-loopback, uniquelocal}
+      SMTP_HOST: ${PREPROD_SMTP_HOST:?PREPROD_SMTP_HOST obligatoire}
+      SMTP_PORT: ${PREPROD_SMTP_PORT:-587}
+      SMTP_SECURE: ${PREPROD_SMTP_SECURE:-false}
+      SMTP_USER: ${PREPROD_SMTP_USER:?PREPROD_SMTP_USER obligatoire}
+      SMTP_PASSWORD: ${PREPROD_SMTP_PASSWORD:?PREPROD_SMTP_PASSWORD obligatoire}
+      MAIL_FROM: ${PREPROD_MAIL_FROM:?PREPROD_MAIL_FROM obligatoire}
+      MAIL_REDIRECT_TO: ${PREPROD_MAIL_REDIRECT_TO:?PREPROD_MAIL_REDIRECT_TO obligatoire (boîte de l'équipe qui reçoit tous les emails)}
+      VAPID_PUBLIC_KEY: ${PREPROD_VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${PREPROD_VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${PREPROD_VAPID_SUBJECT:-}
+    # Aucun domaine à lui attribuer dans Coolify : l'API (et /metrics) ne sont joignables que par les
+    # nginx de l'admin et du site, qui relaient /api et /api/public.
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 512M }
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: /api
+        VITE_APP_ENV: preprod
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      API_UPSTREAM: server
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 128M }
+
+  website:
+    build:
+      context: ./website
+      args:
+        PUBLIC_API_URL: /api/public
+        PUBLIC_APP_ENV: preprod
+    restart: unless-stopped
+    depends_on:
+      - server
+    environment:
+      API_UPSTREAM: server
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 128M }
+
+volumes:
+  db_data:

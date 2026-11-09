@@ -6,3 +6,6 @@ TODO.md
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 .claude/skills/
+
+# Secrets de la préprod (modèle : .env.preprod.example)
+.env.preprod

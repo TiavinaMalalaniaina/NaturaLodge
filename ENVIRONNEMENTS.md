@@ -50,7 +50,22 @@ jamais les committer remplis.
 `VITE_*` et `PUBLIC_*` sont figés dans le JS au **build** : dans Coolify, ce sont des *build
 variables*, pas des variables d'exécution. Changer d'environnement impose un rebuild.
 
-## Mise en place de la préprod sur Coolify
+## Préprod sur Coolify — ressource Docker Compose (recommandé)
+
+Toute la préprod (db, server, client, website) dans **une seule ressource Coolify**, décrite par `docker-compose.preprod.yml`. Elle peut tourner sur le même VPS que la prod.
+
+1. Dans Coolify, créer un environnement **preprod** (ou un projet dédié), puis *New Resource → Docker Compose*, depuis ce dépôt : branche `preprod`, fichier `/docker-compose.preprod.yml`.
+2. Onglet **Environment Variables** : saisir les variables de `.env.preprod.example`. Celles écrites `${VAR:?}` dans le fichier sont obligatoires, et la ressource ne démarre pas sans elles.
+3. Attribuer un **domaine** au service `client` (admin) et au service `website` (site), en port 80. Coolify gère le HTTPS. Ces domaines doivent être exactement `PREPROD_FRONTEND_URL` et `PREPROD_WEBSITE_URL`. Ne rien attribuer à `server` ni à `db`.
+4. Laisser **« Connect To Predefined Network »** désactivé : la préprod garde son réseau propre et ne voit pas les ressources de prod du réseau `coolify`.
+5. Déployer, puis, dans le **Terminal** Coolify du service `server` : `npx tsx prisma/seed.ts` (données de démo).
+
+- **Isolation** : réseau et volumes propres à la ressource, identifiants de base obligatoires et distincts de la prod. La base et l'API ne sont jamais exposées, seuls l'admin et le site sont routés par Traefik.
+- **Emails** : envoyés réellement, mais tous vers `PREPROD_MAIL_REDIRECT_TO`, avec le vrai destinataire dans le sujet. Les liens de connexion de l'espace client y arrivent aussi : on se connecte en tant que n'importe quel client test depuis cette boîte.
+- **Ressources** : limites CPU/mémoire par service (`deploy.resources.limits`), pour ne jamais affamer la prod.
+- **Accès** : protéger les deux domaines de préprod (authentification HTTP Traefik ou liste d'IP), car la préprod contient des comptes de démo.
+
+## Variante : préprod en ressources Coolify séparées
 
 1. Dans le même projet Coolify, créer un environnement **preprod** avec ses propres ressources :
    `db` (Postgres 16), `server`, `client` et `website`, toutes branchées sur la branche Git `preprod`.
