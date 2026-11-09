@@ -428,6 +428,8 @@
     "stayCheckOut": "Fivoahana",
     "remaining": "Sisa tsy naloa",
     "recordPayment": "Mandraikitra fandoavana",
+    "overpayBlocked": "Mihoatra ny ambiny tokony haloa ({{amount}}) ny vola.",
+    "overpayWarning": "Fandoavana mihoatra : {{amount}} mihoatra ny ambiny no ho tahiry ho an'ny mpanjifa.",
     "paymentHistory": "Tantaran'ny fandoavana",
     "noPayments": "Tsy misy fandoavana voarakitra",
     "recordRefund": "Mandraikitra famerenam-bola",

@@ -1,13 +1,15 @@
 import { BookingStatus, ExtraPricing, InvoiceKind, InvoiceStatus, PaymentMethod, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { NotFoundError, ConflictError } from '../errors/AppError';
+import { NotFoundError, ConflictError, ForbiddenError } from '../errors/AppError';
 import {
   GenerateInvoiceInput, InvoiceDiscountInput, InvoiceItemInput, InvoiceListParams, PaymentInput,
   UpdateInvoiceInput, UpdateInvoiceItemInput,
 } from '../validation/invoice.schema';
 import * as ledgerService from './ledger.service';
 import { assertCanViewCashAccount } from '../lib/treasuryAccess';
-import { LOCK_KEYS, lockForTransaction } from '../lib/advisoryLock';
+import { LOCK_KEYS } from '../lib/advisoryLock';
+import { nextDocumentNumber } from '../lib/documentNumber';
+import { roleHasPermission } from '../lib/permissions';
 import { resyncCheckoutPaymentStatus, computeEffectiveStatus } from './booking.service';
 import { confirmIfDepositPaid } from './websiteRequest.service';
 import { kickOutbox } from './websiteEmail.service';
@@ -114,20 +116,17 @@ const invoiceListInclude = {
   },
 };
 
-// Préfixe de numérotation par type de document — chaque type a sa propre séquence, comptée
-// uniquement sur les documents déjà visés (`number` non nul) pour ne jamais laisser de trou dans
-// l'ordre d'émission réel : un brouillon abandonné (jamais visé) ne consomme aucun numéro.
+// Préfixe de numérotation par type de document — chaque type a sa propre séquence annuelle, attribuée
+// uniquement au visa pour ne jamais laisser de trou dans l'ordre d'émission réel : un brouillon
+// abandonné (jamais visé) ne consomme aucun numéro.
 const NUMBER_PREFIX: Record<InvoiceKind, string> = {
   STANDARD:    'INV',
   DEPOSIT:     'ACO',
   CREDIT_NOTE: 'AVO',
 };
 
-async function generateInvoiceNumber(tx: Prisma.TransactionClient, kind: InvoiceKind): Promise<string> {
-  await lockForTransaction(tx, LOCK_KEYS.invoiceNumber);
-  const year  = new Date().getFullYear();
-  const count = await tx.invoice.count({ where: { kind, number: { not: null } } });
-  return `${NUMBER_PREFIX[kind]}-${year}-${String(count + 1).padStart(4, '0')}`;
+function generateInvoiceNumber(tx: Prisma.TransactionClient, kind: InvoiceKind): Promise<string> {
+  return nextDocumentNumber(tx, 'Invoice', NUMBER_PREFIX[kind], LOCK_KEYS.invoiceNumber);
 }
 
 async function syncInvoiceStatus(invoiceId: string, client: PrismaOrTx = prisma): Promise<void> {
@@ -727,12 +726,20 @@ export async function addPayment(invoiceId: string, data: PaymentInput, processe
     await assertPaymentAccount(tx, data.accountId, data.method);
 
     const isRefund = invoice.kind === 'CREDIT_NOTE';
+    const sumCompleted = async (invId: string) => (await tx.payment.findMany({
+      where: { invoiceId: invId, status: 'COMPLETED' }, select: { amount: true },
+    })).reduce((s, p) => s + p.amount, 0);
+
+    if (!isRefund) {
+      // Trop-perçu (le client verse plus que le reste dû) : refusé sauf permission explicite. Accepté,
+      // l'excédent reste au crédit du client (411000 créditeur).
+      const remaining = invoice.totalAmount - await sumCompleted(invoiceId);
+      if (data.amount > remaining && !(processedByRole && await roleHasPermission(processedByRole, 'invoices.overpay'))) {
+        throw new ForbiddenError(`Le paiement dépasse le reste dû (${remaining.toLocaleString('fr-FR')} Ar).`);
+      }
+    }
 
     if (isRefund) {
-      const sumCompleted = async (invId: string) => (await tx.payment.findMany({
-        where: { invoiceId: invId, status: 'COMPLETED' }, select: { amount: true },
-      })).reduce((s, p) => s + p.amount, 0);
-
       const alreadyRefunded = await sumCompleted(invoiceId);
       // On ne peut rembourser que ce qui a réellement été encaissé sur le document crédité, et au
       // plus le montant de l'avoir. Sans FK vers le crédité (cas théorique), on retombe sur le

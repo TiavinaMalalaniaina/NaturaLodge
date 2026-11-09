@@ -428,6 +428,8 @@
     "stayCheckOut": "Check-out",
     "remaining": "Remaining",
     "recordPayment": "Record Payment",
+    "overpayBlocked": "The amount exceeds the balance due ({{amount}}).",
+    "overpayWarning": "Overpayment: {{amount}} above the balance due will remain as customer credit.",
     "paymentHistory": "Payment History",
     "noPayments": "No payments recorded",
     "recordRefund": "Record a refund",

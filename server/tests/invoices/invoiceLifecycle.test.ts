@@ -40,6 +40,9 @@ async function pay(auth: Auth, invoiceId: string, amount: number, code = '530000
   return request(app).post(`/api/invoices/${invoiceId}/payments`).set(auth).send({ amount, method, accountId: await accountId(code) });
 }
 
+// Année de l'hôtel (Madagascar), comme src/lib/documentNumber.ts.
+const YEAR = Number(new Intl.DateTimeFormat('en', { timeZone: 'Indian/Antananarivo', year: 'numeric' }).format(new Date()));
+
 const invoice = (id: string) => prisma.invoice.findUniqueOrThrow({ where: { id } });
 const bookingStatus = async (id: string) => (await prisma.booking.findUniqueOrThrow({ where: { id } })).status;
 
@@ -80,7 +83,7 @@ describe('Visa', () => {
 
     const res = await request(app).post(`/api/invoices/${id}/validate`).set(manager).expect(200);
 
-    expect(res.body.number).toBe(`INV-${new Date().getFullYear()}-0001`);
+    expect(res.body.number).toBe(`INV-${YEAR}-0001`);
     expect(res.body.validatedAt).not.toBeNull();
     expect(await balance('411000')).toBe(TOTAL);
     expect(await balance('706000')).toBe(-SUBTOTAL);
@@ -104,6 +107,21 @@ describe('Visa', () => {
     await request(app).post('/api/invoices/generate').set(gerant).send({ bookingId, taxRate: 20 }).expect(409);
   });
 
+  it('la numérotation repart à 0001 chaque année et suit le plus grand numéro de l’année', async () => {
+    const { gerant, manager } = await staff();
+    const old = await validatedInvoice(gerant, manager);
+    await prisma.invoice.update({ where: { id: old.invoiceId }, data: { number: `INV-${YEAR - 1}-0042` } });
+    await prisma.journalEntry.updateMany({ data: { number: `JE-${YEAR - 1}-0099` } });
+
+    const first = await draftInvoice(gerant, (await bookedStay(gerant)).bookingId);
+    expect((await request(app).post(`/api/invoices/${first}/validate`).set(manager).expect(200)).body.number).toBe(`INV-${YEAR}-0001`);
+    expect((await prisma.journalEntry.findFirstOrThrow({ where: { relatedInvoiceId: first } })).number).toBe(`JE-${YEAR}-0001`);
+
+    await prisma.invoice.update({ where: { id: first }, data: { number: `INV-${YEAR}-0007` } });
+    const second = await draftInvoice(gerant, (await bookedStay(gerant)).bookingId);
+    expect((await request(app).post(`/api/invoices/${second}/validate`).set(manager).expect(200)).body.number).toBe(`INV-${YEAR}-0008`);
+  });
+
   // Régression : la numérotation (count + 1) n'était pas sérialisée — l'un des visas échouait en 409.
   it('des visas simultanés réussissent tous avec des numéros distincts', async () => {
     const { gerant, manager } = await staff();
@@ -119,6 +137,26 @@ describe('Visa', () => {
 
 describe('Paiements', () => {
   beforeEach(resetDb);
+
+  it('trop-perçu refusé sans la permission invoices.overpay (GERANT), y compris en complément d’un acompte partiel', async () => {
+    const { gerant, manager } = await staff();
+    const { invoiceId } = await validatedInvoice(gerant, manager);
+
+    expect((await pay(gerant, invoiceId, TOTAL + 1)).status).toBe(403);
+    expect((await pay(gerant, invoiceId, 100_000)).status).toBe(201);
+    expect((await pay(gerant, invoiceId, TOTAL - 100_000 + 1)).status).toBe(403);
+    expect((await pay(gerant, invoiceId, TOTAL - 100_000)).status).toBe(201);
+    expect(await balance('411000')).toBe(0);
+  });
+
+  it('trop-perçu accepté avec la permission (MANAGER) : facture soldée, excédent au crédit du client', async () => {
+    const { gerant, manager } = await staff();
+    const { invoiceId } = await validatedInvoice(gerant, manager);
+
+    expect((await pay(manager, invoiceId, TOTAL + 10_000)).status).toBe(201);
+    expect((await invoice(invoiceId)).status).toBe('PAID');
+    expect(await balance('411000')).toBe(-10_000);
+  });
 
   it('refusé sur un brouillon (409)', async () => {
     const { gerant } = await staff();
@@ -253,7 +291,7 @@ describe('Annulation de facture', () => {
     expect(await balance('411000')).toBe(TOTAL);
 
     const validated = await request(app).post(`/api/invoices/${credit.id}/validate`).set(manager).expect(200);
-    expect(validated.body.number).toBe(`AVO-${new Date().getFullYear()}-0001`);
+    expect(validated.body.number).toBe(`AVO-${YEAR}-0001`);
     expect(await balance('411000')).toBe(TOTAL * 0.3);
   });
 

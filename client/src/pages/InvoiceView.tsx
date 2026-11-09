@@ -213,6 +213,12 @@ export const InvoiceView: React.FC = () => {
     ? invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     : 0;
   const remaining = invoice ? Math.max(0, invoice.totalAmount - totalPaid) : 0;
+  const payAmountValue = parseInt(payAmount, 10) || 0;
+  const overpaid = payAmountValue > remaining ? payAmountValue - remaining : 0;
+  const overpayBlocked = overpaid > 0 && !can('invoices.overpay');
+  const payNotice = overpaid === 0 ? undefined : overpayBlocked
+    ? { tone: 'error' as const, text: t('invoice.overpayBlocked', { amount: fmtAmount(remaining) }) }
+    : { tone: 'warning' as const, text: t('invoice.overpayWarning', { amount: fmtAmount(overpaid) }) };
   // Une facture doit être visée avant de pouvoir recevoir un paiement (voir invoice.service.ts:
   // addPayment) — tant qu'elle est brouillon, aucun encaissement n'est possible.
   const canReceivePayment = invoice && !isDraft && invoice.status !== 'paid' && invoice.status !== 'cancelled';
@@ -612,7 +618,8 @@ export const InvoiceView: React.FC = () => {
                     onCancel={() => setShowPayForm(false)}
                     onSubmit={handleRecordPayment}
                     isPending={recordPayment.isPending}
-                    submitDisabled={!payAmount || !selectedAccountId}
+                    submitDisabled={!payAmount || !selectedAccountId || overpayBlocked}
+                    notice={payNotice}
                   />
                 )}
               </div>

@@ -45,6 +45,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'invoices.delete_draft',    domain: 'invoices', description: 'Supprimer un brouillon jamais visé',                             roles: FRONT_DESK },
   { key: 'invoices.record_payment',  domain: 'invoices', description: 'Enregistrer un paiement',                                         roles: FRONT_DESK },
   { key: 'invoices.void_payment',    domain: 'invoices', description: 'Annuler un paiement',                                             roles: ADMIN_MANAGER },
+  { key: 'invoices.overpay',         domain: 'invoices', description: 'Enregistrer un paiement supérieur au reste dû (trop-perçu)',       roles: ADMIN_MANAGER },
 
   // ── guests ──
   { key: 'guests.view',        domain: 'guests', description: 'Consulter les clients',                                                   roles: ALL_STAFF },
