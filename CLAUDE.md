@@ -283,6 +283,25 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 
 ---
 
+## Tests (serveur)
+
+Vitest + Supertest contre un **vrai Postgres** : une base simulée ne prouverait ni le verrou anti double booking ni les transactions.
+
+```bash
+cd server
+cp .env.test.example .env.test   # une fois : TEST_DATABASE_URL vers une base locale *_test
+npm test                          # ou `make test`
+npm run test:typecheck
+```
+
+- La base de test est **supprimée et recréée** à chaque lancement (`tests/globalSetup.ts` : `migrate deploy` + seeds de référence rôles/permissions/plan comptable). `vitest.config.ts` refuse de démarrer si la base ne finit pas par `_test`, et ne lit jamais `server/.env` pour la base, qui peut pointer vers une base distante.
+- `tests/helpers/db.ts` (`resetDb`, appelé en `beforeEach`) vide les tables métier et garde les tables de référence. `tests/helpers/factories.ts` crée staff + jeton JWT, clients, chambres, et insère des réservations ou factures directement dans un état donné.
+- Les tests importent `app` depuis `src/app.ts` (Express sans `listen` ni scheduler) ; `src/server.ts` ne fait que démarrer.
+- CI : `.github/workflows/server-tests.yml` lance tsc et les tests sur chaque PR vers `develop`/`preprod`/`main`.
+- Pour toute nouvelle règle métier, en particulier un chemin qui attribue une chambre, ajouter un test d'intégration. Un bug corrigé reçoit un test qui le reproduit.
+
+---
+
 ## Commandes de lint/typage
 
 ```bash

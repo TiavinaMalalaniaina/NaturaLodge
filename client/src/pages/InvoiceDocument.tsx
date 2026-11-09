@@ -76,8 +76,7 @@ export const InvoiceDocument: React.FC = () => {
     && invoice.status !== 'paid' && invoice.status !== 'cancelled'
     && (!isRefundDoc || remaining > 0);
 
-  const accountsForMethod = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
-  const availableAccounts = accountsForMethod.length > 0 ? accountsForMethod : (cashAccounts ?? []);
+  const availableAccounts = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
   const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
 
   const handleValidate = () => {

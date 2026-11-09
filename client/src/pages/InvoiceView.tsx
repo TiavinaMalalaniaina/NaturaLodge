@@ -80,11 +80,9 @@ export const InvoiceView: React.FC = () => {
     setItemPrice('');
   };
 
-  // Filtre le sélecteur de compte selon la méthode choisie (ex: Mvola -> seul le compte Mvola) —
-  // repli sur tous les comptes si aucun n'est associé à cette méthode (ex: carte/virement, pas
-  // encore de banque configurée) pour ne jamais bloquer l'enregistrement d'un paiement.
-  const accountsForMethod = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
-  const availableAccounts = accountsForMethod.length > 0 ? accountsForMethod : (cashAccounts ?? []);
+  // Seuls les comptes associés à la méthode choisie (ex: Mvola -> compte Mvola) : le serveur refuse
+  // tout autre compte (invoice.service.ts: assertPaymentAccount). Aucun compte = paiement impossible.
+  const availableAccounts = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
   const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
 
   const handleGenerate = () => {
