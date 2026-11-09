@@ -157,10 +157,7 @@ export const Payments: React.FC = () => {
                   <p className="text-[10px] text-on-surface-variant/50 mt-0.5 truncate">
                     {t(`invoice.method_${p.method}`)} · {formatDate(p.paidAt)} · {p.processedBy.name}
                     {p.reference && (
-                      <>
-                        {" · #"}
-                        {p.reference}
-                      </>
+                      <>{t('payments.referenceSuffix', { reference: p.reference })}</>
                     )}
                   </p>
                 </div>

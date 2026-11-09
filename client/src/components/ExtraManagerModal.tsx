@@ -176,7 +176,7 @@ export const ExtraManagerModal: React.FC<ExtraManagerModalProps> = ({ isOpen, on
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2 block">{t('extras.price')}</label>
-                  <input type="number" min={1} placeholder="ex. 15000" {...register('price', { valueAsNumber: true })}
+                  <input type="number" min={1} placeholder={t('extras.pricePlaceholder')} {...register('price', { valueAsNumber: true })}
                     className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" />
                   {errors.price && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.price.message}</p>}
                 </div>

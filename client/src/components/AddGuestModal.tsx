@@ -107,14 +107,13 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                 <div className="p-6 bg-white/10 rounded-2xl border border-white/10">
                   <Star className="w-6 h-6 text-white mb-4" />
                   <p className="text-xs font-light leading-relaxed">
-                    Profiles at Natura Lodge are more than data; they are records of preference and comfort.
-                    Precision ensures we anticipate needs before they are voiced.
+                    {t('addGuest.intro')}
                   </p>
                 </div>
               </div>
               <div className="mt-auto pt-10 flex items-center gap-2 opacity-50">
                 <Shield className="w-3.5 h-3.5" />
-                <span className="text-[8px] font-bold uppercase tracking-widest">Encrypted & Private</span>
+                <span className="text-[8px] font-bold uppercase tracking-widest">{t('addGuest.confidential')}</span>
               </div>
             </div>
 
@@ -140,7 +139,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.fullName')}</label>
                   <div className="relative">
                     <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                    <input type="text" placeholder="e.g. Leonardo Hamilton" value={name}
+                    <input type="text" placeholder={t('addGuest.namePlaceholder')} value={name}
                       onChange={e => setName(e.target.value)} required
                       className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                     />
@@ -155,7 +154,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                      <input type="email" placeholder="guest@example.com" value={email}
+                      <input type="email" placeholder={t('addGuest.emailPlaceholder')} value={email}
                         onChange={e => setEmail(e.target.value)}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                       />
@@ -165,7 +164,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.phone')}</label>
                     <div className="relative">
                       <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                      <input type="tel" placeholder="+44 ..." value={phone}
+                      <input type="tel" placeholder={t('addGuest.phonePlaceholder')} value={phone}
                         onChange={e => setPhone(e.target.value)}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                       />
@@ -179,7 +178,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.city')}</label>
                     <div className="relative">
                       <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40" />
-                      <input type="text" placeholder="London" value={city}
+                      <input type="text" placeholder={t('addGuest.cityPlaceholder')} value={city}
                         onChange={e => setCity(e.target.value)}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                       />
@@ -187,7 +186,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('guests.country')}</label>
-                    <input type="text" placeholder="France" value={country}
+                    <input type="text" placeholder={t('addGuest.countryPlaceholder')} value={country}
                       onChange={e => setCountry(e.target.value)}
                       className="w-full h-14 px-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                     />
@@ -217,7 +216,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">
                     {t('guests.preferences')} <span className="opacity-40 normal-case font-normal tracking-normal">{t('guests.preferencesSeparated')}</span>
                   </label>
-                  <input type="text" placeholder="High floors, Feather-free pillows, Organic Spa"
+                  <input type="text" placeholder={t('addGuest.preferencesPlaceholder')}
                     value={preferences} onChange={e => setPreferences(e.target.value)}
                     className="w-full h-14 px-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-sans text-sm transition-all"
                   />

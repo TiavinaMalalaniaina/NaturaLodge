@@ -216,7 +216,7 @@ export const WebsiteRequests: React.FC = () => {
         {row.proofs.length > 0 && <div className={cn('rounded-xl border p-3', row.status === 'AWAITING_PAYMENT' ? 'border-emerald-200 bg-emerald-50/60' : 'border-stone-200 bg-stone-50')}>
           <p className={cn(label, 'mb-2 flex items-center gap-1.5')}><Paperclip className="h-3.5 w-3.5" />{t('websiteRequests.proofsTitle', { count: row.proofs.length })}</p>
           <ul className="space-y-2">{row.proofs.map(proof => <li key={proof.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="min-w-0"><span className="break-all font-semibold">{proof.fileName}</span> <span className="text-xs text-on-surface-variant">· {Math.max(1, Math.round(proof.size / 1024))} Ko · {formatDateTime(proof.createdAt)}</span>{proof.note && <span className="block text-xs text-on-surface-variant">« {proof.note} »</span>}</span>
+            <span className="min-w-0"><span className="break-all font-semibold">{proof.fileName}</span> <span className="text-xs text-on-surface-variant">{t('websiteRequests.proofMeta', { size: Math.max(1, Math.round(proof.size / 1024)), date: formatDateTime(proof.createdAt) })}</span>{proof.note && <span className="block text-xs text-on-surface-variant">« {proof.note} »</span>}</span>
             <button type="button" className={secondary} onClick={() => { void openProof(row.id, proof); }}><ExternalLink className="h-4 w-4" />{t('websiteRequests.proofOpen')}</button>
           </li>)}</ul>
           {row.status === 'AWAITING_PAYMENT' && <p className="mt-2 text-xs text-on-surface-variant">{t('websiteRequests.proofHelp')}</p>}

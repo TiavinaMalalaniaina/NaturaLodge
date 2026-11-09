@@ -18,7 +18,6 @@ const Rooms          = lazy(() => import('./pages/Rooms').then(m => ({ default: 
 const RoomTypes       = lazy(() => import('./pages/RoomTypes').then(m => ({ default: m.RoomTypes })));
 const RoomDetail      = lazy(() => import('./pages/RoomDetail').then(m => ({ default: m.RoomDetail })));
 const BookingDetail   = lazy(() => import('./pages/BookingDetail').then(m => ({ default: m.BookingDetail })));
-const Amenities       = lazy(() => import('./pages/Amenities').then(m => ({ default: m.Amenities })));
 const Staff          = lazy(() => import('./pages/Staff').then(m => ({ default: m.Staff })));
 const Invoices        = lazy(() => import('./pages/Invoices').then(m => ({ default: m.Invoices })));
 const Payments        = lazy(() => import('./pages/Payments').then(m => ({ default: m.Payments })));
@@ -63,7 +62,6 @@ const App: React.FC = () => {
                   <Route path="rooms/:id" element={<RoomDetail />} />
                   <Route path="guests" element={<Guests />} />
                   <Route path="guests/:id" element={<GuestProfile />} />
-                  <Route path="amenities" element={<Amenities />} />
                   <Route path="invoices" element={<Invoices />} />
                   <Route path="payments" element={<Payments />} />
                   <Route path="invoices/:bookingId" element={<InvoiceView />} />

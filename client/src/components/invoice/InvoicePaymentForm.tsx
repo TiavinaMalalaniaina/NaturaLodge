@@ -5,6 +5,8 @@ import { cn } from '../../lib/utils';
 
 interface CashAccount { id: string; name: string }
 
+const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mvola', 'orange_money'];
+
 interface Props {
   amount: string;
   onAmountChange: (v: string) => void;
@@ -53,7 +55,7 @@ export const InvoicePaymentForm: React.FC<Props> = ({
           onChange={e => onMethodChange(e.target.value as PaymentMethod)}
           className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
         >
-          {(['cash', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
+          {PAYMENT_METHODS.map(m => (
             <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
           ))}
         </select>

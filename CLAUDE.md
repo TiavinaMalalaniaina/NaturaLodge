@@ -141,7 +141,6 @@ InvoiceView.tsx      # Affichage + génération + paiements de facture (page) �
 Staff.tsx
 Settings.tsx
 Login.tsx
-Amenities.tsx
 ```
 
 Convention : les flux « création / consultation d'un document complet » (nouvelle réservation, facture) sont des **pages dédiées**, pas des modals — plus d'espace, impression propre (`InvoiceView.tsx` a son propre CSS `@media print` + classe `.no-print` sur le shell `AppLayout`), navigation cohérente avec le reste de l'app. Réservé aux dialogues d'action courte (confirmation, formulaire rapide).
@@ -306,8 +305,9 @@ npm run test:typecheck
 ## Commandes de lint/typage
 
 ```bash
-# Vérification TypeScript client
-cd client && npx tsc --noEmit
+# Vérification client (aussi exécutée par la CI : .github/workflows/client-checks.yml)
+cd client && npm run typecheck   # tsc --noEmit
+cd client && npm run lint        # ESLint, dont i18next/no-literal-string : aucun texte UI en dur
 
 # Vérification TypeScript serveur
 cd server && npx tsc --noEmit

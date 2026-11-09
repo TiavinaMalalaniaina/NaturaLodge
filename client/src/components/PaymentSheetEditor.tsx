@@ -11,6 +11,7 @@ import { cn } from '../lib/utils';
 const input = 'block w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 read-only:bg-stone-50';
 const small = 'text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50';
 const SAMPLE = { depositAmount: 280000, reference: 'NL-7K3F9Q' };
+const PREVIEW_LANGS: InstructionsLang[] = ['fr', 'en'];
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 const toSheet = (view: PaymentSheetView): PaymentSheet => ({ methods: view.methods, whatsapp: view.whatsapp, noteFr: view.noteFr, noteEn: view.noteEn });
 
@@ -44,9 +45,9 @@ export const PaymentSheetEditor: React.FC<{ sheet: PaymentSheetView; canEdit: bo
           <p className={small}>{t('websiteRequests.sheetMethods')}</p>
           {!draft.methods.length && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{t('websiteRequests.sheetEmpty')}</p>}
           {draft.methods.map(method => <div key={method.id} className="grid gap-2 rounded-xl border border-stone-200 p-3 sm:grid-cols-[1fr_1.4fr_1.4fr_auto]">
-            <label className="text-xs text-on-surface-variant">{t('websiteRequests.sheetLabel')}<input className={input} value={method.label} readOnly={!canEdit} maxLength={40} placeholder="MVola" onChange={e => editMethod(method.id, { label: e.target.value })} /></label>
-            <label className="text-xs text-on-surface-variant">{t('websiteRequests.sheetAccount')}<input className={input} value={method.account} readOnly={!canEdit} maxLength={120} placeholder="034 12 345 67" onChange={e => editMethod(method.id, { account: e.target.value })} /></label>
-            <label className="text-xs text-on-surface-variant">{t('websiteRequests.sheetHolder')}<input className={input} value={method.holder} readOnly={!canEdit} maxLength={80} placeholder="Natura Lodge" onChange={e => editMethod(method.id, { holder: e.target.value })} /></label>
+            <label className="text-xs text-on-surface-variant">{t('websiteRequests.sheetLabel')}<input className={input} value={method.label} readOnly={!canEdit} maxLength={40} placeholder={t('websiteRequests.sheetLabelPlaceholder')} onChange={e => editMethod(method.id, { label: e.target.value })} /></label>
+            <label className="text-xs text-on-surface-variant">{t('websiteRequests.sheetAccount')}<input className={input} value={method.account} readOnly={!canEdit} maxLength={120} placeholder={t('websiteRequests.sheetAccountPlaceholder')} onChange={e => editMethod(method.id, { account: e.target.value })} /></label>
+            <label className="text-xs text-on-surface-variant">{t('websiteRequests.sheetHolder')}<input className={input} value={method.holder} readOnly={!canEdit} maxLength={80} placeholder={t('websiteRequests.sheetHolderPlaceholder')} onChange={e => editMethod(method.id, { holder: e.target.value })} /></label>
             {canEdit && <button type="button" onClick={() => edit({ methods: draft.methods.filter(m => m.id !== method.id) })} aria-label={t('websiteRequests.sheetRemove')} title={t('websiteRequests.sheetRemove')}
               className="self-end rounded-xl border border-stone-200 p-2 text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>}
             <label className="flex items-center gap-2 text-xs text-on-surface-variant sm:col-span-4">
@@ -56,7 +57,7 @@ export const PaymentSheetEditor: React.FC<{ sheet: PaymentSheetView; canEdit: bo
           {canEdit && draft.methods.length < 8 && <button type="button" onClick={() => edit({ methods: [...draft.methods, { id: newId(), label: '', account: '', holder: '', defaultSelected: true }] })}
             className="inline-flex items-center gap-2 rounded-xl border border-dashed border-stone-300 px-4 py-2 text-sm text-on-surface-variant hover:border-primary/40 hover:text-primary"><Plus className="h-4 w-4" />{t('websiteRequests.sheetAdd')}</button>}
         </div>
-        <label className="block max-w-xs text-xs text-on-surface-variant">{t('websiteRequests.sheetWhatsapp')}<input className={input} value={draft.whatsapp} readOnly={!canEdit} maxLength={30} placeholder="+261 32 37 634 99" onChange={e => edit({ whatsapp: e.target.value })} /></label>
+        <label className="block max-w-xs text-xs text-on-surface-variant">{t('websiteRequests.sheetWhatsapp')}<input className={input} value={draft.whatsapp} readOnly={!canEdit} maxLength={30} placeholder={t('websiteRequests.sheetWhatsappPlaceholder')} onChange={e => edit({ whatsapp: e.target.value })} /></label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-xs text-on-surface-variant">{t('websiteRequests.sheetNoteFr')}<textarea className={input} rows={3} value={draft.noteFr} readOnly={!canEdit} maxLength={500} onChange={e => edit({ noteFr: e.target.value })} /></label>
           <label className="block text-xs text-on-surface-variant">{t('websiteRequests.sheetNoteEn')}<textarea className={input} rows={3} value={draft.noteEn} readOnly={!canEdit} maxLength={500} onChange={e => edit({ noteEn: e.target.value })} /></label>
@@ -67,7 +68,7 @@ export const PaymentSheetEditor: React.FC<{ sheet: PaymentSheetView; canEdit: bo
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className={small}>{t('websiteRequests.sheetPreview')}</p>
           <div className="flex gap-1 rounded-lg border border-stone-200 p-0.5">
-            {(['fr', 'en'] as InstructionsLang[]).map(lang => <button key={lang} type="button" onClick={() => setPreview(lang)}
+            {PREVIEW_LANGS.map(lang => <button key={lang} type="button" onClick={() => setPreview(lang)}
               className={cn('rounded-md px-2 py-0.5 text-[10px] font-bold uppercase', preview === lang ? 'bg-primary text-white' : 'text-on-surface-variant hover:bg-stone-100')}>{lang}</button>)}
           </div>
         </div>

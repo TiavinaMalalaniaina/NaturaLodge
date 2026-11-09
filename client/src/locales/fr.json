@@ -29,7 +29,8 @@
     "unreadAlerts": "{{count}} alerte(s) non lue(s)",
     "markAllRead": "Tout marquer comme lu",
     "quietDay": "Aucune notification.",
-    "clearAllLogs": "Tout effacer"
+    "clearAllLogs": "Tout effacer",
+    "profile": "Profil"
   },
   "envBanner": {
     "preprod": "Préprod — données de test",
@@ -109,7 +110,8 @@
     "forgotPassword": "Oublié ?",
     "orAccessVia": "OU ACCÉDER VIA",
     "usernamePlaceholder": "e.g. john.doe",
-    "passwordPlaceholder": "Votre mot de passe sécurisé"
+    "passwordPlaceholder": "Votre mot de passe sécurisé",
+    "demoCredentials": "Compte de démonstration — identifiant : admin\nMot de passe : Admin@1234"
   },
   "resetPassword": {
     "title": "Nouveau mot de passe",
@@ -123,7 +125,8 @@
     "invalidTokenMessage": "Le token de réinitialisation est invalide ou a expiré.",
     "successTitle": "Mot de passe mis à jour !",
     "successMessage": "Redirection en cours vers la page de connexion...",
-    "saveButton": "Enregistrer le mot de passe"
+    "saveButton": "Enregistrer le mot de passe",
+    "newPasswordPlaceholder": "8 caractères minimum"
   },
   "dashboard": {
     "title": "Vue d'ensemble",
@@ -373,7 +376,8 @@
     "deactivateError": "Erreur lors de la désactivation.",
     "reactivateError": "Erreur lors de la réactivation.",
     "createError": "Erreur lors de la création.",
-    "updateError": "Erreur lors de la modification."
+    "updateError": "Erreur lors de la modification.",
+    "pricePlaceholder": "ex. 15000"
   },
   "accounts": {
     "title": "Comptes",
@@ -405,7 +409,8 @@
     "deactivateError": "Erreur lors de la désactivation.",
     "reactivateError": "Erreur lors de la réactivation.",
     "createError": "Erreur lors de la création.",
-    "updateError": "Erreur lors de la modification."
+    "updateError": "Erreur lors de la modification.",
+    "codePlaceholder": "ex. 512600"
   },
   "invoice": {
     "title": "Facture",
@@ -506,7 +511,8 @@
     "discountValuePercent": "Pourcentage (%)",
     "discountValueFixed": "Montant",
     "discountHint": "Un pourcentage suit automatiquement le montant de la facture ; un montant fixe reste inchangé. La TVA n'est pas recalculée.",
-    "discountBadge": "Remise"
+    "discountBadge": "Remise",
+    "logoAlt": "Logo {{brand}}"
   },
   "invoices": {
     "title": "Factures",
@@ -523,7 +529,8 @@
     "status_completed": "Encaissé",
     "status_pending": "Non payée",
     "status_failed": "Échoué",
-    "status_refunded": "Remboursé"
+    "status_refunded": "Remboursé",
+    "referenceSuffix": " · #{{reference}}"
   },
   "expenses": {
     "title": "Dépenses",
@@ -808,7 +815,12 @@
     "next_PROOF": "À faire : vérifier la preuve et enregistrer l’acompte",
     "searchName": "Rechercher par nom ou référence",
     "clearSearch": "Effacer la recherche",
-    "noMatch": "Aucune demande pour « {{search}} » avec ce filtre."
+    "noMatch": "Aucune demande pour « {{search}} » avec ce filtre.",
+    "sheetLabelPlaceholder": "ex. MVola",
+    "sheetAccountPlaceholder": "ex. 034 12 345 67",
+    "sheetHolderPlaceholder": "ex. Natura Lodge",
+    "sheetWhatsappPlaceholder": "ex. +261 32 37 634 99",
+    "proofMeta": "· {{size}} Ko · {{date}}"
   },
   "websiteEvents": {
     "REQUEST_RECEIVED": "Nouvelle demande du site",
@@ -829,5 +841,112 @@
     "error_permission-denied": "Autorisation refusée par le navigateur.",
     "error_generic": "Activation impossible. Réessayez.",
     "devMode": "Notifications push indisponibles en mode développement : lancez la version de production (npm run build puis npm run preview)."
+  },
+  "reassign": {
+    "current": "Actuelle",
+    "new": "Nouvelle",
+    "newUnit": "Nouvelle chambre",
+    "selectUnit": "Choisir une chambre",
+    "comparison": "Comparaison",
+    "changeSelection": "← Changer de sélection",
+    "summary": "Récapitulatif",
+    "unit": "Chambre",
+    "dates": "Dates",
+    "nights": "Nuits",
+    "nightsShort": "{{count}} n",
+    "rate": "Tarif / nuit",
+    "area": "Surface",
+    "areaValue": "{{count}} m²",
+    "capacity": "Capacité",
+    "capacityValue": "{{count}} pers.",
+    "view": "Vue",
+    "bedding": "Literie",
+    "totalIncrease": "Hausse du total de {{amount}}",
+    "totalDecrease": "Baisse du total de {{amount}}",
+    "noChanges": "Aucun changement pour l’instant",
+    "confirm": "Confirmer la réassignation"
+  },
+  "addStaff": {
+    "title": "Nouveau membre",
+    "subtitle": "Contrôle des accès du personnel",
+    "securityTitle": "Sécurité",
+    "securityText": "Attribuez les rôles avec soin : chaque rôle détermine précisément ce que le membre peut consulter et modifier.",
+    "identification": "Identification du membre",
+    "fullName": "Nom complet",
+    "fullNamePlaceholder": "ex. Rasoa Rakoto",
+    "usernamePlaceholder": "ex. rasoa",
+    "email": "Adresse e-mail professionnelle",
+    "emailPlaceholder": "ex. rasoa@naturalodge.mg",
+    "tempPassword": "Mot de passe provisoire",
+    "passwordPlaceholder": "8 caractères minimum",
+    "confirmPlaceholder": "Saisir à nouveau le mot de passe",
+    "role": "Rôle",
+    "submit": "Créer le membre"
+  },
+  "addRoom": {
+    "existingTypes": "Types existants ({{count}})",
+    "typeSummary": "{{capacity}} pers. · {{rate}}/n",
+    "roomCount_one": "{{count}} chambre",
+    "roomCount_other": "{{count}} chambres",
+    "newType": "Nouveau type",
+    "newTypeTitle": "Nouveau type de chambre",
+    "pickExisting": "← Choisir un type existant",
+    "typeNamePlaceholder": "ex. Natura Suite",
+    "ratePlaceholder": "ex. 1 500 000",
+    "surfaceLabel": "{{label}} (m²)",
+    "nextStep": "Suivant — Numéro de chambre",
+    "perNight": "{{rate}}/n",
+    "numberPlaceholder": "ex. 402",
+    "rateOverride": "Tarif spécifique (MGA)"
+  },
+  "features": {
+    "title": "Équipements des chambres",
+    "subtitle": "Catalogue des équipements",
+    "id": "ID : {{id}}",
+    "label": "Nom de l’équipement",
+    "labelPlaceholder": "ex. Minibar",
+    "icon": "Icône",
+    "add": "Nouvel équipement",
+    "manageHint": "Les modifications s’appliquent à toutes les chambres qui proposent cet équipement.",
+    "readOnlyHint": "Catalogue en lecture seule : votre rôle ne permet pas de le modifier."
+  },
+  "calendar": {
+    "today": "Aujourd’hui",
+    "arrivals": "Arrivées ({{count}})",
+    "departures": "Départs ({{count}})",
+    "inHouse": "En séjour ({{count}})",
+    "noActivity": "Aucune activité",
+    "miniCard": "{{rooms}} · {{nights}} n"
+  },
+  "addGuest": {
+    "intro": "Un profil client bien renseigné permet d’anticiper ses préférences et d’améliorer chaque séjour.",
+    "confidential": "Données confidentielles",
+    "namePlaceholder": "ex. Rasoa Rakoto",
+    "emailPlaceholder": "client@exemple.com",
+    "phonePlaceholder": "+261 34 ...",
+    "cityPlaceholder": "Antananarivo",
+    "countryPlaceholder": "Madagascar",
+    "preferencesPlaceholder": "Étage élevé, oreillers sans plumes…"
+  },
+  "editRoom": {
+    "sharedType": "Type partagé — {{type}}",
+    "sharedTypeHint": "Les propriétés du type (tarif de base, surface, literie…) s’appliquent à toutes les chambres du même type. Pour les modifier, utilisez le gestionnaire de types.",
+    "baseRate": "{{rate}}/n (base)",
+    "basePlaceholder": "Base : {{rate}}",
+    "overrideHint": "→ {{rate}}/n sur cette chambre uniquement"
+  },
+  "activityFeed": {
+    "title": "Activité récente",
+    "live": "En direct",
+    "empty": "Aucune activité récente.",
+    "clear": "Effacer l’alerte",
+    "new": "Nouveau"
+  },
+  "layout": {
+    "footer": "{{brand}} — Gestion hôtelière"
+  },
+  "roomImage": {
+    "previewAlt": "Aperçu",
+    "urlPlaceholder": "https://…"
   }
 }

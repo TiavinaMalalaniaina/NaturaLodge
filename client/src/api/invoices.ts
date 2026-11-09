@@ -430,7 +430,8 @@ type CancelInvoiceResponse =
 // brouillon (`refundRatePercent` en pourcentage rendu au client, défaut serveur si omis).
 export const cancelInvoice = async (id: string, refundRatePercent?: number): Promise<CancelInvoiceResult> => {
   const { data } = await api.post<CancelInvoiceResponse>(`/invoices/${id}/cancel`, refundRatePercent !== undefined ? { refundRatePercent } : {});
-  return data.deleted ? { deleted: true } : { deleted: false, creditNote: normalizeInvoice(data.creditNote) };
+  if (data.deleted === true) return { deleted: true };
+  return { deleted: false, creditNote: normalizeInvoice(data.creditNote) };
 };
 
 export interface InvoiceItemPayload {
