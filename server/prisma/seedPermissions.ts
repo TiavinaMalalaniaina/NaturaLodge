@@ -68,6 +68,9 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'bookings.add_note',      domain: 'bookings', description: 'Ajouter une note à une réservation',                                roles: FRONT_DESK },
   { key: 'bookings.delete_note',   domain: 'bookings', description: 'Supprimer une note de réservation',                                 roles: ADMIN_MANAGER },
 
+  // ── website requests ──
+  { key: 'websiteRequests.view',   domain: 'websiteRequests', description: 'Consulter les demandes du site (coordonnées clients, preuves de paiement) et en recevoir les notifications', roles: FRONT_DESK },
+
   // ── staff ── (déjà restreint ADMIN/MANAGER aujourd'hui, HOUSEKEEPING n'y gagne pas d'accès en lecture)
   { key: 'staff.view',             domain: 'staff', description: 'Consulter l\'annuaire du personnel',                                   roles: ADMIN_MANAGER },
   { key: 'staff.create',           domain: 'staff', description: 'Créer un compte staff',                                                roles: ADMIN_ONLY },
