@@ -92,36 +92,40 @@ websiteRequestsRouter.use(authenticate, asyncHandler(async (req: AuthRequest, _r
   req.user!.role = user.role.name;
   next();
 }));
-websiteRequestsRouter.get('/pending-count', can('bookings.view'), asyncHandler(async (_req, res) => {
+// Hors garde de permission : un appareil doit toujours pouvoir se désabonner (déconnexion, rôle retiré).
+websiteRequestsRouter.post('/push/unsubscribe', asyncHandler(async (req: AuthRequest, res) => {
+  await push.unsubscribe(req.user!.id, z.object({ endpoint: z.string().max(1000) }).parse(req.body).endpoint);
+  res.status(204).end();
+}));
+// Demandes du site = données personnelles des clients (emails, preuves de paiement) : toute la suite
+// exige websiteRequests.view, en plus de la permission d'action propre à chaque route d'écriture.
+websiteRequestsRouter.use(can('websiteRequests.view'));
+websiteRequestsRouter.get('/pending-count', asyncHandler(async (_req, res) => {
   res.json(await service.pendingCount());
 }));
-websiteRequestsRouter.get('/', can('bookings.view'), asyncHandler(async (req, res) => {
+websiteRequestsRouter.get('/', asyncHandler(async (req, res) => {
   const query = z.object({ status: z.enum(['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'REJECTED', 'EXPIRED', 'CANCELLED']).optional(), page: z.coerce.number().int().min(1).default(1), search: z.string().trim().max(80).optional() }).parse(req.query);
   res.json(await service.list(query.status, query.page, query.search));
 }));
 // Push notifications for staff devices (works with the admin closed, via the PWA service worker).
 const pushSubscriptionSchema = z.object({ endpoint: z.string().url().max(1000).refine(url => url.startsWith('https://'), 'Endpoint push invalide'), keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }) });
-websiteRequestsRouter.get('/push/public-key', can('bookings.view'), (_req, res) => { res.json(push.pushPublicKey()); });
-websiteRequestsRouter.post('/push/subscribe', can('bookings.view'), asyncHandler(async (req: AuthRequest, res) => {
+websiteRequestsRouter.get('/push/public-key', (_req, res) => { res.json(push.pushPublicKey()); });
+websiteRequestsRouter.post('/push/subscribe', asyncHandler(async (req: AuthRequest, res) => {
   await push.subscribe(req.user!.id, pushSubscriptionSchema.parse(req.body), String(req.headers['user-agent'] ?? ''));
   res.status(204).end();
 }));
-websiteRequestsRouter.post('/push/unsubscribe', asyncHandler(async (req: AuthRequest, res) => {
-  await push.unsubscribe(req.user!.id, z.object({ endpoint: z.string().max(1000) }).parse(req.body).endpoint);
-  res.status(204).end();
-}));
-websiteRequestsRouter.get('/events', can('bookings.view'), asyncHandler(async (req, res) => {
+websiteRequestsRouter.get('/events', asyncHandler(async (req, res) => {
   const { after } = z.object({ after: z.coerce.date().optional() }).parse(req.query);
   res.json(await events.eventsSince(after));
 }));
-websiteRequestsRouter.get('/payment-sheet', can('bookings.view'), asyncHandler(async (_req, res) => {
+websiteRequestsRouter.get('/payment-sheet', asyncHandler(async (_req, res) => {
   res.json(await settings.paymentSheet());
 }));
 // Same rights as accepting a request: whoever sends the instructions maintains the payment details.
 websiteRequestsRouter.put('/payment-sheet', can('bookings.create'), can('bookings.update_status'), asyncHandler(async (req: AuthRequest, res) => {
   res.json(await settings.savePaymentSheet(paymentSheetSchema.parse(req.body), req.user!.id));
 }));
-websiteRequestsRouter.get('/:id/proofs/:proofId', can('bookings.view'), asyncHandler(async (req, res) => {
+websiteRequestsRouter.get('/:id/proofs/:proofId', asyncHandler(async (req, res) => {
   const proof = await proofs.download(req.params.id, req.params.proofId);
   // Type was checked against the file signature at upload; sandbox + nosniff keep any file inert.
   res.setHeader('Content-Type', proof.mimeType);
@@ -131,7 +135,7 @@ websiteRequestsRouter.get('/:id/proofs/:proofId', can('bookings.view'), asyncHan
   res.setHeader('Cache-Control', 'private, no-store');
   res.send(Buffer.from(proof.data));
 }));
-websiteRequestsRouter.get('/:id/rooms', can('bookings.view'), asyncHandler(async (req, res) => {
+websiteRequestsRouter.get('/:id/rooms', asyncHandler(async (req, res) => {
   res.json(await service.roomOptions(req.params.id));
 }));
 websiteRequestsRouter.post('/:id/approve', can('bookings.create'), can('bookings.update_status'), asyncHandler(async (req: AuthRequest, res) => {

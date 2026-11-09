@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, TopBar } from './Navigation';
 import { motion } from 'motion/react';
 import { WebsiteEventsWatcher } from './WebsiteEventsWatcher';
+import { BRAND_NAME } from '../lib/brand';
 
 export const AppLayout: React.FC = () => {
+  const { t } = useTranslation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
@@ -29,7 +32,7 @@ export const AppLayout: React.FC = () => {
           </motion.div>
         </main>
         <footer className="no-print px-10 py-8 text-center border-t border-stone-200 mt-auto font-sans text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.4em]">
-          Natura Lodge Systems • Version 2.0.0 • Built with Organic Precision
+          {t('layout.footer', { brand: BRAND_NAME })}
         </footer>
       </div>
     </div>

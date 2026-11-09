@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { APP_ENV } from '../lib/appEnv';
 import { PageLoader } from '../components/QueryLoader';
 
 const ROUTES = {
@@ -118,11 +119,11 @@ export const LoginPage: React.FC = () => {
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
 
-          <p className="text-xs text-on-surface-variant/60 text-center">
-            Identifiant de test administrateur : admin
-            <br />
-            Mot de passe de test : Admin@1234
-          </p>
+          {APP_ENV !== 'production' && (
+            <p className="text-xs text-on-surface-variant/60 text-center whitespace-pre-line">
+              {t('auth.demoCredentials')}
+            </p>
+          )}
         </form>
       </motion.div>
     </motion.main>

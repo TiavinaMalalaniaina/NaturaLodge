@@ -6,6 +6,8 @@ import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
+  // L'app installée (PWA) de préprod doit se distinguer de celle de prod sur l'écran d'accueil.
+  const isPreprod = env.VITE_APP_ENV === 'preprod';
   return {
     plugins: [
       react(),
@@ -14,10 +16,10 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'pwa-source.svg'],
         manifest: {
-          name: 'Natura Lodge',
-          short_name: 'Natura Lodge',
+          name: isPreprod ? 'Natura Lodge PREPROD' : 'Natura Lodge',
+          short_name: isPreprod ? 'NL Preprod' : 'Natura Lodge',
           description: 'Système de gestion hôtelière Natura Lodge',
-          theme_color: '#00685d',
+          theme_color: isPreprod ? '#f59e0b' : '#00685d',
           background_color: '#F7F5F2',
           display: 'standalone',
           start_url: '/',

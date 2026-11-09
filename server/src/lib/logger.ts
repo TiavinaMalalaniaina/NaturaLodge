@@ -5,5 +5,7 @@ import pino from 'pino';
 // sur les chemins qui alimentent le monitoring (requêtes HTTP, erreurs, requêtes Prisma lentes).
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
+  // Preprod et prod partagent le même Loki : ce champ permet de filtrer par environnement dans Grafana.
+  base: { env: process.env.APP_ENV ?? 'development' },
   transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty' },
 });

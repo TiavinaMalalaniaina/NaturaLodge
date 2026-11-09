@@ -81,18 +81,17 @@ export const EditRoomModal: React.FC<EditRoomModalProps> = ({ isOpen, onClose, r
                 <Info className="w-4 h-4 text-on-surface-variant/40 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest mb-1">
-                    Type partagé — {room.type}
+                    {t('editRoom.sharedType', { type: room.type })}
                   </p>
                   <p className="text-[10px] text-on-surface-variant/40 leading-relaxed">
-                    Les propriétés du type (tarif de base, surface, literie…) s'appliquent à toutes les chambres du même type.
-                    Pour les modifier, utilisez le gestionnaire de types.
+                    {t('editRoom.sharedTypeHint')}
                   </p>
                   <div className="flex flex-wrap gap-3 mt-2 text-[10px] font-mono text-on-surface-variant/50">
-                    <span>{room.area}m²</span>
+                    <span>{t('reassign.areaValue', { count: room.area })}</span>
                     <span>{room.bedType}</span>
-                    <span>{room.capacity} pers.</span>
+                    <span>{t('reassign.capacityValue', { count: room.capacity })}</span>
                     <span>{room.view}</span>
-                    <span className="font-bold text-primary">{formatCurrency(room.rate)}/n (base)</span>
+                    <span className="font-bold text-primary">{t('editRoom.baseRate', { rate: formatCurrency(room.rate) })}</span>
                   </div>
                 </div>
               </div>
@@ -106,17 +105,17 @@ export const EditRoomModal: React.FC<EditRoomModalProps> = ({ isOpen, onClose, r
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">
-                      Tarif spécifique (MGA)
-                      <span className="normal-case font-normal opacity-40 ml-1">optionnel</span>
+                      {t('addRoom.rateOverride')}
+                      <span className="normal-case font-normal opacity-40 ml-1">{t('common.optional')}</span>
                     </label>
                     <input type="number" min={1}
-                      placeholder={`Base : ${room.rate.toLocaleString()}`}
+                      placeholder={t('editRoom.basePlaceholder', { rate: room.rate.toLocaleString() })}
                       value={rateOverride}
                       onChange={e => setRateOverride(e.target.value)}
                       className={field} />
                     {rateOverride && Number(rateOverride) !== room.rate && (
                       <p className="text-[9px] text-primary mt-1 font-mono">
-                        → {formatCurrency(Number(rateOverride))}/n sur cette chambre uniquement
+                        {t('editRoom.overrideHint', { rate: formatCurrency(Number(rateOverride)) })}
                       </p>
                     )}
                   </div>

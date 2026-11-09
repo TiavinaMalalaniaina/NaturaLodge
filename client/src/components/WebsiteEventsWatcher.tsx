@@ -26,7 +26,7 @@ export const WebsiteEventsWatcher: React.FC = () => {
 
   useQuery({
     queryKey: ['website-events'],
-    enabled: can('bookings.view'),
+    enabled: can('websiteRequests.view'),
     refetchInterval: 30000,
     refetchIntervalInBackground: true,
     queryFn: async () => {

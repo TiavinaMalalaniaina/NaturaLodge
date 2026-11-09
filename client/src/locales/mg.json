@@ -29,7 +29,12 @@
     "unreadAlerts": "{{count}} tsy namakina",
     "markAllRead": "Marihina ho namakina rehetra",
     "quietDay": "Tsy misy fampandrenesana.",
-    "clearAllLogs": "Esory avokoa"
+    "clearAllLogs": "Esory avokoa",
+    "profile": "Mombamomba"
+  },
+  "envBanner": {
+    "preprod": "Préprod — angona fitsapana",
+    "development": "Fampandrosoana"
   },
   "common": {
     "add": "Manampy",
@@ -105,7 +110,8 @@
     "forgotPassword": "Adino?",
     "orAccessVia": "NA HIDITRA AMIN'NY",
     "usernamePlaceholder": "oh. john.doe",
-    "passwordPlaceholder": "Teny miafina azo antoka"
+    "passwordPlaceholder": "Teny miafina azo antoka",
+    "demoCredentials": "Kaonty fanandramana — anarana : admin\nTeny miafina : Admin@1234"
   },
   "resetPassword": {
     "title": "Teny miafina vaovao",
@@ -119,7 +125,8 @@
     "invalidTokenMessage": "Tsy manan-kery na efa lany daty ilay rohy famerenana teny miafina.",
     "successTitle": "Voakitika ny teny miafina !",
     "successMessage": "Mandeha any amin'ny pejy fidirana...",
-    "saveButton": "Tehirizo ny teny miafina"
+    "saveButton": "Tehirizo ny teny miafina",
+    "newPasswordPlaceholder": "Litera 8 farafahakeliny"
   },
   "dashboard": {
     "title": "Fijery ankapobeny",
@@ -369,7 +376,8 @@
     "deactivateError": "Nisy olana teo am-panaisorana tsy ho mavitrika.",
     "reactivateError": "Nisy olana teo am-pamerenana ho mavitrika.",
     "createError": "Nisy olana teo am-pamoronana.",
-    "updateError": "Nisy olana teo am-panovana."
+    "updateError": "Nisy olana teo am-panovana.",
+    "pricePlaceholder": "oh. 15000"
   },
   "accounts": {
     "title": "Kaonty",
@@ -401,7 +409,8 @@
     "deactivateError": "Nisy olana teo am-panaisorana tsy ho mavitrika.",
     "reactivateError": "Nisy olana teo am-pamerenana ho mavitrika.",
     "createError": "Nisy olana teo am-pamoronana.",
-    "updateError": "Nisy olana teo am-panovana."
+    "updateError": "Nisy olana teo am-panovana.",
+    "codePlaceholder": "oh. 512600"
   },
   "invoice": {
     "title": "Faktiora",
@@ -424,6 +433,8 @@
     "stayCheckOut": "Fivoahana",
     "remaining": "Sisa tsy naloa",
     "recordPayment": "Mandraikitra fandoavana",
+    "overpayBlocked": "Mihoatra ny ambiny tokony haloa ({{amount}}) ny vola.",
+    "overpayWarning": "Fandoavana mihoatra : {{amount}} mihoatra ny ambiny no ho tahiry ho an'ny mpanjifa.",
     "paymentHistory": "Tantaran'ny fandoavana",
     "noPayments": "Tsy misy fandoavana voarakitra",
     "recordRefund": "Mandraikitra famerenam-bola",
@@ -500,7 +511,8 @@
     "discountValuePercent": "Isan-jato (%)",
     "discountValueFixed": "Vola",
     "discountHint": "Ny isan-jato dia manaraka ho azy ny totalin'ny faktiora ; ny vola raikitra kosa tsy miova. Tsy averina kajiana ny hetra.",
-    "discountBadge": "Fihenam-bidy"
+    "discountBadge": "Fihenam-bidy",
+    "logoAlt": "Sary famantarana {{brand}}"
   },
   "invoices": {
     "title": "Faktiora",
@@ -517,7 +529,8 @@
     "status_completed": "Voaray",
     "status_pending": "Tsy naloa",
     "status_failed": "Tsy nety",
-    "status_refunded": "Naverina"
+    "status_refunded": "Naverina",
+    "referenceSuffix": " · #{{reference}}"
   },
   "expenses": {
     "title": "Fandaniana",
@@ -802,7 +815,12 @@
     "next_PROOF": "À faire : vérifier la preuve et enregistrer l’acompte",
     "searchName": "Rechercher par nom ou référence",
     "clearSearch": "Effacer la recherche",
-    "noMatch": "Aucune demande pour « {{search}} » avec ce filtre."
+    "noMatch": "Aucune demande pour « {{search}} » avec ce filtre.",
+    "sheetLabelPlaceholder": "oh. MVola",
+    "sheetAccountPlaceholder": "oh. 034 12 345 67",
+    "sheetHolderPlaceholder": "oh. Natura Lodge",
+    "sheetWhatsappPlaceholder": "oh. +261 32 37 634 99",
+    "proofMeta": "· {{size}} Ko · {{date}}"
   },
   "websiteEvents": {
     "REQUEST_RECEIVED": "Nouvelle demande du site",
@@ -823,5 +841,112 @@
     "error_permission-denied": "Autorisation refusée par le navigateur.",
     "error_generic": "Activation impossible. Réessayez.",
     "devMode": "Notifications push indisponibles en mode développement : lancez la version de production (npm run build puis npm run preview)."
+  },
+  "reassign": {
+    "current": "Ankehitriny",
+    "new": "Vaovao",
+    "newUnit": "Efitrano vaovao",
+    "selectUnit": "Mifidiana efitrano",
+    "comparison": "Fampitahana",
+    "changeSelection": "← Hanova safidy",
+    "summary": "Famintinana",
+    "unit": "Efitrano",
+    "dates": "Daty",
+    "nights": "Alina",
+    "nightsShort": "{{count}} al.",
+    "rate": "Sarany / alina",
+    "area": "Velarana",
+    "areaValue": "{{count}} m²",
+    "capacity": "Fahafahana mandray",
+    "capacityValue": "{{count}} olona",
+    "view": "Fijery",
+    "bedding": "Fandriana",
+    "totalIncrease": "Fiakaran'ny totaly {{amount}}",
+    "totalDecrease": "Fihenan'ny totaly {{amount}}",
+    "noChanges": "Tsy misy fiovana aloha",
+    "confirm": "Hamafiso ny fanovana efitrano"
+  },
+  "addStaff": {
+    "title": "Mpiasa vaovao",
+    "subtitle": "Fitantanana ny fidirana ho an'ny mpiasa",
+    "securityTitle": "Fiarovana",
+    "securityText": "Omeo am-pitandremana ny andraikitra : ny andraikitra tsirairay no mamaritra izay azon'ilay mpiasa jerena sy ovaina.",
+    "identification": "Mombamomba ilay mpiasa",
+    "fullName": "Anarana feno",
+    "fullNamePlaceholder": "oh. Rasoa Rakoto",
+    "usernamePlaceholder": "oh. rasoa",
+    "email": "Adiresy mailaka ho an'ny asa",
+    "emailPlaceholder": "oh. rasoa@naturalodge.mg",
+    "tempPassword": "Teny miafina vonjimaika",
+    "passwordPlaceholder": "Litera 8 farafahakeliny",
+    "confirmPlaceholder": "Avereno ny teny miafina",
+    "role": "Andraikitra",
+    "submit": "Hamorona ilay mpiasa"
+  },
+  "addRoom": {
+    "existingTypes": "Karazana efa misy ({{count}})",
+    "typeSummary": "{{capacity}} olona · {{rate}}/al.",
+    "roomCount_one": "Efitrano {{count}}",
+    "roomCount_other": "Efitrano {{count}}",
+    "newType": "Karazana vaovao",
+    "newTypeTitle": "Karazana efitrano vaovao",
+    "pickExisting": "← Hifidy karazana efa misy",
+    "typeNamePlaceholder": "oh. Natura Suite",
+    "ratePlaceholder": "oh. 1 500 000",
+    "surfaceLabel": "{{label}} (m²)",
+    "nextStep": "Manaraka — Laharan'ny efitrano",
+    "perNight": "{{rate}}/al.",
+    "numberPlaceholder": "oh. 402",
+    "rateOverride": "Sarany manokana (MGA)"
+  },
+  "features": {
+    "title": "Fitaovana ao amin'ny efitrano",
+    "subtitle": "Lisitry ny fitaovana",
+    "id": "ID : {{id}}",
+    "label": "Anaran'ny fitaovana",
+    "labelPlaceholder": "oh. Minibar",
+    "icon": "Sary famantarana",
+    "add": "Fitaovana vaovao",
+    "manageHint": "Mihatra amin'ireo efitrano rehetra manana io fitaovana io ny fanovana.",
+    "readOnlyHint": "Vakiana fotsiny ity lisitra ity : tsy mahazo manova azy ny andraikitrao."
+  },
+  "calendar": {
+    "today": "Androany",
+    "arrivals": "Fahatongavana ({{count}})",
+    "departures": "Fialana ({{count}})",
+    "inHouse": "Mipetraka ({{count}})",
+    "noActivity": "Tsy misy hetsika",
+    "miniCard": "{{rooms}} · {{nights}} al."
+  },
+  "addGuest": {
+    "intro": "Ny mombamomba feno ny vahiny dia manampy amin'ny fanomanana mialoha izay tiany sy manatsara ny fivahiniany.",
+    "confidential": "Angona tsiambaratelo",
+    "namePlaceholder": "oh. Rasoa Rakoto",
+    "emailPlaceholder": "vahiny@ohatra.com",
+    "phonePlaceholder": "+261 34 ...",
+    "cityPlaceholder": "Antananarivo",
+    "countryPlaceholder": "Madagasikara",
+    "preferencesPlaceholder": "Rihana ambony, ondana tsy misy volom-borona…"
+  },
+  "editRoom": {
+    "sharedType": "Karazana iombonana — {{type}}",
+    "sharedTypeHint": "Mihatra amin'ny efitrano rehetra mitovy karazana ny toetran'ny karazana (sarany fototra, velarana, fandriana…). Ampiasao ny mpitantana karazana raha hanova azy.",
+    "baseRate": "{{rate}}/al. (fototra)",
+    "basePlaceholder": "Fototra : {{rate}}",
+    "overrideHint": "→ {{rate}}/al. ho an'ity efitrano ity ihany"
+  },
+  "activityFeed": {
+    "title": "Hetsika farany",
+    "live": "Mivantana",
+    "empty": "Tsy misy hetsika vao haingana.",
+    "clear": "Hamafa ny fampandrenesana",
+    "new": "Vaovao"
+  },
+  "layout": {
+    "footer": "{{brand}} — Fitantanana hotely"
+  },
+  "roomImage": {
+    "previewAlt": "Topi-maso",
+    "urlPlaceholder": "https://…"
   }
 }

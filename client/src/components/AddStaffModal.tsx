@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Shield, Mail, User, AtSign, Lock, AlertCircle, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useCreateStaff } from '../hooks/useStaff';
@@ -17,6 +18,7 @@ interface AddStaffModalProps {
 const DEFAULT_VALUES: StaffFormValues = { name: '', username: '', email: '', password: '', confirmPassword: '', roleId: '' };
 
 export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const createStaff = useCreateStaff();
   const { data: roles = [] } = useRoles();
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<StaffFormValues>({
@@ -50,38 +52,35 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
   };
 
   const apiError = createStaff.isError
-    ? getApiErrorMessage(createStaff.error, 'Something went wrong. Please try again.')
+    ? getApiErrorMessage(createStaff.error, t('common.error'))
     : '';
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Onboard Talent"
+    <Modal isOpen={isOpen} onClose={handleClose} title={t('addStaff.title')}
       className="max-w-4xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row">
             {/* Left Decor */}
             <div className="w-full md:w-80 bg-zinc-900 p-10 text-white flex flex-col">
               <div className="mb-12">
                 <Shield className="w-10 h-10 text-teal-400 mb-6" />
-                <h3 className="font-display italic text-3xl mb-2">Onboard Talent</h3>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Personnel Access Control</p>
+                <h3 className="font-display italic text-3xl mb-2">{t('addStaff.title')}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">{t('addStaff.subtitle')}</p>
               </div>
 
               <div className="space-y-8">
                  <div className="p-5 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-md">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-teal-400 mb-3">Security Protocol</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-teal-400 mb-3">{t('addStaff.securityTitle')}</p>
                     <p className="text-[11px] font-light leading-relaxed opacity-60">
-                      Assign roles carefully. Permissions are strictly enforced based on hierarchical department structures to ensure data integrity.
+                      {t('addStaff.securityText')}
                     </p>
                  </div>
               </div>
 
-              <div className="mt-auto opacity-20">
-                 <p className="font-display italic text-5xl">Cabinet</p>
-              </div>
             </div>
 
             {/* Right Form */}
             <div className="flex-1 p-8 md:p-12 bg-white overflow-y-auto max-h-[85vh]">
               <div className="flex justify-between items-center mb-10">
-                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">Member Identification</h4>
+                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('addStaff.identification')}</h4>
                 <button onClick={handleClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
@@ -97,12 +96,12 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Full Legal Name</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('addStaff.fullName')}</label>
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
                       <input
                         type="text"
-                        placeholder="Johnathan Doe"
+                        placeholder={t('addStaff.fullNamePlaceholder')}
                         {...register('name')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
                       />
@@ -110,12 +109,12 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     {errors.name && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.name.message}</p>}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Username</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('auth.username')}</label>
                     <div className="relative">
                       <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
                       <input
                         type="text"
-                        placeholder="j.doe"
+                        placeholder={t('addStaff.usernamePlaceholder')}
                         {...register('username')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
                       />
@@ -127,13 +126,13 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">
-                      Work Email Address <span className="normal-case font-normal opacity-40">optional</span>
+                      {t('addStaff.email')} <span className="normal-case font-normal opacity-40">{t('common.optional')}</span>
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
                       <input
                         type="email"
-                        placeholder="j.doe@verdana-retreat.com"
+                        placeholder={t('addStaff.emailPlaceholder')}
                         {...register('email')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
                       />
@@ -141,12 +140,12 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     {errors.email && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.email.message}</p>}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Temporary Password</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('addStaff.tempPassword')}</label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
                       <input
                         type="password"
-                        placeholder="Min. 8 characters"
+                        placeholder={t('addStaff.passwordPlaceholder')}
                         {...register('password')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
                       />
@@ -154,12 +153,12 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     {errors.password && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.password.message}</p>}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">Confirm Password</label>
+                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-3">{t('resetPassword.confirmPassword')}</label>
                     <div className="relative">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/30" />
                       <input
                         type="password"
-                        placeholder="Re-enter password"
+                        placeholder={t('addStaff.confirmPlaceholder')}
                         {...register('confirmPassword')}
                         className="w-full h-14 pl-12 pr-5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 outline-none font-sans text-sm transition-all"
                       />
@@ -169,7 +168,7 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-5 text-center">Assign Organizational Role</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60 block mb-5 text-center">{t('addStaff.role')}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {roles.map((r) => (
                       <button
@@ -205,14 +204,14 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     disabled={createStaff.isPending}
                     className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all disabled:opacity-40"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
                     disabled={createStaff.isPending}
                     className="flex-1 py-4 bg-zinc-900 text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-black transition-all shadow-xl shadow-black/20 disabled:opacity-50"
                   >
-                    {createStaff.isPending ? 'Authorizing…' : 'Authorize New Member'}
+                    {createStaff.isPending ? t('common.saving') : t('addStaff.submit')}
                   </button>
                 </div>
               </form>

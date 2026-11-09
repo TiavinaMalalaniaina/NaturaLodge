@@ -65,7 +65,7 @@ export async function processPendingPushes(): Promise<void> {
       if (!fresh.length || !ready()) continue;
       const subscriptions = await prisma.staffPushSubscription.findMany({ where: { user: { status: 'ACTIVE' } }, include: { user: { select: { role: { select: { name: true } } } } } });
       const allowed = [];
-      for (const sub of subscriptions) if (await roleHasPermission(sub.user.role.name, 'bookings.view')) allowed.push(sub);
+      for (const sub of subscriptions) if (await roleHasPermission(sub.user.role.name, 'websiteRequests.view')) allowed.push(sub);
       if (!allowed.length) continue;
       const requests = await prisma.websiteRequest.findMany({ where: { id: { in: fresh.map(e => e.requestId) } }, select: { id: true, name: true, arrival: true, departure: true } });
       for (const event of fresh) {

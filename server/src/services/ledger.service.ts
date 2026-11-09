@@ -6,6 +6,8 @@ import {
   invalidateTreasuryAccessCache,
 } from '../lib/treasuryAccess';
 import { roleHasPermission } from '../lib/permissions';
+import { LOCK_KEYS } from '../lib/advisoryLock';
+import { nextDocumentNumber } from '../lib/documentNumber';
 
 // Les comptes ASSET/EXPENSE ont un solde normal débiteur, LIABILITY/EQUITY/REVENUE un solde
 // normal créditeur — Σdebit − Σcredit est la donnée brute en base, ce helper la remet dans le
@@ -136,10 +138,8 @@ export type PostEntryInput = {
   lines: JournalLineInput[];
 };
 
-async function generateEntryNumber(client: PrismaOrTx): Promise<string> {
-  const year  = new Date().getFullYear();
-  const count = await client.journalEntry.count();
-  return `JE-${year}-${String(count + 1).padStart(4, '0')}`;
+function generateEntryNumber(tx: Prisma.TransactionClient): Promise<string> {
+  return nextDocumentNumber(tx, 'JournalEntry', 'JE', LOCK_KEYS.journalEntryNumber);
 }
 
 // Point de passage unique pour toute écriture comptable : aucune JournalLine ne doit être créée
@@ -177,7 +177,7 @@ export async function postEntry(data: PostEntryInput, client: PrismaOrTx = prism
     if (!accountById.has(id)) throw new NotFoundError(`Compte comptable "${id}"`);
   }
 
-  const run = async (tx: PrismaOrTx) => {
+  const run = async (tx: Prisma.TransactionClient) => {
     const number = await generateEntryNumber(tx);
     return tx.journalEntry.create({
       data: {
@@ -208,7 +208,7 @@ export async function postEntry(data: PostEntryInput, client: PrismaOrTx = prism
   // transaction imbriquée, on l'exécute directement dans celle du client.
   return client === prisma
     ? prisma.$transaction(run, txTimeoutMs ? { timeout: txTimeoutMs } : undefined)
-    : run(client);
+    : run(client as Prisma.TransactionClient);
 }
 
 export type TransferParams = {

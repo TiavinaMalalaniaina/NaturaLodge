@@ -15,6 +15,9 @@ FROM node:22-alpine AS build
 WORKDIR /app
 ARG VITE_API_URL=/api
 ENV VITE_API_URL=${VITE_API_URL}
+# development | preprod | production — figé dans le JS au build (bandeau, titre, manifeste PWA)
+ARG VITE_APP_ENV=production
+ENV VITE_APP_ENV=${VITE_APP_ENV}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

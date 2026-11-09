@@ -11,7 +11,7 @@
 
 Run `npm ci` separately inside each package; there is no root npm workspace. On restricted Windows PowerShell installations, use `npm.cmd`.
 
-- `client/`: `npm run dev` serves port 3000; `npm run build` builds assets; `npm run lint` runs TypeScript checking, not ESLint. Run `npx eslint .` separately for ESLint rules.
+- `client/`: `npm run dev` serves port 3000; `npm run build` builds assets; `npm run lint` runs ESLint (including the no-hardcoded-text i18n rule); `npm run typecheck` runs TypeScript checking.
 - `server/`: `npm run dev` watches port 4000; `npm run build` generates Prisma types and compiles TypeScript; `npm run db:migrate` creates/applies development migrations.
 - `website/`: `npm run dev` serves port 4321; `npm run build` generates `dist/`; `npm run preview` previews the build.
 - Root: `make up` starts the Docker management stack. Website deployment is separate; see `website/README.md`.
