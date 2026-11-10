@@ -6,4 +6,68 @@ import { ui } from '../i18n/ui';
 const { lang } = Astro.props as { lang: Lang };
 const t = ui[lang].login;
 ---
-<ClientLayout lang={lang} title={t.title}><section class="client-panel"><h2>{t.heading}</h2><p>{t.text}</p><button id="confirm-login" class="button button-green" type="button" hidden>{t.confirm}</button><form id="login-form" class="client-form"><label>{t.email}<input name="email" type="email" required maxlength="254" autocomplete="email" /></label><button class="button button-green">{t.send}</button><p data-error role="alert"></p><p data-success role="status"></p></form></section></ClientLayout>
+<ClientLayout lang={lang} title={t.title}>
+  <section class="client-panel auth-panel" id="auth" data-mode="checking">
+    <p class="auth-checking" data-for="checking" role="status"><span class="auth-spinner" aria-hidden="true"></span>{t.checking}</p>
+
+    <h2 tabindex="-1" data-for="login" hidden>{t.heading}</h2>
+    <h2 tabindex="-1" data-for="register" hidden>{t.registerHeading}</h2>
+    <h2 tabindex="-1" data-for="forgot" hidden>{t.forgotHeading}</h2>
+    <h2 tabindex="-1" data-for="reset" hidden>{t.resetHeading}</h2>
+    <h2 tabindex="-1" data-for="verify" hidden>{t.verifyHeading}</h2>
+    <h2 tabindex="-1" data-for="sent" hidden>{t.sentHeading}</h2>
+    <h2 tabindex="-1" data-for="expired" hidden>{t.expiredHeading}</h2>
+    <p data-for="login" hidden>{t.text}</p>
+    <p data-for="register" hidden>{t.registerText}</p>
+    <p data-for="forgot" hidden>{t.forgotText}</p>
+    <p data-for="reset" hidden>{t.resetText}</p>
+    <p data-for="verify" hidden>{t.verifyText}</p>
+    <p data-for="expired" hidden>{t.expiredText}</p>
+
+    <div class="auth-google" data-for="login register" data-google hidden>
+      <a id="google-login" class="button button-google" href="#">
+        <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+        <span data-label>{t.google}</span>
+      </a>
+      <p class="auth-divider"><span>{t.or}</span></p>
+    </div>
+
+    <form id="login-form" class="client-form" data-for="login" hidden>
+      <label>{t.email}<input name="email" type="email" required maxlength="254" autocomplete="email" /></label>
+      <label>{t.password}<input name="password" type="password" required maxlength="200" autocomplete="current-password" /></label>
+      <button class="button button-green" data-busy="signingIn">{t.submit}</button>
+      <button type="button" class="auth-link" data-show="forgot">{t.forgot}</button>
+    </form>
+    <form id="register-form" class="client-form" data-for="register" hidden>
+      <label>{t.email}<input name="email" type="email" required maxlength="254" autocomplete="email" /></label>
+      <label>{t.password}<input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="register-hint" /><small id="register-hint" class="muted">{t.passwordHint}</small></label>
+      <button class="button button-green" data-busy="sending">{t.register}</button>
+    </form>
+    <form id="forgot-form" class="client-form" data-for="forgot" hidden>
+      <label>{t.email}<input name="email" type="email" required maxlength="254" autocomplete="email" /></label>
+      <button class="button button-green" data-busy="sending">{t.send}</button>
+    </form>
+    <form id="reset-form" class="client-form" data-for="reset" hidden>
+      <label>{t.newPassword}<input name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="reset-hint" /><small id="reset-hint" class="muted">{t.passwordHint}</small></label>
+      <button class="button button-green" data-busy="saving">{t.save}</button>
+    </form>
+    <button id="confirm-login" class="button button-green auth-action" type="button" data-for="verify" data-busy="confirming" hidden>{t.confirm}</button>
+
+    <div class="auth-sent" data-for="sent" hidden>
+      <p class="auth-sent-email" data-sent-email></p>
+      <p data-sent-message></p>
+      <p class="muted">{t.sentHint}</p>
+      <div class="auth-sent-actions">
+        <button type="button" class="button button-green" id="resend-mail" data-label-default={t.resend} data-busy="sending">{t.resend}</button>
+        <button type="button" class="auth-link" id="change-email">{t.changeEmail}</button>
+      </div>
+    </div>
+    <button type="button" class="button button-green auth-action" id="new-link" data-for="expired" hidden>{t.newLink}</button>
+
+    <p class="form-message auth-message" data-error role="alert"></p>
+    <p class="auth-success" data-success role="status"></p>
+
+    <p class="auth-switch" data-for="login" hidden>{t.noAccount} <button type="button" class="auth-link" data-show="register">{t.createAccount}</button></p>
+    <p class="auth-switch" data-for="register forgot reset verify sent expired" hidden>{t.hasAccount} <button type="button" class="auth-link" data-show="login">{t.backToLogin}</button></p>
+  </section>
+</ClientLayout>

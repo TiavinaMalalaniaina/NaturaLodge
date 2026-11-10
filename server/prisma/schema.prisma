@@ -170,19 +170,34 @@ model Booking {
   bookingNotes BookingNote[]
 }
 
+// Invariant : l'email d'un WebsiteCustomer est toujours vérifié (lien reçu par email ou compte Google
+// vérifié). Les anciennes demandes du site sont rattachées par email : ne jamais créer de compte avant.
 model WebsiteCustomer {
-  id        String @id @default(cuid())
-  email     String @unique
-  createdAt DateTime @default(now())
-  requests  WebsiteRequest[]
-  sessions  WebsiteSession[]
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String?
+  googleId     String? @unique
+  createdAt    DateTime @default(now())
+  requests     WebsiteRequest[]
+  sessions     WebsiteSession[]
 }
 
-model WebsiteLogin {
-  tokenHash String @id
-  email     String
-  expiresAt DateTime
+enum WebsiteTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+// Jeton à usage unique envoyé par email. VERIFY_EMAIL porte le mot de passe choisi à l'inscription :
+// il n'est appliqué au compte qu'une fois l'adresse prouvée.
+model WebsiteEmailToken {
+  tokenHash    String @id
+  purpose      WebsiteTokenPurpose
+  email        String
+  passwordHash String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
   @@index([expiresAt])
+  @@index([email, purpose])
 }
 
 model WebsiteSession {
