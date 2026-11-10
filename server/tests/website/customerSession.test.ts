@@ -2,13 +2,16 @@ import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../../src/app';
+import * as websiteMail from '../../src/services/websiteMail.service';
 import { prisma, resetDb } from '../helpers/db';
 
-const mails = vi.hoisted(() => [] as { kind: 'verify' | 'reset'; email: string; token: string }[]);
-vi.mock('../../src/services/websiteMail.service', async importOriginal => ({
-  ...await importOriginal<typeof import('../../src/services/websiteMail.service')>(),
-  sendAccountMail: vi.fn(async (kind: 'verify' | 'reset', email: string, token: string) => { mails.push({ kind, email, token }); return true; }),
-}));
+// Espion plutôt que vi.mock : la suite tourne avec isolate: false, les modules sont partagés entre
+// fichiers et un vi.mock serait ignoré si un autre fichier a déjà chargé l'app.
+const mails: { kind: 'verify' | 'reset'; email: string; token: string }[] = [];
+beforeEach(() => {
+  vi.spyOn(websiteMail, 'sendAccountMail').mockImplementation(async (kind, email, token) => { mails.push({ kind, email, token }); return true; });
+});
+afterEach(() => { vi.restoreAllMocks(); });
 
 const ORIGIN = process.env.WEBSITE_URL!;
 const PASSWORD = 'motdepasse-solide';
