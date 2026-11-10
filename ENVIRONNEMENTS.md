@@ -61,7 +61,7 @@ Toute la préprod (db, server, client, website) dans **une seule ressource Cooli
 5. Déployer, puis, dans le **Terminal** Coolify du service `server` : `npx tsx prisma/seed.ts` (données de démo).
 
 - **Isolation** : réseau et volumes propres à la ressource, identifiants de base obligatoires et distincts de la prod. La base et l'API ne sont jamais exposées, seuls l'admin et le site sont routés par Traefik.
-- **Emails** : envoyés réellement, mais tous vers `PREPROD_MAIL_REDIRECT_TO`, avec le vrai destinataire dans le sujet. Les liens de connexion de l'espace client y arrivent aussi : on se connecte en tant que n'importe quel client test depuis cette boîte.
+- **Emails** : envoyés réellement, mais tous vers `PREPROD_MAIL_REDIRECT_TO`, avec le vrai destinataire dans le sujet. Les liens de confirmation d'adresse et de nouveau mot de passe de l'espace client y arrivent aussi : on crée des clients test depuis cette boîte. Connexion Google facultative (`PREPROD_GOOGLE_CLIENT_ID`/`PREPROD_GOOGLE_CLIENT_SECRET`, URI de redirection `PREPROD_WEBSITE_URL` + `/api/public/auth/google/callback`).
 - **Ressources** : limites CPU/mémoire par service (`deploy.resources.limits`), pour ne jamais affamer la prod.
 - **Accès** : protéger les deux domaines de préprod (authentification HTTP Traefik ou liste d'IP), car la préprod contient des comptes de démo.
 
