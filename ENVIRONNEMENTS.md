@@ -14,7 +14,7 @@ qui la rend identifiable.
 | Base de données | Postgres local | **Base dédiée** (jamais celle de prod) | Base de prod |
 | Données | `npm run db:seed` (démo) | Seed de démo ou copie **anonymisée** | Réelles — `db:seed:init` uniquement (seed démo bloqué) |
 | Logs | `debug`, lisibles (pino-pretty) | `debug`, JSON | `info`, JSON |
-| Emails | Désactivés si `SMTP_HOST` vide | **Tous redirigés** vers `MAIL_REDIRECT_TO` | Envoyés aux clients |
+| Emails | Désactivés si `SMTP_HOST` vide | Redirigés vers `MAIL_REDIRECT_TO` s'il est défini, sinon envoyés aux destinataires | Envoyés aux clients |
 | Push (VAPID) | Optionnel | Paire de clés propre | Paire de clés propre, à ne jamais changer |
 | `JWT_SECRET` | Libre | Propre à la préprod, ≥ 32 car. | Propre à la prod, ≥ 32 car. |
 | Durée du jeton | `7d` | `1d` | `7d` |
@@ -61,7 +61,7 @@ Toute la préprod (db, server, client, website) dans **une seule ressource Cooli
 5. Déployer, puis, dans le **Terminal** Coolify du service `server` : `npx tsx prisma/seed.ts` (données de démo).
 
 - **Isolation** : réseau et volumes propres à la ressource, identifiants de base obligatoires et distincts de la prod. La base et l'API ne sont jamais exposées, seuls l'admin et le site sont routés par Traefik.
-- **Emails** : envoyés réellement, mais tous vers `PREPROD_MAIL_REDIRECT_TO`, avec le vrai destinataire dans le sujet. Les liens de confirmation d'adresse et de nouveau mot de passe de l'espace client y arrivent aussi : on crée des clients test depuis cette boîte. Connexion Google facultative (`PREPROD_GOOGLE_CLIENT_ID`/`PREPROD_GOOGLE_CLIENT_SECRET`, URI de redirection `PREPROD_WEBSITE_URL` + `/api/public/auth/google/callback`).
+- **Emails** : envoyés réellement. Si `PREPROD_MAIL_REDIRECT_TO` est défini, tous y sont redirigés, avec le vrai destinataire dans le sujet ; vide, ils partent aux vrais destinataires (démonstration client). Connexion Google facultative (`PREPROD_GOOGLE_CLIENT_ID`/`PREPROD_GOOGLE_CLIENT_SECRET`, URI de redirection `PREPROD_WEBSITE_URL` + `/api/public/auth/google/callback`).
 - **Ressources** : limites CPU/mémoire par service (`deploy.resources.limits`), pour ne jamais affamer la prod.
 - **Accès** : protéger les deux domaines de préprod (authentification HTTP Traefik ou liste d'IP), car la préprod contient des comptes de démo.
 
