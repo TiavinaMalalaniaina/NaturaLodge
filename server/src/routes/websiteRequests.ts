@@ -10,6 +10,7 @@ import * as events from '../services/websiteEvent.service';
 import * as push from '../services/staffPush.service';
 import * as service from '../services/websiteRequest.service';
 import * as auth from '../services/websiteAuth.service';
+import { forgotPasswordSchema, googleStartSchema, loginSchema, registerSchema, resetPasswordSchema, verifyEmailSchema } from '../validation/websiteAuth.schema';
 import { prisma } from '../lib/prisma';
 import { UnauthorizedError } from '../errors/AppError';
 
@@ -32,22 +33,42 @@ publicRequestsRouter.get('/availability', asyncHandler(async (req, res) => {
   const query = staySchema.parse(req.query);
   res.json(await service.availability(query.arrival, query.departure));
 }));
-const loginLimits = new Map<string, number>();
-publicRequestsRouter.post('/auth/email', asyncHandler(async (req, res) => {
+publicRequestsRouter.get('/auth/providers', (_req, res) => { res.json(auth.providers()); });
+publicRequestsRouter.post('/auth/register', asyncHandler(async (req, res) => {
   auth.checkWebsiteOrigin(req);
-  const { email, next, locale } = z.object({ email: z.string().trim().email('Adresse email invalide').max(254).transform(value => value.toLowerCase()), next: z.enum(['/reservation', '/mes-reservations']).default('/mes-reservations'), locale: z.enum(['fr', 'en']).default('fr') }).parse(req.body);
-  const now = Date.now();
-  for (const [key, until] of loginLimits) if (until <= now) loginLimits.delete(key);
-  if (loginLimits.has(email) || loginLimits.size >= 10000) { res.status(429).json({ error: 'Patientez une minute avant de demander un nouveau lien.' }); return; }
-  loginLimits.set(email, now + 60000);
-  await auth.requestLogin(email, next, locale);
-  res.json({ message: 'Consultez votre email pour vous connecter. Le lien est valable 15 minutes et utilisable une seule fois.' });
+  const { email, password, next, locale } = registerSchema.parse(req.body);
+  await auth.register(email, password, next, locale);
+  res.json({ message: 'Consultez votre email pour confirmer votre adresse. Le lien est valable 1 heure.' });
 }));
 publicRequestsRouter.post('/auth/verify', asyncHandler(async (req, res) => {
   auth.checkWebsiteOrigin(req);
-  const { token } = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) }).parse(req.body);
-  res.json(await auth.login(token, req, res));
+  const { token } = verifyEmailSchema.parse(req.body);
+  res.json(await auth.verifyEmail(token, req, res));
 }));
+publicRequestsRouter.post('/auth/login', asyncHandler(async (req, res) => {
+  auth.checkWebsiteOrigin(req);
+  const { email, password } = loginSchema.parse(req.body);
+  res.json(await auth.login(email, password, req, res));
+}));
+publicRequestsRouter.post('/auth/password/forgot', asyncHandler(async (req, res) => {
+  auth.checkWebsiteOrigin(req);
+  const { email, next, locale } = forgotPasswordSchema.parse(req.body);
+  await auth.requestPasswordReset(email, next, locale);
+  res.json({ message: 'Si un compte existe pour cette adresse, vous allez recevoir un lien pour choisir un nouveau mot de passe. Il est valable 1 heure.' });
+}));
+publicRequestsRouter.post('/auth/password/reset', asyncHandler(async (req, res) => {
+  auth.checkWebsiteOrigin(req);
+  const { token, password } = resetPasswordSchema.parse(req.body);
+  res.json(await auth.resetPassword(token, password, req, res));
+}));
+// Navigations de premier niveau (pas d'en-tête Origin) : le cookie `state` lie le retour de Google au
+// navigateur qui a démarré la connexion.
+publicRequestsRouter.get('/auth/google', (req, res) => {
+  const parsed = googleStartSchema.safeParse(req.query);
+  const { next, locale } = parsed.success ? parsed.data : googleStartSchema.parse({});
+  auth.googleStart(next, locale, res);
+});
+publicRequestsRouter.get('/auth/google/callback', asyncHandler(async (req, res) => { await auth.googleCallback(req, res); }));
 publicRequestsRouter.get('/auth/me', asyncHandler(async (req, res) => { res.json(await auth.currentCustomer(req)); }));
 publicRequestsRouter.post('/auth/logout', asyncHandler(async (req, res) => {
   auth.checkWebsiteOrigin(req);

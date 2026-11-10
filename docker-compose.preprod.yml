@@ -55,6 +55,8 @@ services:
       FRONTEND_URL: ${PREPROD_FRONTEND_URL:?PREPROD_FRONTEND_URL obligatoire (https://admin-preprod.votre-domaine.com)}
       WEBSITE_URL: ${PREPROD_WEBSITE_URL:?PREPROD_WEBSITE_URL obligatoire (https://preprod.votre-domaine.com)}
       TRUST_PROXY: ${PREPROD_TRUST_PROXY:-loopback, uniquelocal}
+      GOOGLE_CLIENT_ID: ${PREPROD_GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${PREPROD_GOOGLE_CLIENT_SECRET:-}
       SMTP_HOST: ${PREPROD_SMTP_HOST:?PREPROD_SMTP_HOST obligatoire}
       SMTP_PORT: ${PREPROD_SMTP_PORT:-587}
       SMTP_SECURE: ${PREPROD_SMTP_SECURE:-false}

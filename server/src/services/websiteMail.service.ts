@@ -33,8 +33,10 @@ const amount = (value: number, lang: Lang) => `${value.toLocaleString(lang === '
 
 const text = {
   fr: {
-    loginSubject: 'Natura Lodge — Votre connexion',
-    login: (link: string) => `Bonjour,\n\nPour vous connecter ou créer votre espace client, ouvrez ce lien :\n${link}\n\nCe lien est valable 15 minutes et utilisable une seule fois. Ne le partagez pas. Si vous n’avez pas demandé cette connexion, ignorez cet email.\n\nNatura Lodge`,
+    verifySubject: 'Natura Lodge — Confirmez votre adresse email',
+    verify: (link: string) => `Bonjour,\n\nPour activer votre espace client et enregistrer votre mot de passe, confirmez votre adresse email en ouvrant ce lien :\n${link}\n\nCe lien est valable 1 heure et utilisable une seule fois. Ne le partagez pas. Si vous n’êtes pas à l’origine de cette demande, ignorez cet email : aucun compte ne sera créé et aucun mot de passe ne sera modifié.\n\nNatura Lodge`,
+    resetSubject: 'Natura Lodge — Nouveau mot de passe',
+    reset: (link: string) => `Bonjour,\n\nPour choisir un nouveau mot de passe pour votre espace client, ouvrez ce lien :\n${link}\n\nCe lien est valable 1 heure et utilisable une seule fois. Ne le partagez pas. Si vous n’avez pas fait cette demande, ignorez cet email : votre mot de passe actuel reste valable.\n\nNatura Lodge`,
     subjects: { PENDING: 'Demande reçue', AWAITING_PAYMENT: 'Demande acceptée — acompte à régler', CONFIRMED: 'Réservation confirmée', REJECTED: 'Réponse à votre demande', EXPIRED: 'Délai de paiement expiré', CANCELLED: 'Réservation annulée' } as Record<string, string>,
     intros: {
       PENDING: 'Votre demande a bien été reçue. Elle doit encore être validée par notre équipe.',
@@ -48,11 +50,13 @@ const text = {
     hello: (name: string) => `Bonjour ${name},`,
     reference: 'Référence', stay: (a: string, b: string) => `Séjour : du ${a} au ${b}`, total: 'Total', deposit: 'Acompte',
     deadline: (d: string) => `À régler avant le ${d} (heure de Madagascar).`,
-    view: 'Consulter ma réservation', signIn: 'Connectez-vous avec votre adresse email pour consulter toutes vos demandes.',
+    view: 'Consulter ma réservation', signIn: 'Connectez-vous à votre espace client pour consulter toutes vos demandes.',
   },
   en: {
-    loginSubject: 'Natura Lodge — Your sign-in link',
-    login: (link: string) => `Hello,\n\nTo sign in or create your guest account, open this link:\n${link}\n\nThis link is valid for 15 minutes and can be used only once. Do not share it. If you did not request it, simply ignore this email.\n\nNatura Lodge`,
+    verifySubject: 'Natura Lodge — Confirm your email address',
+    verify: (link: string) => `Hello,\n\nTo activate your guest account and save your password, confirm your email address by opening this link:\n${link}\n\nThis link is valid for 1 hour and can be used only once. Do not share it. If you did not request this, simply ignore this email: no account will be created and no password will be changed.\n\nNatura Lodge`,
+    resetSubject: 'Natura Lodge — New password',
+    reset: (link: string) => `Hello,\n\nTo choose a new password for your guest account, open this link:\n${link}\n\nThis link is valid for 1 hour and can be used only once. Do not share it. If you did not request this, simply ignore this email: your current password remains valid.\n\nNatura Lodge`,
     subjects: { PENDING: 'Request received', AWAITING_PAYMENT: 'Request accepted — deposit due', CONFIRMED: 'Booking confirmed', REJECTED: 'About your request', EXPIRED: 'Payment deadline passed', CANCELLED: 'Booking cancelled' } as Record<string, string>,
     intros: {
       PENDING: 'We have received your request. Our team still needs to approve it.',
@@ -66,19 +70,21 @@ const text = {
     hello: (name: string) => `Hello ${name},`,
     reference: 'Reference', stay: (a: string, b: string) => `Stay: from ${a} to ${b}`, total: 'Total', deposit: 'Deposit',
     deadline: (d: string) => `Please pay before ${d} (Madagascar time).`,
-    view: 'View my booking', signIn: 'Sign in with your email address to see all your requests.',
+    view: 'View my booking', signIn: 'Sign in to your guest account to see all your requests.',
   },
 };
 
-export async function sendLoginMail(email: string, token: string, next = '/mes-reservations', lang: Lang = 'fr'): Promise<boolean> {
+// Le jeton est placé dans le fragment (#) : il n'est ni envoyé au serveur web ni journalisé.
+export async function sendAccountMail(kind: 'verify' | 'reset', email: string, token: string, next = '/mes-reservations', lang: Lang = 'fr'): Promise<boolean> {
   if (!configured()) return false;
   try {
     const link = siteUrl(lang, '/connexion/');
     if (next === '/reservation') link.searchParams.set('next', '/reservation');
-    link.hash = new URLSearchParams({ login: token }).toString();
-    await send(email, text[lang].loginSubject, text[lang].login(link.toString()));
+    link.hash = new URLSearchParams({ [kind]: token }).toString();
+    const t = text[lang];
+    await send(email, kind === 'verify' ? t.verifySubject : t.resetSubject, (kind === 'verify' ? t.verify : t.reset)(link.toString()));
     return true;
-  } catch { logger.error('Échec de l’envoi de l’email de connexion'); return false; }
+  } catch { logger.error({ kind }, 'Échec de l’envoi de l’email de compte client'); return false; }
 }
 
 // Notes written by the system (not by staff) have a fixed French wording.

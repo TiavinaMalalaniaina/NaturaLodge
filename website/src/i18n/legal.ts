@@ -50,7 +50,7 @@ function fr(kind: LegalKind, company: string, contact: string): LegalPage {
     sections: [
       { title: 'Responsable du traitement', paragraphs: [`${company}, ${v(legal.address, 'fr')}. Contact pour vos données : ${contact}.`] },
       { title: 'Données collectées', paragraphs: [
-        'Compte client : votre adresse email, qui sert à vous connecter par un lien envoyé par email (sans mot de passe).',
+        'Compte client : votre adresse email et, si vous en choisissez un, votre mot de passe, conservé uniquement sous forme chiffrée (empreinte irréversible). Si vous vous connectez avec Google, nous recevons de Google votre adresse email et un identifiant de compte, rien d’autre.',
         'Demande de réservation : nom, adresse email, téléphone, message facultatif, dates, nombre de voyageurs et chambres choisies.',
         'Paiement : les preuves que vous envoyez (capture d’écran ou reçu, pouvant contenir un nom et un numéro de téléphone) et la note facultative associée.',
         'Données techniques : un cookie de session strictement nécessaire à la connexion, l’adresse IP et la page demandée dans les journaux du serveur, et un brouillon de votre sélection enregistré dans votre propre navigateur.',
@@ -67,7 +67,7 @@ function fr(kind: LegalKind, company: string, contact: string): LegalPage {
         'Les polices de caractères du site sont chargées depuis Google Fonts : votre navigateur transmet alors votre adresse IP à Google.',
       ] },
       { title: 'Durées de conservation', paragraphs: [
-        'Lien de connexion : 15 minutes, utilisable une seule fois. Session : 7 jours, ou jusqu’à la déconnexion.',
+        'Lien de confirmation d’adresse ou de nouveau mot de passe : 1 heure, utilisable une seule fois. Session : 7 jours, ou jusqu’à la déconnexion.',
         'Brouillon de sélection dans votre navigateur : 24 heures.',
         'Journaux techniques du serveur (adresse IP, page demandée) : 15 jours.',
         `Preuves de paiement : supprimées automatiquement ${policy.proofRetention.fr}.`,
@@ -127,7 +127,7 @@ function en(kind: LegalKind, company: string, contact: string): LegalPage {
     sections: [
       { title: 'Data controller', paragraphs: [`${company}, ${v(legal.address, 'en')}. Contact for your data: ${contact}.`] },
       { title: 'Data collected', paragraphs: [
-        'Guest account: your email address, used to sign in with a link sent by email (no password).',
+        'Guest account: your email address and, if you choose one, your password, stored only in hashed form (irreversible). If you sign in with Google, we receive your email address and an account identifier from Google, nothing else.',
         'Booking request: name, email address, phone number, optional message, dates, number of guests and chosen rooms.',
         'Payment: the proofs you send (screenshot or receipt, which may contain a name and phone number) and the optional note.',
         'Technical data: a session cookie strictly necessary to stay signed in, the IP address and requested page in the server logs, and a draft of your selection stored in your own browser.',
@@ -144,7 +144,7 @@ function en(kind: LegalKind, company: string, contact: string): LegalPage {
         'The website fonts are loaded from Google Fonts: your browser then sends your IP address to Google.',
       ] },
       { title: 'How long we keep it', paragraphs: [
-        'Sign-in link: 15 minutes, single use. Session: 7 days, or until you sign out.',
+        'Email confirmation or new password link: 1 hour, single use. Session: 7 days, or until you sign out.',
         'Selection draft in your browser: 24 hours.',
         'Server technical logs (IP address, requested page): 15 days.',
         `Payment proofs: automatically deleted ${policy.proofRetention.en}.`,
