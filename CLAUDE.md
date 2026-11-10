@@ -40,7 +40,7 @@ cd client && npm run dev
 Trois environnements : `development` (local), `preprod` (branche `preprod`, Coolify) et `production` (branche `main`, Coolify). Détail complet dans `ENVIRONNEMENTS.md`.
 - `APP_ENV` ≠ `NODE_ENV` : la préprod tourne en `NODE_ENV=production` et se distingue uniquement par `APP_ENV`. Pour un comportement propre à un environnement, tester `appEnv`/`isPreprod`/`isProduction` (`server/src/lib/env.ts`) ou `APP_ENV` (`client/src/lib/appEnv.ts`), jamais `NODE_ENV`.
 - `server/src/lib/env.ts` est importé en premier dans `server.ts`. Hors développement, il fait échouer le démarrage si la configuration est dangereuse (secret JWT faible, URLs non https…).
-- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO`. Tout nouvel envoi doit passer par cette fonction.
+- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO` s'il est défini (vide : envoyé au vrai destinataire, pour les démos client). Tout nouvel envoi doit passer par cette fonction.
 - Le seed de démo (`prisma/seed.ts`) est bloqué si `APP_ENV=production`.
 
 ---
@@ -62,7 +62,7 @@ make dev-client    # client en local, hot-reload (port 3000)
 - Le client est servi par nginx en prod (`client/Dockerfile`, `client/nginx.conf`), qui proxy `/api/*` vers le service `server`.
 - Le site public (`website/`) suit le même principe : son nginx relaie `/api/public/*` vers `API_UPSTREAM`, et `PUBLIC_API_URL` vaut `/api/public` par défaut. Le cookie de session client est `SameSite=Lax` et suppose que le site et l'API sont sur le même site : ne jamais faire pointer le site vers une API sur un autre domaine.
 - Le serveur applique les migrations Prisma automatiquement au démarrage du conteneur (`prisma migrate deploy`).
-- Préprod : `docker-compose.preprod.yml`, déployé comme ressource « Docker Compose » Coolify (variables : `.env.preprod.example`). Stack isolée de la prod : réseau et volumes propres, identifiants obligatoires, base et API jamais exposées, emails redirigés vers `MAIL_REDIRECT_TO`. Voir `ENVIRONNEMENTS.md`.
+- Préprod : `docker-compose.preprod.yml`, déployé comme ressource « Docker Compose » Coolify (variables : `.env.preprod.example`). Stack isolée de la prod : réseau et volumes propres, identifiants obligatoires, base et API jamais exposées, emails redirigés vers `MAIL_REDIRECT_TO` s'il est défini. Voir `ENVIRONNEMENTS.md`.
 - Sous Windows sans Git Bash configuré comme `SHELL` de `make`, les recettes s'exécutent via `cmd.exe` : éviter `trap`/`&`/`wait`/`awk` dans le Makefile (syntaxe POSIX indisponible).
 
 ### Monitoring (VPS de production)

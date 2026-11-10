@@ -13,9 +13,9 @@
 #  - identifiants de base, secret JWT, URLs https et SMTP propres à la préprod, obligatoires ;
 #  - APP_ENV=preprod imposé, limites CPU/mémoire pour ne jamais affamer la prod.
 #
-# Emails : envoyés pour de vrai via SMTP, mais TOUS redirigés vers MAIL_REDIRECT_TO (sujet préfixé
-# « [PREPROD → destinataire] », voir server/src/services/websiteMail.service.ts). Aucun client réel
-# ne peut recevoir un email de la préprod.
+# Emails : envoyés pour de vrai via SMTP. Si MAIL_REDIRECT_TO est défini, TOUS sont redirigés vers
+# cette adresse (sujet préfixé « [PREPROD → destinataire] », voir server/src/services/websiteMail.service.ts) ;
+# vide, ils partent aux vrais destinataires (démonstration client).
 
 services:
   db:
@@ -63,7 +63,7 @@ services:
       SMTP_USER: ${PREPROD_SMTP_USER:?PREPROD_SMTP_USER obligatoire}
       SMTP_PASSWORD: ${PREPROD_SMTP_PASSWORD:?PREPROD_SMTP_PASSWORD obligatoire}
       MAIL_FROM: ${PREPROD_MAIL_FROM:?PREPROD_MAIL_FROM obligatoire}
-      MAIL_REDIRECT_TO: ${PREPROD_MAIL_REDIRECT_TO:?PREPROD_MAIL_REDIRECT_TO obligatoire (boîte de l'équipe qui reçoit tous les emails)}
+      MAIL_REDIRECT_TO: ${PREPROD_MAIL_REDIRECT_TO:-}
       VAPID_PUBLIC_KEY: ${PREPROD_VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${PREPROD_VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${PREPROD_VAPID_SUBJECT:-}
