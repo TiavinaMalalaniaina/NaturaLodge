@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits,
+  fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits, fetchDepositStatus,
   generateInvoice, recordPayment, voidPayment, updateInvoice, deleteDraftInvoice,
   createDeposit, validateInvoice, cancelInvoice,
   addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, addInvoiceDiscount,
@@ -55,6 +55,7 @@ export function useRecordPayment() {
     onSuccess: (inv) => {
       writeInvoiceCaches(qc, inv);
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: depositStatusKey(inv.bookingId) });
     },
   });
 }
@@ -67,6 +68,7 @@ export function useVoidPayment() {
     onSuccess: (inv) => {
       writeInvoiceCaches(qc, inv);
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: depositStatusKey(inv.bookingId) });
     },
   });
 }
@@ -139,6 +141,16 @@ export function useInvoices(params?: Parameters<typeof fetchInvoices>[0]) {
 
 // Acomptes visés pas encore absorbés par une facture définitive — trace le solde du compte 419100
 // au bilan (voir Reports.tsx).
+const depositStatusKey = (bookingId: string) => [...INVOICES_KEY, 'deposits', 'status', bookingId] as const;
+
+export function useDepositStatus(bookingId: string | null) {
+  return useQuery({
+    queryKey: depositStatusKey(bookingId ?? ''),
+    queryFn:  () => fetchDepositStatus(bookingId!),
+    enabled:  !!bookingId,
+  });
+}
+
 export function useOutstandingDeposits() {
   return useQuery({
     queryKey: [...INVOICES_KEY, 'deposits', 'outstanding'],

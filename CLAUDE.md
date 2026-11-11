@@ -259,6 +259,15 @@ Le check-out (`PATCH /:id/status` avec `status: 'CHECKED_OUT'`, `can('bookings.u
 - `InvoiceView.tsx` utilise `useSettings()` pour afficher la TVA — pas d'input manuel
 - L'échéance (`dueAt`) est fixée automatiquement au jour de génération, non visible dans l'UI
 
+### Acomptes
+Un acompte, c'est de l'argent reçu. `POST /api/invoices/deposit` (`invoice.service.ts: receiveDeposit`) crée, vise et encaisse la facture d'acompte en un seul geste : il n'existe jamais d'acompte visé mais impayé, et `/validate` refuse un brouillon d'acompte.
+- Au visa de la facture STANDARD, chaque acompte non annulé est déduit (ligne négative, 419100 → 411000) et rattaché via `Invoice.appliedToInvoiceId`. Le visa est refusé s'il reste un brouillon d'acompte ou un acompte pas entièrement encaissé.
+- Une fois la facture visée, plus d'acompte : l'argent se paie sur la facture. L'encaissement d'un acompte et le visa verrouillent la ligne `Booking` (`FOR UPDATE`) pour ne pas se croiser.
+- Un acompte imputé ne s'encaisse, ne se rembourse et ne s'annule plus séparément : on annule la facture. Son avoir porte sur le séjour entier (net + acomptes imputés).
+
+### Avoirs : ce qui se rembourse
+Un avoir ne rend en argent que ce que le client a payé au-delà de la part retenue : `encaissé − (montant crédité − avoir)`, borné entre 0 et le montant de l'avoir (`invoice.service.ts: refundableOn`, même formule dans `InvoiceDocument.tsx`). « Encaissé » et « montant crédité » incluent les acomptes imputés. Le reste de l'avoir annule une créance jamais payée. L'avoir passe `PAID` (« Soldé ») dès que cette part est rendue, ou dès son visa s'il n'y a rien à rendre.
+
 ### Filtrage des chambres — par RoomType uniquement
 Le champ `category` (enum `RoomCategory`) a été entièrement retiré du modèle `RoomType` (redondant avec `RoomType.name`) — supprimé du schéma Prisma, des routes serveur, des DTOs client et de tous les badges/formulaires d'affichage. Le filtrage et la catégorisation des chambres se font uniquement via `RoomType.name` (`useRoomTypes()`). Ne pas réintroduire un champ `category` séparé.
 

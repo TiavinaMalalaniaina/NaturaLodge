@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
 import {
   useInvoiceByBooking, useGenerateInvoice, useRecordPayment, useVoidPayment,
-  useValidateInvoice, useDeleteDraftInvoice, useCreateDeposit, useInvoices,
+  useValidateInvoice, useDeleteDraftInvoice, useCreateDeposit, useInvoices, useDepositStatus,
   useAddInvoiceItem, useDeleteInvoiceItem, useAddInvoiceDiscount,
 } from '../hooks/useInvoices';
 import { useCashAccounts } from '../hooks/useLedger';
@@ -17,6 +17,8 @@ import { formatCurrency as fmtAmount, todayLocalStr } from '../lib/format';
 import { INVOICE_STATUS_CLASS as STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ConfirmWebsiteRequestModal } from '../components/ConfirmWebsiteRequestModal';
+import { fetchDepositStatus } from '../api/invoices';
 import { InvoiceDocumentCard, MoneyRow } from '../components/invoice/InvoiceDocumentCard';
 import { InvoicePaymentForm } from '../components/invoice/InvoicePaymentForm';
 import { InvoicePaymentHistory } from '../components/invoice/InvoicePaymentHistory';
@@ -38,6 +40,9 @@ export const InvoiceView: React.FC = () => {
   const deleteDraftInvoice = useDeleteDraftInvoice();
   const createDeposit = useCreateDeposit();
   const { data: documentsList } = useInvoices(bookingId ? { bookingId, limit: 50 } : undefined);
+  const { data: depositStatus } = useDepositStatus(bookingId ?? null);
+  const [requestToConfirm, setRequestToConfirm] = useState<{ id: string; reference: string } | null>(null);
+  const canConfirmRequest = can('bookings.update_status') && can('invoices.record_payment');
   const addInvoiceItem = useAddInvoiceItem();
   const deleteInvoiceItem = useDeleteInvoiceItem();
   const addInvoiceDiscount = useAddInvoiceDiscount();
@@ -61,6 +66,9 @@ export const InvoiceView: React.FC = () => {
 
   const [showDepositForm, setShowDepositForm] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
+  const [depositMethod, setDepositMethod] = useState<PaymentMethod>('cash');
+  const [depositAccountId, setDepositAccountId] = useState('');
+  const [depositReference, setDepositReference] = useState('');
   const [depositNotes, setDepositNotes] = useState('');
 
   const [showItemForm, setShowItemForm] = useState(false);
@@ -84,6 +92,20 @@ export const InvoiceView: React.FC = () => {
   // tout autre compte (invoice.service.ts: assertPaymentAccount). Aucun compte = paiement impossible.
   const availableAccounts = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(payMethod));
   const selectedAccountId = payAccountId || availableAccounts[0]?.id || '';
+  const depositAccounts = (cashAccounts ?? []).filter(a => a.allowedMethods.includes(depositMethod));
+  // Avertissement non bloquant : un acompte partiel ou arrondi reste permis.
+  const depositAmountValue = parseInt(depositAmount, 10) || 0;
+  const depositGap = depositStatus && depositAmountValue > 0 ? depositAmountValue - depositStatus.remaining : 0;
+  const depositOverReceived = depositStatus ? Math.max(0, depositStatus.received - depositStatus.expected) : 0;
+  const depositNotice = depositGap === 0 || !depositStatus ? undefined : {
+    tone: 'warning' as const,
+    text: depositStatus.remaining === 0
+      ? t('invoice.depositMismatchAlreadyComplete', { expected: fmtAmount(depositStatus.expected) })
+      : depositGap > 0
+        ? t('invoice.depositMismatchOver', { amount: fmtAmount(depositGap), remaining: fmtAmount(depositStatus.remaining) })
+        : t('invoice.depositMismatchUnder', { amount: fmtAmount(-depositGap), remaining: fmtAmount(depositStatus.remaining) }),
+  };
+  const selectedDepositAccountId = depositAccountId || depositAccounts[0]?.id || '';
 
   const handleGenerate = () => {
     if (!bookingId) return;
@@ -147,13 +169,24 @@ export const InvoiceView: React.FC = () => {
   const handleCreateDeposit = () => {
     if (!bookingId) return;
     const amount = parseInt(depositAmount, 10);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount <= 0 || !selectedDepositAccountId) return;
     setApiError('');
     createDeposit.mutate(
-      { bookingId, amount, notes: depositNotes || undefined },
       {
-        onSuccess: (created) => {
-          setDepositAmount(''); setDepositNotes(''); setShowDepositForm(false);
+        bookingId, amount, method: depositMethod, accountId: selectedDepositAccountId,
+        reference: depositReference || undefined, notes: depositNotes || undefined,
+      },
+      {
+        onSuccess: async (created) => {
+          setDepositAmount(''); setDepositAccountId(''); setDepositReference(''); setDepositNotes('');
+          setShowDepositForm(false);
+          // Acompte complet d'une demande du site : on propose de la confirmer sur le champ plutôt
+          // que d'ouvrir l'acompte.
+          const status = canConfirmRequest ? await fetchDepositStatus(bookingId).catch(() => null) : null;
+          if (status?.websiteRequest?.status === 'AWAITING_PAYMENT' && status.remaining === 0) {
+            setRequestToConfirm(status.websiteRequest);
+            return;
+          }
           navigate(`/invoices/document/${created.id}`);
         },
         onError:   (err) => setApiError(getApiErrorMessage(err, t('common.error'))),
@@ -204,7 +237,8 @@ export const InvoiceView: React.FC = () => {
   const canVoid = can('invoices.void_payment');
   const canValidate = can('invoices.validate');
   const canDeleteDraft = can('invoices.delete_draft');
-  const canIssueDeposit = can('invoices.issue_deposit');
+  // Une fois la facture visée, l'argent reçu se paie sur la facture : plus d'acompte possible.
+  const canIssueDeposit = can('invoices.issue_deposit') && !invoice?.validatedAt;
   const canEditItems = can('invoices.update') && !!invoice && invoice.status !== 'cancelled' && invoice.status !== 'refunded';
   const noInvoice = !isLoading && (isError || !invoice);
   const isDraft = !!invoice && !invoice.validatedAt;
@@ -213,6 +247,20 @@ export const InvoiceView: React.FC = () => {
     ? invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     : 0;
   const remaining = invoice ? Math.max(0, invoice.totalAmount - totalPaid) : 0;
+  // Aperçu sur le brouillon des acomptes que le visa déduira (voir invoice.service.ts:
+  // depositsToApply). Affichage seul : rien n'est écrit sur la facture ni au grand livre avant le visa.
+  const previewDeposits = isDraft
+    ? (documentsList?.data ?? []).filter(d => d.kind === 'deposit' && d.validatedAt && d.status !== 'cancelled' && d.status !== 'refunded')
+    : [];
+  const previewDepositTotal = previewDeposits.reduce((s, d) => s + d.totalAmount, 0);
+  const depositRows: MoneyRow[] = previewDeposits.length === 0 ? [] : [
+    ...previewDeposits.map(d => ({
+      label: t(d.status === 'paid' ? 'invoice.depositPreview' : 'invoice.depositPreviewUnpaid', { number: d.number }),
+      value: `-${fmtAmount(d.totalAmount)}`,
+      accent: 'pos' as const,
+    })),
+    { label: t('invoice.netPreview'), value: fmtAmount(Math.max(0, (invoice?.totalAmount ?? 0) - previewDepositTotal)), accent: 'neg' as const },
+  ];
   const payAmountValue = parseInt(payAmount, 10) || 0;
   const overpaid = payAmountValue > remaining ? payAmountValue - remaining : 0;
   const overpayBlocked = overpaid > 0 && !can('invoices.overpay');
@@ -365,45 +413,57 @@ export const InvoiceView: React.FC = () => {
               <div className="p-6 border-b border-stone-100 flex justify-between items-center flex-wrap gap-3">
                 <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/50">{t('invoice.deposit')}</h4>
                 <button
-                  onClick={() => setShowDepositForm(v => !v)}
+                  onClick={() => {
+                    if (!showDepositForm && !depositAmount && depositStatus?.remaining) setDepositAmount(String(depositStatus.remaining));
+                    setShowDepositForm(v => !v);
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-primary/5 border border-primary/20 text-primary rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/10 transition-colors"
                 >
                   <PiggyBank className="w-3.5 h-3.5" />
                   {t('invoice.issueDeposit')}
                 </button>
               </div>
-              {showDepositForm && (
-                <div className="p-6 grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('invoice.amount')}</label>
-                    <input
-                      type="number" min={1} value={depositAmount}
-                      onChange={e => setDepositAmount(e.target.value)}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    />
+              {depositStatus && (
+                <div className="px-6 py-4 border-b border-stone-100 space-y-2 text-sm">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-on-surface-variant">{t('invoice.depositExpected')}</span>
+                    <span className="font-semibold">{fmtAmount(depositStatus.expected)}</span>
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">{t('common.notes')}</label>
-                    <input
-                      type="text" value={depositNotes}
-                      onChange={e => setDepositNotes(e.target.value)}
-                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    />
+                  <div className="flex justify-between gap-3">
+                    <span className="text-on-surface-variant">{t('invoice.depositReceived')}</span>
+                    <span className="font-semibold text-teal-700">{fmtAmount(depositStatus.received)}</span>
                   </div>
-                  <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowDepositForm(false)}
-                      className="px-4 py-2.5 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-50 transition-colors">
-                      {t('common.cancel')}
-                    </button>
-                    <button
-                      onClick={handleCreateDeposit}
-                      disabled={!depositAmount || createDeposit.isPending}
-                      className="px-4 py-2.5 bg-primary text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/90 transition-colors disabled:opacity-50"
-                    >
-                      {createDeposit.isPending ? t('common.saving') : t('common.confirm')}
-                    </button>
-                  </div>
+                  {depositStatus.remaining > 0 ? (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-on-surface-variant">{t('invoice.depositRemaining')}</span>
+                      <span className="font-bold text-amber-700">{fmtAmount(depositStatus.remaining)}</span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-700">{t('invoice.depositComplete')}</p>
+                  )}
+                  {depositOverReceived > 0 && (
+                    <p role="alert" className="flex items-start gap-2 text-xs font-medium text-amber-700">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      {t('invoice.depositOverReceived', { amount: fmtAmount(depositOverReceived) })}
+                    </p>
+                  )}
                 </div>
+              )}
+              {showDepositForm && (
+                <InvoicePaymentForm
+                  amount={depositAmount} onAmountChange={setDepositAmount}
+                  amountPlaceholder={depositStatus?.remaining ? String(depositStatus.remaining) : undefined}
+                  method={depositMethod} onMethodChange={m => { setDepositMethod(m); setDepositAccountId(''); }}
+                  accountId={selectedDepositAccountId} onAccountChange={setDepositAccountId}
+                  availableAccounts={depositAccounts}
+                  reference={depositReference} onReferenceChange={setDepositReference}
+                  notes={depositNotes} onNotesChange={setDepositNotes}
+                  onCancel={() => setShowDepositForm(false)}
+                  onSubmit={handleCreateDeposit}
+                  isPending={createDeposit.isPending}
+                  submitDisabled={!depositAmount || !selectedDepositAccountId}
+                  notice={depositNotice}
+                />
               )}
             </div>
           )}
@@ -448,7 +508,7 @@ export const InvoiceView: React.FC = () => {
           <InvoiceDocumentCard
             invoice={invoice}
             isDraft={isDraft}
-            movementRows={[
+            movementRows={depositRows.length > 0 ? depositRows : [
               ...(totalPaid > 0 ? [{ label: t('invoice.status_paid'), value: `-${fmtAmount(totalPaid)}`, accent: 'pos' as const }] : []),
               ...(remaining > 0 ? [{ label: t('invoice.remaining'), value: fmtAmount(remaining), accent: 'neg' as const }] : []),
             ] satisfies MoneyRow[]}
@@ -663,6 +723,7 @@ export const InvoiceView: React.FC = () => {
         confirmLabel={t('invoice.deleteDraft')}
         isPending={deleteDraftInvoice.isPending}
       />
+      <ConfirmWebsiteRequestModal request={requestToConfirm} onClose={() => setRequestToConfirm(null)} />
     </motion.div>
   );
 };

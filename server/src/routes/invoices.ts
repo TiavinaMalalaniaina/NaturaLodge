@@ -32,6 +32,11 @@ invoicesRouter.get('/deposits/outstanding', can('ledger.view_reports'), asyncHan
 }));
 
 // GET /invoices/:id
+// GET /invoices/deposits/status/:bookingId  ──  acompte attendu / reçu / restant pour une réservation
+invoicesRouter.get('/deposits/status/:bookingId', can('invoices.view'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  res.json(await invoiceService.getDepositStatus(req.params.bookingId));
+}));
+
 invoicesRouter.get('/:id', can('invoices.view'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   res.json(await invoiceService.getById(req.params.id));
 }));
@@ -44,11 +49,12 @@ invoicesRouter.post('/generate', can('invoices.generate'), asyncHandler(async (r
   res.status(created ? 201 : 200).json(invoice);
 }));
 
-// POST /invoices/deposit  ──  créer le brouillon d'une facture d'acompte pour une réservation
+// POST /invoices/deposit  ──  encaisser un acompte : facture d'acompte émise (numérotée, postée)
+// et paiement enregistré en un seul geste
 invoicesRouter.post('/deposit', can('invoices.issue_deposit'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   const parsed = createDepositSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
-  res.status(201).json(await invoiceService.createDeposit(parsed.data.bookingId, parsed.data.amount, parsed.data.notes, req.user!.id));
+  res.status(201).json(await invoiceService.receiveDeposit(parsed.data, req.user!.id, req.user!.role));
 }));
 
 // POST /invoices/:id/validate  ──  viser un brouillon (numéro assigné, posté au grand livre, figé)

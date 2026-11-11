@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Printer, ShieldCheck, AlertCircle, Plus, Trash2, SquarePen } from 'lucide-react';
+import { ArrowLeft, Printer, ShieldCheck, AlertCircle, Plus, Trash2, SquarePen, Ban } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
-import { useInvoice, useValidateInvoice, useRecordPayment, useVoidPayment, useUpdateInvoice, useDeleteDraftInvoice } from '../hooks/useInvoices';
+import { useInvoice, useValidateInvoice, useRecordPayment, useVoidPayment, useUpdateInvoice, useDeleteDraftInvoice, useCancelInvoice } from '../hooks/useInvoices';
 import { useCashAccounts } from '../hooks/useLedger';
 import { PaymentMethod } from '../api/invoices';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +19,9 @@ import { InvoicePaymentHistory } from '../components/invoice/InvoicePaymentHisto
 
 // Vue d'un document de facturation adressé par son propre id (acompte ou avoir — une facture
 // STANDARD reste consultée via /invoices/:bookingId, voir InvoiceView.tsx). Pas d'édition de
-// lignes ici. Un acompte VISÉ peut recevoir un paiement réel (le document lui-même n'est qu'une
-// créance — voir invoice.service.ts : la facture d'acompte ≠ l'argent effectivement encaissé,
-// exactement comme pour une facture normale) ; un avoir n'en reçoit jamais.
+// lignes ici. Un acompte est émis déjà encaissé (voir invoice.service.ts: receiveDeposit) ; le
+// formulaire d'encaissement ne sert plus qu'aux anciens acomptes visés restés impayés. Un avoir
+// visé se rembourse.
 export const InvoiceDocument: React.FC = () => {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const navigate = useNavigate();
@@ -34,6 +34,9 @@ export const InvoiceDocument: React.FC = () => {
   const voidPayment = useVoidPayment();
   const updateInvoice = useUpdateInvoice();
   const deleteDraftInvoice = useDeleteDraftInvoice();
+  const cancelInvoice = useCancelInvoice();
+  const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [cancelRefundRate, setCancelRefundRate] = React.useState('100');
   const { data: cashAccounts } = useCashAccounts();
   const [apiError, setApiError] = React.useState('');
 
@@ -55,6 +58,7 @@ export const InvoiceDocument: React.FC = () => {
   const canVoid = can('invoices.void_payment');
   const canDeleteDraft = can('invoices.delete_draft');
   const canUpdate = can('invoices.update');
+  const canCancel = can('invoices.cancel');
 
   if (isLoading) return <PageLoader />;
   if (isError || !invoice) return <PageError />;
@@ -62,11 +66,11 @@ export const InvoiceDocument: React.FC = () => {
   const isDraft = !invoice.validatedAt;
   const isRefundDoc = invoice.kind === 'credit_note';
   const totalPaid = invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
-  // Pour un avoir : on ne peut rembourser que ce qui a réellement été encaissé sur le document
-  // crédité, borné au montant de l'avoir (le serveur applique la même règle, voir addPayment).
-  const collectedOnCredited = invoice.relatesToInvoice?.collectedAmount;
-  const refundCeiling = isRefundDoc && collectedOnCredited !== undefined
-    ? Math.min(invoice.totalAmount, collectedOnCredited)
+  // Pour un avoir : on ne rend que ce que le client a payé au-delà de la part retenue, le reste de
+  // l'avoir efface une créance impayée (même règle que le serveur, invoice.service.ts: refundableOn).
+  const credited = invoice.relatesToInvoice;
+  const refundCeiling = isRefundDoc && credited?.collectedAmount !== undefined && credited.grossAmount !== undefined
+    ? Math.min(invoice.totalAmount, Math.max(0, credited.collectedAmount - (credited.grossAmount - invoice.totalAmount)))
     : invoice.totalAmount;
   const remaining = Math.max(0, refundCeiling - totalPaid);
   const nothingToRefund = isRefundDoc && !isDraft && refundCeiling === 0;
@@ -79,7 +83,8 @@ export const InvoiceDocument: React.FC = () => {
     : { tone: 'warning' as const, text: t('invoice.overpayWarning', { amount: fmtAmount(overpaid) }) };
   // Un acompte s'encaisse directement ; un avoir, une fois visé, se rembourse (mouvement de sens
   // inverse — voir invoice.service.ts: addPayment). Dans les deux cas le document doit être visé.
-  const canReceivePayment = (invoice.kind === 'deposit' || isRefundDoc) && !isDraft
+  const appliedTo = invoice.kind === 'deposit' ? invoice.appliedToInvoice : null;
+  const canReceivePayment = (invoice.kind === 'deposit' || isRefundDoc) && !isDraft && !appliedTo
     && invoice.status !== 'paid' && invoice.status !== 'cancelled'
     && (!isRefundDoc || remaining > 0);
 
@@ -144,6 +149,25 @@ export const InvoiceDocument: React.FC = () => {
   };
 
   const canEditDeposit = invoice.kind === 'deposit' && isDraft && canUpdate;
+  // Un acompte imputé s'annule avec la facture ; un acompte déjà annulé n'a plus rien à défaire.
+  const canCancelDeposit = canCancel && invoice.kind === 'deposit' && !isDraft && !appliedTo
+    && invoice.status !== 'cancelled' && invoice.status !== 'refunded';
+  // Même calcul que le serveur (invoice.service.ts: cancelInvoice) : pas de frais retenus sur de
+  // l'argent jamais reçu.
+  const cancelRate = Math.min(100, Math.max(0, parseInt(cancelRefundRate, 10) || 0));
+  const cancelCredited = Math.max(Math.round(invoice.totalAmount * cancelRate / 100), invoice.totalAmount - totalPaid);
+  const cancelRetained = invoice.totalAmount - cancelCredited;
+
+  const handleCancelDeposit = () => {
+    setApiError('');
+    cancelInvoice.mutate({ id: invoice.id, refundRatePercent: cancelRate }, {
+      onSuccess: (result) => {
+        setCancelOpen(false);
+        if ('creditNote' in result) navigate(`/invoices/document/${result.creditNote.id}`);
+      },
+      onError: (err) => { setCancelOpen(false); setApiError(getApiErrorMessage(err, t('common.error'))); },
+    });
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -180,6 +204,16 @@ export const InvoiceDocument: React.FC = () => {
               <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">{t('common.edit')}</span>
             </button>
           )}
+          {canCancelDeposit && (
+            <button
+              onClick={() => setCancelOpen(true)}
+              disabled={cancelInvoice.isPending}
+              className="p-3 border border-red-200 rounded-xl hover:bg-red-50 text-red-600 transition-all flex items-center gap-2 bg-white disabled:opacity-50"
+            >
+              <Ban className="w-4 h-4" />
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">{t('invoice.cancelDeposit')}</span>
+            </button>
+          )}
           {isDraft && canDeleteDraft && (
             <button
               onClick={() => setConfirmDeleteDraft(true)}
@@ -191,7 +225,7 @@ export const InvoiceDocument: React.FC = () => {
               <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:block">{t('invoice.deleteDraft')}</span>
             </button>
           )}
-          {isDraft && canValidate && (
+          {isDraft && canValidate && invoice.kind !== 'deposit' && (
             <button
               onClick={handleValidate}
               disabled={validateInvoice.isPending}
@@ -223,7 +257,19 @@ export const InvoiceDocument: React.FC = () => {
       {isDraft && (
         <div className="no-print flex items-center gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-800">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          <p className="text-xs font-medium">{t('invoice.draftHint')}</p>
+          <p className="text-xs font-medium">{t(invoice.kind === 'deposit' ? 'invoice.depositDraftHint' : 'invoice.draftHint')}</p>
+        </div>
+      )}
+
+      {appliedTo && (
+        <div className="no-print flex items-center gap-3 p-3 bg-stone-50 border border-stone-200 rounded-xl text-on-surface-variant">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <p className="text-xs font-medium">
+            {t('invoice.depositApplied', { number: appliedTo.number })}{' '}
+            <button onClick={() => navigate(`/invoices/${invoice.bookingId}`)} className="underline font-semibold">
+              {t('invoice.viewInvoice')}
+            </button>
+          </p>
         </div>
       )}
 
@@ -336,6 +382,30 @@ export const InvoiceDocument: React.FC = () => {
         confirmLabel={t('invoice.confirmCancel')}
         isPending={voidPayment.isPending}
       />
+      <ConfirmModal
+        isOpen={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={handleCancelDeposit}
+        title={t('invoice.cancelDepositTitle')}
+        message={t('invoice.cancelDepositMessage')}
+        confirmLabel={t('invoice.cancelDeposit')}
+        isPending={cancelInvoice.isPending}
+      >
+        <label className="block">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-1.5">
+            {t('invoice.cancelDepositRate')}
+          </span>
+          <input
+            type="number" min={0} max={100} value={cancelRefundRate}
+            onChange={e => setCancelRefundRate(e.target.value)}
+            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+          />
+        </label>
+        <div className="mt-3 space-y-1 text-xs">
+          <p className="flex justify-between gap-3"><span className="text-on-surface-variant">{t('invoice.cancelDepositCredited')}</span><span className="font-semibold">{fmtAmount(cancelCredited)}</span></p>
+          <p className="flex justify-between gap-3"><span className="text-on-surface-variant">{t('invoice.cancelDepositRetained')}</span><span className="font-semibold">{fmtAmount(cancelRetained)}</span></p>
+        </div>
+      </ConfirmModal>
       <ConfirmModal
         isOpen={confirmDeleteDraft}
         onClose={() => setConfirmDeleteDraft(false)}
