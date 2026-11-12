@@ -78,7 +78,13 @@ const invoiceInclude = {
       },
     },
   },
-  creditedBy:        { select: { id: true, number: true, kind: true, totalAmount: true, validatedAt: true } },
+  // Avoirs et factures complémentaires rattachés ; `payments` = ce que chaque avoir a déjà rendu.
+  creditedBy: {
+    select: {
+      id: true, number: true, kind: true, totalAmount: true, validatedAt: true,
+      payments: { where: { status: 'COMPLETED' as const }, select: { amount: true } },
+    },
+  },
   appliedToInvoice:  { select: { id: true, number: true } },
   booking: {
     select: {
@@ -127,42 +133,59 @@ const NUMBER_PREFIX: Record<InvoiceKind, string> = {
   CREDIT_NOTE: 'AVO',
 };
 
+
 function generateInvoiceNumber(tx: Prisma.TransactionClient, kind: InvoiceKind): Promise<string> {
   return nextDocumentNumber(tx, 'Invoice', NUMBER_PREFIX[kind], LOCK_KEYS.invoiceNumber);
 }
 
-// Encaissé sur un document : ses propres paiements + ceux des acomptes imputés sur lui.
-async function collectedOn(client: PrismaOrTx, invoiceId: string): Promise<number> {
-  const agg = await client.payment.aggregate({
-    where: { status: 'COMPLETED', OR: [{ invoiceId }, { invoice: { appliedToInvoiceId: invoiceId } }] },
-    _sum:  { amount: true },
-  });
+async function sumPayments(client: PrismaOrTx, where: Prisma.PaymentWhereInput): Promise<number> {
+  const agg = await client.payment.aggregate({ where: { status: 'COMPLETED', ...where }, _sum: { amount: true } });
   return agg._sum.amount ?? 0;
 }
 
-// Ce qu'un avoir rend réellement en argent : ce que le client a payé sur le document crédité, moins
-// ce qu'il doit encore une fois l'avoir déduit (la part retenue). Le reste de l'avoir efface une
-// créance jamais payée, il ne se rembourse pas. Ex. séjour 240 000, 100 000 encaissés, avoir à 70 %
-// (168 000) : 72 000 sont retenus, donc 28 000 à rendre.
-async function refundableOn(
-  client: PrismaOrTx,
-  creditNote: { totalAmount: number; relatesToInvoiceId: string | null },
-): Promise<number> {
-  if (!creditNote.relatesToInvoiceId) return creditNote.totalAmount;
-  const credited = await client.invoice.findUnique({
-    where:  { id: creditNote.relatesToInvoiceId },
+// Encaissé net sur un document : ses paiements (un remboursement de trop-perçu y est un paiement
+// négatif) + ceux des acomptes imputés sur lui.
+function collectedOn(client: PrismaOrTx, invoiceId: string): Promise<number> {
+  return sumPayments(client, { OR: [{ invoiceId }, { invoice: { appliedToInvoiceId: invoiceId } }] });
+}
+
+// Situation d'un document facturé : montant (acomptes imputés compris), ce qu'en retirent ses avoirs
+// visés, ce qui a été encaissé, et le trop-perçu restant à rendre au client — ce qu'il a payé
+// au-delà de ce qu'il doit après avoirs, moins ce que ces avoirs lui ont déjà rendu.
+async function balanceOf(client: PrismaOrTx, invoiceId: string) {
+  const invoice = await client.invoice.findUnique({
+    where:  { id: invoiceId },
     select: { totalAmount: true, appliedDeposits: { select: { totalAmount: true } } },
   });
-  if (!credited) return 0;
-  const gross     = credited.totalAmount + credited.appliedDeposits.reduce((s, d) => s + d.totalAmount, 0);
-  const collected = await collectedOn(client, creditNote.relatesToInvoiceId);
-  return Math.min(creditNote.totalAmount, Math.max(0, collected - (gross - creditNote.totalAmount)));
+  if (!invoice) return null;
+  const credits = await client.invoice.aggregate({
+    where: { relatesToInvoiceId: invoiceId, kind: 'CREDIT_NOTE', validatedAt: { not: null } },
+    _sum:  { totalAmount: true },
+  });
+  const gross     = invoice.totalAmount + invoice.appliedDeposits.reduce((s, d) => s + d.totalAmount, 0);
+  const credited  = credits._sum.totalAmount ?? 0;
+  const collected = await collectedOn(client, invoiceId);
+  const refundedByCredits = await sumPayments(client, { invoice: { relatesToInvoiceId: invoiceId, kind: 'CREDIT_NOTE' } });
+  return { gross, credited, collected, overpaid: Math.max(0, collected - (gross - credited) - refundedByCredits) };
+}
+
+// Ce qu'un avoir peut encore rendre en argent : au plus son propre montant, et jamais plus que le
+// trop-perçu du document crédité. Le reste de l'avoir efface une créance jamais payée. Ex. séjour
+// 240 000, 100 000 encaissés, avoir à 70 % (168 000) : 72 000 sont retenus, donc 28 000 à rendre.
+async function refundableOn(
+  client: PrismaOrTx,
+  creditNote: { id: string; totalAmount: number; relatesToInvoiceId: string | null },
+): Promise<number> {
+  const own = Math.max(0, creditNote.totalAmount - await sumPayments(client, { invoiceId: creditNote.id }));
+  if (!creditNote.relatesToInvoiceId) return own;
+  const balance = await balanceOf(client, creditNote.relatesToInvoiceId);
+  return balance ? Math.min(own, balance.overpaid) : 0;
 }
 
 async function syncInvoiceStatus(invoiceId: string, client: PrismaOrTx = prisma): Promise<void> {
   const invoice = await client.invoice.findUnique({
     where:  { id: invoiceId },
-    select: { kind: true, totalAmount: true, status: true, relatesToInvoiceId: true },
+    select: { id: true, kind: true, totalAmount: true, status: true, relatesToInvoiceId: true },
   });
   if (!invoice) return;
   // CANCELLED/REFUNDED sont des états terminaux posés explicitement par cancelInvoice() : ne jamais
@@ -170,24 +193,47 @@ async function syncInvoiceStatus(invoiceId: string, client: PrismaOrTx = prisma)
   // facture annulée la ferait repasser en PENDING (« non payée » alors qu'elle est annulée).
   if (invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') return;
 
-  const payments = await client.payment.findMany({
-    where: { invoiceId, status: 'COMPLETED' },
-    select: { amount: true },
-  });
-  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-  // Un avoir est soldé quand la part réellement remboursable a été rendue, pas son montant entier.
-  const target = invoice.kind === 'CREDIT_NOTE' ? await refundableOn(client, invoice) : invoice.totalAmount;
-
-  let status: InvoiceStatus = 'PENDING';
-  let paidAt: Date | null   = null;
-  if (totalPaid >= target) {
-    status = 'PAID';
-    paidAt = new Date();
-  } else if (totalPaid > 0) {
-    status = 'PARTIALLY_PAID';
+  const paid = await sumPayments(client, { invoiceId });
+  let settled: boolean;
+  if (invoice.kind === 'CREDIT_NOTE') {
+    // Un avoir est soldé quand plus rien n'est à rendre, pas quand son montant entier a été rendu.
+    settled = await refundableOn(client, invoice) === 0;
+  } else {
+    const credits = await client.invoice.aggregate({
+      where: { relatesToInvoiceId: invoiceId, kind: 'CREDIT_NOTE', validatedAt: { not: null } },
+      _sum:  { totalAmount: true },
+    });
+    settled = paid >= invoice.totalAmount - (credits._sum.totalAmount ?? 0);
   }
 
-  await client.invoice.update({ where: { id: invoiceId }, data: { status, paidAt } });
+  const status: InvoiceStatus = settled ? 'PAID' : paid > 0 ? 'PARTIALLY_PAID' : 'PENDING';
+  await client.invoice.update({ where: { id: invoiceId }, data: { status, paidAt: settled ? new Date() : null } });
+}
+
+// Un mouvement sur un document change aussi la situation des documents liés : le statut d'un avoir
+// dépend de ce qui a été encaissé sur la facture qu'il crédite, et inversement.
+async function syncDocumentAndRelated(client: PrismaOrTx, invoiceId: string): Promise<void> {
+  const invoice = await client.invoice.findUnique({ where: { id: invoiceId }, select: { kind: true, relatesToInvoiceId: true } });
+  if (!invoice) return;
+  const rootId = invoice.kind === 'CREDIT_NOTE' && invoice.relatesToInvoiceId ? invoice.relatesToInvoiceId : invoiceId;
+  await syncInvoiceStatus(rootId, client);
+  const credits = await client.invoice.findMany({
+    where:  { relatesToInvoiceId: rootId, kind: 'CREDIT_NOTE', validatedAt: { not: null } },
+    select: { id: true },
+  });
+  for (const credit of credits) await syncInvoiceStatus(credit.id, client);
+}
+
+// Taux de TVA effectif d'une facture (TVA / HT hors acomptes déduits), appliqué quand ses lignes de
+// séjour suivent une modification de la réservation.
+async function taxRatioOf(client: PrismaOrTx, invoiceId: string): Promise<number> {
+  const invoice = await client.invoice.findUnique({
+    where:  { id: invoiceId },
+    select: { totalAmount: true, taxAmount: true, appliedDeposits: { select: { totalAmount: true } } },
+  });
+  if (!invoice) return 0;
+  const net = invoice.totalAmount + invoice.appliedDeposits.reduce((s, d) => s + d.totalAmount, 0) - invoice.taxAmount;
+  return net > 0 ? invoice.taxAmount / net : 0;
 }
 
 export async function list(params: InvoiceListParams) {
@@ -304,7 +350,7 @@ export async function generate(data: GenerateInvoiceInput, issuedById: string) {
     const existing = await tx.invoice.findFirst({ where: { bookingId, kind: 'STANDARD' } });
     if (existing) {
       if (existing.validatedAt) {
-        throw new ConflictError('La facture de cette réservation est déjà visée : toute correction passe désormais par un avoir.');
+        throw new ConflictError('La facture de cette réservation est déjà visée : elle suit le séjour et se modifie directement.');
       }
       // Brouillon existant : on le resynchronise sur l'état actuel de la réservation
       // (chambres/suppléments ont pu changer depuis) plutôt que de renvoyer une copie périmée.
@@ -404,21 +450,20 @@ function positiveBaseOf(items: { total: number }[]): number {
   return items.reduce((s, i) => (i.total > 0 ? s + i.total : s), 0);
 }
 
-// Resynchronise les lignes et le total du brouillon STANDARD d'une réservation sur son état actuel
-// (chambres/suppléments), appelée par booking.service.ts après toute mutation qui touche le
-// montant (reassign, add/removeRoom, add/update/removeExtra). Ne touche jamais une facture déjà
-// visée (`validatedAt` non nul) — une fois au grand livre, elle est figée ; toute correction passe
-// par un avoir, jamais par une resynchronisation silencieuse. Pas d'écriture comptable ici : un
-// brouillon n'existe pas encore au grand livre (contrairement à l'ancien modèle où chaque invoice
-// était postée dès sa création), il n'y a donc jamais rien à corriger.
+// Resynchronise la facture STANDARD d'une réservation sur son état actuel (chambres/suppléments),
+// appelée par booking.service.ts après toute mutation qui touche le montant (reassign,
+// add/removeRoom, add/update/removeExtra). La facture suit toujours le séjour, même visée : sur une
+// facture visée, la variation passe une écriture correctrice (séjour 706000, remises % 709000, TVA
+// 4457000 contre la créance 411000). La TVA suit au taux effectif de la facture.
 //
 // Lignes MANUAL (dépenses flexibles / remises, voir addManualItem / addDiscount) :
 //  - montant figé (`discountRate` null) → conservées telles quelles ;
 //  - remise en pourcentage (`discountRate` renseigné) → `total` recalculé sur la base du moment.
-// Seules les lignes `source: BOOKING` sont réécrites.
+// Seules les lignes de séjour (`source: BOOKING`, total positif) sont réécrites. Les déductions
+// d'acompte des anciennes factures portent `source: BOOKING` avec un total négatif : jamais touchées.
 export async function syncInvoiceWithBooking(tx: PrismaOrTx, bookingId: string): Promise<void> {
   const invoice = await tx.invoice.findFirst({ where: { bookingId, kind: 'STANDARD' }, orderBy: { issuedAt: 'desc' } });
-  if (!invoice || invoice.validatedAt) return;
+  if (!invoice || invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') return;
 
   const booking = await tx.booking.findUnique({
     where: { id: bookingId },
@@ -431,19 +476,22 @@ export async function syncInvoiceWithBooking(tx: PrismaOrTx, bookingId: string):
       },
     },
   });
-  if (!booking) return;
+  if (!booking || booking.status === 'CANCELLED') return;
 
   const bookingItems    = buildInvoiceItemsFromBooking(booking);
   const bookingSubtotal = bookingItems.reduce((s, i) => s + i.total, 0);
 
-  const manualItems  = await tx.invoiceItem.findMany({ where: { invoiceId: invoice.id, source: 'MANUAL' } });
-  const fixedManual  = manualItems.filter(i => i.discountRate === null);
-  const pctDiscounts = manualItems.filter(i => i.discountRate !== null);
+  const items        = await tx.invoiceItem.findMany({ where: { invoiceId: invoice.id } });
+  const stayLines    = items.filter(i => i.source === 'BOOKING' && i.total >= 0);
+  const otherFixed   = items.filter(i => !stayLines.includes(i) && i.discountRate === null);
+  const pctDiscounts = items.filter(i => i.discountRate !== null);
 
-  const fixedManualSubtotal = fixedManual.reduce((s, i) => s + i.total, 0);
+  const oldBookingSubtotal = stayLines.reduce((s, i) => s + i.total, 0);
+  const oldPctTotal        = pctDiscounts.reduce((s, i) => s + i.total, 0);
+  const otherFixedSubtotal = otherFixed.reduce((s, i) => s + i.total, 0);
 
   // La base des remises % : lignes réservation + charges manuelles positives, hors remises.
-  const pctBase = bookingSubtotal + positiveBaseOf(fixedManual);
+  const pctBase = bookingSubtotal + positiveBaseOf(otherFixed);
 
   let pctDiscountNew = 0;
   for (const d of pctDiscounts) {
@@ -454,13 +502,38 @@ export async function syncInvoiceWithBooking(tx: PrismaOrTx, bookingId: string):
     }
   }
 
-  const newSubtotal = bookingSubtotal + fixedManualSubtotal + pctDiscountNew;
+  const ratio       = await taxRatioOf(tx, invoice.id);
+  const deductions  = invoice.totalAmount - invoice.taxAmount - (oldBookingSubtotal + oldPctTotal + otherFixedSubtotal);
+  const newSubtotal = bookingSubtotal + pctDiscountNew + otherFixedSubtotal + deductions;
+  const applied     = await tx.invoice.aggregate({ where: { appliedToInvoiceId: invoice.id }, _sum: { totalAmount: true } });
+  const newTax      = Math.round((newSubtotal + (applied._sum.totalAmount ?? 0)) * ratio);
 
-  await tx.invoiceItem.deleteMany({ where: { invoiceId: invoice.id, source: 'BOOKING' } });
+  await tx.invoiceItem.deleteMany({ where: { id: { in: stayLines.map(i => i.id) } } });
   await tx.invoice.update({
     where: { id: invoice.id },
-    data:  { totalAmount: newSubtotal + invoice.taxAmount, items: { create: bookingItems } },
+    data:  { totalAmount: newSubtotal + newTax, taxAmount: newTax, items: { create: bookingItems } },
   });
+
+  if (!invoice.validatedAt) return;
+  const changes: [string, number][] = [
+    ['706000', bookingSubtotal - oldBookingSubtotal],
+    ['709000', pctDiscountNew - oldPctTotal],
+    ['4457000', newTax - invoice.taxAmount],
+  ];
+  const delta = changes.reduce((s, [, amount]) => s + amount, 0);
+  if (changes.every(([, amount]) => amount === 0)) return;
+  await ledgerService.postEntry({
+    source:           'INVOICE',
+    relatedInvoiceId: invoice.id,
+    memo:             `Séjour modifié — facture ${invoice.number}`,
+    lines: [
+      ...(delta > 0 ? [{ accountCode: '411000', debit: delta }] : delta < 0 ? [{ accountCode: '411000', credit: -delta }] : []),
+      ...changes.filter(([, amount]) => amount !== 0).map(([accountCode, amount]) =>
+        amount > 0 ? { accountCode, credit: amount } : { accountCode, debit: -amount }),
+    ],
+  }, tx);
+  await syncDocumentAndRelated(tx, invoice.id);
+  await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 }
 
 // Vise un brouillon : lui assigne son numéro définitif (séquence propre à son `kind`), fixe
@@ -501,7 +574,7 @@ async function depositsToApply(tx: Prisma.TransactionClient, bookingId: string) 
   return deposits;
 }
 
-async function validateInTx(tx: Prisma.TransactionClient, id: string, actingUserId?: string): Promise<void> {
+export async function validateInTx(tx: Prisma.TransactionClient, id: string, actingUserId?: string): Promise<void> {
   const invoice = await tx.invoice.findUnique({ where: { id } });
   if (!invoice) throw new NotFoundError('Facture');
   if (invoice.validatedAt) throw new ConflictError('Cette facture est déjà visée.');
@@ -547,6 +620,7 @@ async function validateInTx(tx: Prisma.TransactionClient, id: string, actingUser
           quantity:    1,
           unitPrice:   -d.totalAmount,
           total:       -d.totalAmount,
+          source:      'MANUAL' as const,
         })),
       });
       await tx.invoice.update({ where: { id }, data: { totalAmount: invoice.totalAmount - depositTotal } });
@@ -617,10 +691,24 @@ async function validateInTx(tx: Prisma.TransactionClient, id: string, actingUser
           { accountCode: '411000', credit: invoice.totalAmount },
         ],
       }, tx);
+      // Annulation : la part retenue n'est plus du chiffre d'affaires séjour mais des frais
+      // d'annulation. Sa TVA reste collectée.
+      if (invoice.retainedAmount > 0) {
+        await ledgerService.postEntry({
+          source:           'CREDIT_NOTE',
+          relatedInvoiceId: id,
+          postedById:       actingUserId,
+          memo:             `Frais d'annulation retenus — avoir ${number}`,
+          lines: [
+            { accountCode: '706000', debit: invoice.retainedAmount },
+            { accountCode: '708500', credit: invoice.retainedAmount },
+          ],
+        }, tx);
+      }
     }
   }
 
-  await syncInvoiceStatus(id, tx);
+  await syncDocumentAndRelated(tx, id);
 }
 
 export async function update(id: string, data: UpdateInvoiceInput) {
@@ -659,9 +747,8 @@ export async function update(id: string, data: UpdateInvoiceInput) {
   }
 
   // Un changement de taxAmount doit rester cohérent des deux côtés : le total facturé (qui inclut
-  // la taxe) ET l'écriture 4457000 TVA collectée, sinon la facture affichée diverge du grand livre
-  // (voir totalAmount = subtotal + taxAmount posé au visa). Une facture encore brouillon n'a
-  // aucune écriture à ajuster : rien n'est posé tant qu'elle n'est pas visée.
+  // la taxe) ET, sur une facture visée, l'écriture 4457000 TVA collectée — sinon la facture affichée
+  // diverge du grand livre. Un brouillon n'a aucune écriture à ajuster.
   const newTaxAmount = data.taxAmount;
   return prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUnique({ where: { id } });
@@ -669,8 +756,7 @@ export async function update(id: string, data: UpdateInvoiceInput) {
     if (invoice.status === 'CANCELLED') throw new ConflictError('Cette facture est annulée, elle ne peut plus être modifiée.');
 
     const delta = newTaxAmount - invoice.taxAmount;
-
-    const updated = await tx.invoice.update({
+    await tx.invoice.update({
       where: { id },
       data: {
         ...(data.notes !== undefined && { notes: data.notes }),
@@ -678,7 +764,6 @@ export async function update(id: string, data: UpdateInvoiceInput) {
         taxAmount:   newTaxAmount,
         totalAmount: invoice.totalAmount + delta,
       },
-      include: invoiceInclude,
     });
 
     if (delta !== 0 && invoice.validatedAt) {
@@ -690,9 +775,10 @@ export async function update(id: string, data: UpdateInvoiceInput) {
           ? [{ accountCode: '411000', debit: delta }, { accountCode: '4457000', credit: delta }]
           : [{ accountCode: '4457000', debit: -delta }, { accountCode: '411000', credit: -delta }],
       }, tx);
+      await syncDocumentAndRelated(tx, id);
+      await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
     }
-
-    return updated;
+    return tx.invoice.findUnique({ where: { id }, include: invoiceInclude });
   });
 }
 
@@ -727,6 +813,9 @@ export async function cancelInvoice(
       await tx.invoice.delete({ where: { id } });
       return { deleted: true };
     }
+    if (invoice.kind === 'CREDIT_NOTE') {
+      throw new ConflictError('Un avoir visé ne s’annule pas.');
+    }
     if (invoice.appliedToInvoiceId) {
       throw new ConflictError('Cet acompte est imputé sur la facture de la réservation : c’est elle qu’il faut annuler.');
     }
@@ -734,15 +823,26 @@ export async function cancelInvoice(
     // Une facture dont des acomptes ont été déduits porte un net à payer ; l'annulation porte sur
     // le séjour entier (net + acomptes imputés), l'argent des acomptes faisant partie de la facture.
     const applied = await tx.invoice.aggregate({ where: { appliedToInvoiceId: id }, _sum: { totalAmount: true } });
-    const gross   = invoice.totalAmount + (applied._sum.totalAmount ?? 0);
+    const credits = await tx.invoice.aggregate({
+      where: { relatesToInvoiceId: id, kind: 'CREDIT_NOTE' },
+      _sum:  { totalAmount: true, taxAmount: true },
+    });
+    const base    = invoice.totalAmount + (applied._sum.totalAmount ?? 0) - (credits._sum.totalAmount ?? 0);
+    const baseTax = invoice.taxAmount - (credits._sum.taxAmount ?? 0);
+    if (base <= 0) throw new ConflictError('Cette facture est déjà entièrement créditée par des avoirs.');
 
-    let refundAmount = Math.round(gross * refundRatePercent / 100);
+    let refundAmount = Math.round(base * refundRatePercent / 100);
     // Un acompte ne retient de frais que sur l'argent réellement reçu : annuler un acompte dont le
     // paiement a été annulé ne doit pas créer une dette de frais pour le client.
     if (invoice.kind === 'DEPOSIT') {
-      refundAmount = Math.max(refundAmount, gross - await collectedOn(tx, id));
+      refundAmount = Math.max(refundAmount, base - await collectedOn(tx, id));
     }
-    const refundTax     = gross > 0 ? Math.round(invoice.taxAmount * refundRatePercent / 100) : 0;
+    const refundTax = Math.round(baseTax * refundRatePercent / 100);
+    // Frais d'annulation HT retenus sur une facture, reclassés en 708500 au visa de l'avoir. Un
+    // acompte n'a jamais été du chiffre d'affaires : sa part retenue va déjà en 708500.
+    const retainedAmount = invoice.kind === 'STANDARD'
+      ? Math.max(0, (base - refundAmount) - (baseTax - refundTax))
+      : 0;
 
     const creditNote = await tx.invoice.create({
       data: {
@@ -754,13 +854,15 @@ export async function cancelInvoice(
         relatesToInvoiceId: invoice.id,
         totalAmount:        refundAmount,
         taxAmount:          refundTax,
-        notes:              `Annulation — ${refundAmount.toLocaleString('fr-FR')} Ar crédités, ${(gross - refundAmount).toLocaleString('fr-FR')} Ar retenus comme frais d'annulation.`,
+        retainedAmount,
+        notes:              `Annulation — ${refundAmount.toLocaleString('fr-FR')} Ar crédités, ${(base - refundAmount).toLocaleString('fr-FR')} Ar retenus comme frais d'annulation.`,
         items: {
           create: [{
             description: `Avoir sur annulation — facture ${invoice.number}`,
             quantity:    1,
             unitPrice:   refundAmount,
             total:       refundAmount,
+            source:      'MANUAL',
           }],
         },
       },
@@ -866,28 +968,27 @@ async function recordPaymentInTx(
   await assertPaymentAccount(tx, data.accountId, data.method);
 
   const isRefund = invoice.kind === 'CREDIT_NOTE';
-  const sumCompleted = async (invId: string) => (await tx.payment.findMany({
-    where: { invoiceId: invId, status: 'COMPLETED' }, select: { amount: true },
-  })).reduce((s, p) => s + p.amount, 0);
 
   if (!isRefund) {
     // Trop-perçu (le client verse plus que le reste dû) : refusé sauf permission explicite. Accepté,
-    // l'excédent reste au crédit du client (411000 créditeur).
-    const remaining = invoice.totalAmount - await sumCompleted(invoiceId);
+    // l'excédent reste au crédit du client (411000 créditeur), remboursable via refundOverpayment.
+    const credits = await tx.invoice.aggregate({
+      where: { relatesToInvoiceId: invoiceId, kind: 'CREDIT_NOTE', validatedAt: { not: null } },
+      _sum:  { totalAmount: true },
+    });
+    const remaining = invoice.totalAmount - (credits._sum.totalAmount ?? 0) - await sumPayments(tx, { invoiceId });
     if (data.amount > remaining && !(processedByRole && await roleHasPermission(processedByRole, 'invoices.overpay'))) {
-      throw new ForbiddenError(`Le paiement dépasse le reste dû (${remaining.toLocaleString('fr-FR')} Ar).`);
+      throw new ForbiddenError(`Le paiement dépasse le reste dû (${Math.max(0, remaining).toLocaleString('fr-FR')} Ar).`);
     }
   }
 
   if (isRefund) {
-    const alreadyRefunded = await sumCompleted(invoiceId);
     const ceiling = await refundableOn(tx, invoice);
-
-    if (alreadyRefunded + data.amount > ceiling) {
+    if (data.amount > ceiling) {
       throw new ConflictError(
         ceiling === 0
           ? "Il n'y a rien à rembourser : la part retenue couvre tout ce que le client a payé."
-          : `Le remboursement dépasse ce qui reste à rendre au client (${(ceiling - alreadyRefunded).toLocaleString('fr-FR')} Ar).`,
+          : `Le remboursement dépasse ce qui reste à rendre au client (${ceiling.toLocaleString('fr-FR')} Ar).`,
       );
     }
   }
@@ -931,8 +1032,60 @@ async function recordPaymentInTx(
     data:  { lifetimeValue: isRefund ? { decrement: data.amount } : { increment: data.amount } },
   });
 
-  await syncInvoiceStatus(invoiceId, tx);
+  await syncDocumentAndRelated(tx, invoiceId);
   await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
+}
+
+// Rend au client ce qu'il a payé en trop sur une facture (ou un acompte non imputé) : paiement
+// négatif sur le document, l'argent sort du compte choisi et la créance créditrice 411000 est soldée.
+export async function refundOverpayment(invoiceId: string, data: PaymentInput, processedById: string, processedByRole?: string) {
+  if (processedByRole) await assertCanViewCashAccount(processedByRole, data.accountId);
+  return prisma.$transaction(async (tx) => {
+    const invoice = await tx.invoice.findUnique({ where: { id: invoiceId } });
+    if (!invoice) throw new NotFoundError('Facture');
+    if (!invoice.validatedAt) throw new ConflictError('Ce document doit être visé avant d\'enregistrer un mouvement.');
+    if (invoice.kind === 'CREDIT_NOTE') throw new ConflictError('Un avoir se rembourse depuis son propre formulaire de remboursement.');
+    if (invoice.appliedToInvoiceId) {
+      throw new ConflictError('Cet acompte est imputé sur la facture de la réservation : le trop-perçu se rembourse depuis la facture.');
+    }
+    await assertPaymentAccount(tx, data.accountId, data.method);
+
+    const balance  = await balanceOf(tx, invoiceId);
+    const overpaid = balance?.overpaid ?? 0;
+    if (data.amount > overpaid) {
+      throw new ConflictError(overpaid === 0
+        ? 'Aucun trop-perçu à rembourser sur ce document.'
+        : `Le remboursement dépasse le trop-perçu (${overpaid.toLocaleString('fr-FR')} Ar).`);
+    }
+
+    const payment = await tx.payment.create({
+      data: {
+        invoiceId, processedById,
+        amount:    -data.amount,
+        method:    data.method,
+        accountId: data.accountId,
+        reference: data.reference ?? null,
+        notes:     data.notes ?? 'Remboursement du trop-perçu',
+        status:    'COMPLETED',
+      },
+    });
+    await ledgerService.postEntry({
+      source:           'PAYMENT',
+      relatedPaymentId: payment.id,
+      relatedInvoiceId: invoiceId,
+      postedById:       processedById,
+      memo:             `Remboursement trop-perçu ${invoice.number}`,
+      lines: [
+        { accountCode: '411000', debit: data.amount },
+        { accountId: data.accountId, credit: data.amount },
+      ],
+    }, tx);
+    await tx.guest.update({ where: { id: invoice.guestId }, data: { lifetimeValue: { decrement: data.amount } } });
+
+    await syncDocumentAndRelated(tx, invoiceId);
+    await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
+    return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
+  });
 }
 
 export async function voidPayment(invoiceId: string, paymentId: string, voidedById?: string) {
@@ -949,37 +1102,39 @@ export async function voidPayment(invoiceId: string, paymentId: string, voidedBy
 
     await tx.payment.update({ where: { id: paymentId }, data: { status: 'REFUNDED' } });
 
-    const isRefund = invoice.kind === 'CREDIT_NOTE';
+    // Argent sorti : remboursement d'un avoir, ou remboursement de trop-perçu (paiement négatif).
+    const outflow = invoice.kind === 'CREDIT_NOTE' || payment.amount < 0;
+    const amount  = Math.abs(payment.amount);
 
-    // Contre-écriture exacte du mouvement d'origine (voir addPayment). Pour un encaissement :
-    // l'argent ressort du compte, la créance est rouverte. Pour un remboursement d'avoir : sens
-    // inverse. Jamais de suppression de l'écriture d'origine.
+    // Contre-écriture exacte du mouvement d'origine (voir addPayment / refundOverpayment). Pour un
+    // encaissement : l'argent ressort du compte, la créance est rouverte. Pour un remboursement :
+    // sens inverse. Jamais de suppression de l'écriture d'origine.
     await ledgerService.postEntry({
       source:           'PAYMENT_VOID',
       relatedPaymentId: payment.id,
       relatedInvoiceId: invoiceId,
       postedById:       voidedById,
-      memo:             isRefund
-        ? `Annulation remboursement — avoir ${invoice.number}`
+      memo:             outflow
+        ? `Annulation remboursement — ${invoice.number}`
         : `Annulation paiement — facture ${invoice.number}`,
-      lines: isRefund
+      lines: outflow
         ? [
-            { accountId: payment.accountId, debit: payment.amount },
-            { accountCode: '411000', credit: payment.amount },
+            { accountId: payment.accountId, debit: amount },
+            { accountCode: '411000', credit: amount },
           ]
         : [
-            { accountCode: '411000', debit: payment.amount },
-            { accountId: payment.accountId, credit: payment.amount },
+            { accountCode: '411000', debit: amount },
+            { accountId: payment.accountId, credit: amount },
           ],
     }, tx);
 
     // Symétrique de addPayment : on défait l'effet du mouvement annulé sur la valeur cumulée.
     await tx.guest.update({
       where: { id: invoice.guestId },
-      data:  { lifetimeValue: isRefund ? { increment: payment.amount } : { decrement: payment.amount } },
+      data:  { lifetimeValue: outflow ? { increment: amount } : { decrement: amount } },
     });
 
-    await syncInvoiceStatus(invoiceId, tx);
+    await syncDocumentAndRelated(tx, invoiceId);
     await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
@@ -987,14 +1142,15 @@ export async function voidPayment(invoiceId: string, paymentId: string, voidedBy
 }
 
 // ─── Lignes personnalisées : dépenses flexibles & remises ────────────────────
-// Lignes `InvoiceItem.source = MANUAL` ajoutées à la main sur une facture existante :
+// Lignes `InvoiceItem.source = MANUAL` ajoutées à la main sur un brouillon de facture (ou de facture
+// complémentaire) :
 //  - charge libre (casse, service exceptionnel…) → total positif ;
 //  - remise en montant fixe → total négatif, `discountRate` null ;
 //  - remise en pourcentage → `discountRate` renseigné, total recalculé à chaque resynchronisation.
-// Elles échappent à syncInvoiceWithBooking (qui ne réécrit que les lignes BOOKING). La TVA n'est
-// jamais recalculée — cohérent avec le reste du domaine ; ajuster `taxAmount` via `update` si besoin.
-// Comptes de contrepartie de la créance 411000 : produit 706000 pour une charge, contra-produit
-// 709000 (Rabais, remises et ristournes accordés) pour une remise.
+// Elles échappent à syncInvoiceWithBooking (qui ne réécrit que les lignes BOOKING). Elles restent
+// modifiables après le visa : chaque variation passe alors une écriture correctrice. Comptes de
+// contrepartie de la créance 411000 : produit 706000 pour une charge, contra-produit 709000 (Rabais,
+// remises et ristournes accordés) pour une remise.
 
 type ContraAccount = '706000' | '709000';
 
@@ -1003,8 +1159,11 @@ function contraAccountFor(line: { total: number; discountRate: number | null }):
   return line.discountRate !== null || line.total < 0 ? '709000' : '706000';
 }
 
-function assertInvoiceItemsEditable(invoiceStatus: InvoiceStatus, bookingStatus: BookingStatus): void {
-  if (invoiceStatus === 'CANCELLED' || invoiceStatus === 'REFUNDED') {
+function assertInvoiceItemsEditable(invoice: { kind: InvoiceKind; status: InvoiceStatus }, bookingStatus: BookingStatus): void {
+  if (invoice.kind !== 'STANDARD') {
+    throw new ConflictError('Seule une facture porte des lignes modifiables.');
+  }
+  if (invoice.status === 'CANCELLED' || invoice.status === 'REFUNDED') {
     throw new ConflictError('Cette facture est annulée, ses lignes ne peuvent plus être modifiées.');
   }
   if (bookingStatus === 'CLOSED') {
@@ -1013,9 +1172,9 @@ function assertInvoiceItemsEditable(invoiceStatus: InvoiceStatus, bookingStatus:
 }
 
 // Répercute une variation de montant d'une ligne (ajout / modification / suppression) sur le total
-// facturé ET sur le grand livre — créance client 411000 vs `contra` (706000 ou 709000), même
-// mécanique de delta que syncInvoiceWithBooking — puis resynchronise le statut de la facture et
-// celui de la réservation liée. `delta > 0` = la facture augmente. Écriture omise si le delta est nul.
+// facturé. Sur une facture visée, la variation est un fait nouveau : écriture correctrice créance
+// 411000 vs `contra` (706000 ou 709000), TVA inchangée (ajustable via `update`). `delta > 0` = la
+// facture augmente.
 async function applyInvoiceItemDelta(
   tx: Prisma.TransactionClient,
   invoice: { id: string; number: string | null; totalAmount: number; bookingId: string; validatedAt: Date | null },
@@ -1026,9 +1185,6 @@ async function applyInvoiceItemDelta(
 ): Promise<void> {
   if (delta !== 0) {
     await tx.invoice.update({ where: { id: invoice.id }, data: { totalAmount: invoice.totalAmount + delta } });
-    // Un brouillon (jamais visé) n'est encore sur aucune ligne du grand livre : rien à corriger.
-    // Une fois visée, la ligne ajoutée/modifiée/retirée est un fait nouveau — on poste une écriture
-    // correctrice, comme le fait déjà `update()` pour un ajustement de TVA.
     if (invoice.validatedAt) {
       await ledgerService.postEntry({
         source:           'INVOICE',
@@ -1041,7 +1197,7 @@ async function applyInvoiceItemDelta(
       }, tx);
     }
   }
-  await syncInvoiceStatus(invoice.id, tx);
+  await syncDocumentAndRelated(tx, invoice.id);
   await resyncCheckoutPaymentStatus(invoice.bookingId, tx);
 }
 
@@ -1051,7 +1207,7 @@ async function loadEditableInvoice(tx: Prisma.TransactionClient, invoiceId: stri
     include: { booking: { select: { status: true } }, items: { select: { total: true } } },
   });
   if (!invoice) throw new NotFoundError('Facture');
-  assertInvoiceItemsEditable(invoice.status, invoice.booking.status);
+  assertInvoiceItemsEditable(invoice, invoice.booking.status);
   return invoice;
 }
 
@@ -1160,3 +1316,4 @@ export async function removeManualItem(invoiceId: string, itemId: string, posted
     return tx.invoice.findUnique({ where: { id: invoiceId }, include: invoiceInclude });
   });
 }
+

@@ -265,8 +265,17 @@ Un acompte, c'est de l'argent reçu. `POST /api/invoices/deposit` (`invoice.serv
 - Une fois la facture visée, plus d'acompte : l'argent se paie sur la facture. L'encaissement d'un acompte et le visa verrouillent la ligne `Booking` (`FOR UPDATE`) pour ne pas se croiser.
 - Un acompte imputé ne s'encaisse, ne se rembourse et ne s'annule plus séparément : on annule la facture. Son avoir porte sur le séjour entier (net + acomptes imputés).
 
-### Avoirs : ce qui se rembourse
-Un avoir ne rend en argent que ce que le client a payé au-delà de la part retenue : `encaissé − (montant crédité − avoir)`, borné entre 0 et le montant de l'avoir (`invoice.service.ts: refundableOn`, même formule dans `InvoiceDocument.tsx`). « Encaissé » et « montant crédité » incluent les acomptes imputés. Le reste de l'avoir annule une créance jamais payée. L'avoir passe `PAID` (« Soldé ») dès que cette part est rendue, ou dès son visa s'il n'y a rien à rendre.
+### Une facture par séjour : elle suit le séjour, même visée
+- **Visa automatique au check-out** (`booking.service.ts: updateStatus` → `invoiceService.validateInTx`) : la facture est émise au départ, créance / chiffre d'affaires / TVA constatés à la fin de la prestation. « Viser » reste possible plus tôt (`invoices.validate`).
+- **La facture suit toujours le séjour** (`syncInvoiceWithBooking`, appelée après toute mutation de chambres / dates / suppléments) : lignes de séjour réécrites, remises % et TVA recalculées au taux effectif. Sur une facture visée, la variation passe une écriture correctrice (706000 / 709000 / 4457000 contre 411000). Seules les lignes `source: BOOKING` à total positif sont réécrites : les déductions d'acompte des anciennes factures (`BOOKING` négatif) ne sont jamais touchées.
+- **Modifiable à la main, même visée** (lignes, remises, TVA) : écriture correctrice à chaque variation (`applyInvoiceItemDelta`, `update`).
+- **Annulation** : avoir d'annulation. La part retenue HT (`Invoice.retainedAmount`) est reclassée de 706000 vers 708500 au visa de l'avoir ; sa TVA reste collectée.
+
+### Soldes, avoirs et trop-perçu
+`invoice.service.ts: balanceOf` (miroir client `invoiceBalance`) : dû = montant − avoirs visés ; trop-perçu = encaissé − dû − déjà rendu par les avoirs. Encaissé inclut les acomptes imputés.
+- Un avoir rend au plus le trop-perçu du document crédité (`refundableOn`), et passe `PAID` (« Soldé ») quand plus rien n'est à rendre.
+- Un trop-perçu (paiement en trop, séjour réduit après paiement) se rend par `POST /invoices/:id/refunds` : paiement **négatif** sur le document (411000 au débit, trésorerie au crédit). Toutes les sommes de paiements sont donc nettes.
+- Tout mouvement resynchronise le document et ses avoirs (`syncDocumentAndRelated`).
 
 ### Filtrage des chambres — par RoomType uniquement
 Le champ `category` (enum `RoomCategory`) a été entièrement retiré du modèle `RoomType` (redondant avec `RoomType.name`) — supprimé du schéma Prisma, des routes serveur, des DTOs client et de tous les badges/formulaires d'affichage. Le filtrage et la catégorisation des chambres se font uniquement via `RoomType.name` (`useRoomTypes()`). Ne pas réintroduire un champ `category` séparé.

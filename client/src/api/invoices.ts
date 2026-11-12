@@ -411,6 +411,28 @@ export const deleteDraftInvoice = async (id: string): Promise<void> => {
   await api.delete(`/invoices/${id}`);
 };
 
+// Situation d'une facture visée : ce que ses avoirs visés en retirent, ce qui reste dû, et le
+// trop-perçu à rendre au client. Même calcul que le serveur (invoice.service.ts: balanceOf) ; les
+// paiements sont nets (un remboursement de trop-perçu y est négatif).
+export function invoiceBalance(invoice: Invoice) {
+  const credits  = (invoice.creditedBy ?? []).filter(c => c.kind === 'credit_note' && c.validatedAt);
+  const credited = credits.reduce((s, c) => s + c.totalAmount, 0);
+  const refundedByCredits = credits.reduce((s, c) => s + (c.collectedAmount ?? 0), 0);
+  const paid = invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
+  const due  = invoice.totalAmount - credited;
+  return {
+    credited,
+    paid,
+    remaining: Math.max(0, due - paid),
+    overpaid:  Math.max(0, paid - due - refundedByCredits),
+  };
+}
+
+export const refundOverpayment = async (invoiceId: string, payload: PaymentPayload): Promise<Invoice> => {
+  const { data } = await api.post<RawInvoice>(`/invoices/${invoiceId}/refunds`, { ...payload, method: payload.method.toUpperCase() });
+  return normalizeInvoice(data);
+};
+
 // Un acompte s'émet à l'encaissement : la facture d'acompte est créée, visée et payée en un geste.
 export interface CreateDepositPayload {
   bookingId:  string;

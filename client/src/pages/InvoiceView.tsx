@@ -18,7 +18,8 @@ import { INVOICE_STATUS_CLASS as STATUS_CLASS, invoiceStatusI18nKey } from '../l
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ConfirmWebsiteRequestModal } from '../components/ConfirmWebsiteRequestModal';
-import { fetchDepositStatus } from '../api/invoices';
+import { fetchDepositStatus, invoiceBalance } from '../api/invoices';
+import { OverpaymentRefundPanel } from '../components/invoice/OverpaymentRefundPanel';
 import { InvoiceDocumentCard, MoneyRow } from '../components/invoice/InvoiceDocumentCard';
 import { InvoicePaymentForm } from '../components/invoice/InvoicePaymentForm';
 import { InvoicePaymentHistory } from '../components/invoice/InvoicePaymentHistory';
@@ -239,14 +240,14 @@ export const InvoiceView: React.FC = () => {
   const canDeleteDraft = can('invoices.delete_draft');
   // Une fois la facture visée, l'argent reçu se paie sur la facture : plus d'acompte possible.
   const canIssueDeposit = can('invoices.issue_deposit') && !invoice?.validatedAt;
+  // Modifiable même visée : le serveur passe alors une écriture correctrice par variation.
   const canEditItems = can('invoices.update') && !!invoice && invoice.status !== 'cancelled' && invoice.status !== 'refunded';
   const noInvoice = !isLoading && (isError || !invoice);
   const isDraft = !!invoice && !invoice.validatedAt;
 
-  const totalPaid = invoice
-    ? invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
-    : 0;
-  const remaining = invoice ? Math.max(0, invoice.totalAmount - totalPaid) : 0;
+  const balance = invoice ? invoiceBalance(invoice) : null;
+  const totalPaid = balance?.paid ?? 0;
+  const remaining = balance?.remaining ?? 0;
   // Aperçu sur le brouillon des acomptes que le visa déduira (voir invoice.service.ts:
   // depositsToApply). Affichage seul : rien n'est écrit sur la facture ni au grand livre avant le visa.
   const previewDeposits = isDraft
@@ -509,8 +510,10 @@ export const InvoiceView: React.FC = () => {
             invoice={invoice}
             isDraft={isDraft}
             movementRows={depositRows.length > 0 ? depositRows : [
+              ...(balance && balance.credited > 0 ? [{ label: t('invoice.creditedTotal'), value: `-${fmtAmount(balance.credited)}`, accent: 'pos' as const }] : []),
               ...(totalPaid > 0 ? [{ label: t('invoice.status_paid'), value: `-${fmtAmount(totalPaid)}`, accent: 'pos' as const }] : []),
               ...(remaining > 0 ? [{ label: t('invoice.remaining'), value: fmtAmount(remaining), accent: 'neg' as const }] : []),
+              ...(balance && balance.overpaid > 0 ? [{ label: t('invoice.overpaidTotal'), value: fmtAmount(balance.overpaid), accent: 'neg' as const }] : []),
             ] satisfies MoneyRow[]}
             canEditItems={canEditItems}
             onDeleteItem={id => setItemToDelete(id)}
@@ -684,6 +687,8 @@ export const InvoiceView: React.FC = () => {
                 )}
               </div>
             )}
+
+            <OverpaymentRefundPanel invoice={invoice} onError={setApiError} />
 
             <InvoicePaymentHistory
               title={t('invoice.paymentHistory')}

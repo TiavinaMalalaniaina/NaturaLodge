@@ -190,7 +190,10 @@ describe('Annulation d’une réservation dont l’acompte est imputé', () => {
 
     await validate(manager, credits[0].id).expect(200);
     expect(await balance('419100')).toBe(0);
-    expect(await balance('708500')).toBe(0);
+    // Part retenue (72 000 TTC) : 60 000 HT reclassés en frais d'annulation, TVA de 12 000 gardée.
+    expect(await balance('708500')).toBe(-60_000);
+    expect(await balance('706000')).toBe(0);
+    expect(await balance('4457000')).toBe(-12_000);
 
     // Retenu : 30 % du séjour = 72 000 ; le client a payé 100 000 → 28 000 à rendre.
     expect((await pay(gerant, credits[0].id, 28_001)).status).toBe(409);

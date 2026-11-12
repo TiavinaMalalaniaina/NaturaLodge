@@ -310,6 +310,10 @@ export async function updateStatus(id: string, requestedStatus: RequestedBooking
     }
     let status: BookingStatus = requestedStatus;
     if (requestedStatus === 'CHECKED_OUT') {
+      // La facture est émise au départ : un brouillon est visé automatiquement par le check-out
+      // (créance, chiffre d'affaires et TVA constatés à la fin de la prestation).
+      const draft = await tx.invoice.findFirst({ where: { bookingId: id, kind: 'STANDARD', validatedAt: null } });
+      if (draft) await invoiceService.validateInTx(tx, draft.id, actingUserId);
       const current = await tx.booking.findUnique({ where: { id }, include: { invoices: invoicesForStatus } });
       if (!current) throw new NotFoundError('Réservation');
       const isPaid = computePaymentStatus(current) === 'paid';

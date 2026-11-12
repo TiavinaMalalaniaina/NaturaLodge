@@ -4,9 +4,12 @@ import { ArrowLeft, Printer, ShieldCheck, AlertCircle, Plus, Trash2, SquarePen, 
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
-import { useInvoice, useValidateInvoice, useRecordPayment, useVoidPayment, useUpdateInvoice, useDeleteDraftInvoice, useCancelInvoice } from '../hooks/useInvoices';
+import {
+  useInvoice, useValidateInvoice, useRecordPayment, useVoidPayment, useUpdateInvoice, useDeleteDraftInvoice, useCancelInvoice,
+} from '../hooks/useInvoices';
 import { useCashAccounts } from '../hooks/useLedger';
-import { PaymentMethod } from '../api/invoices';
+import { PaymentMethod, invoiceBalance } from '../api/invoices';
+import { OverpaymentRefundPanel } from '../components/invoice/OverpaymentRefundPanel';
 import { useAuth } from '../context/AuthContext';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { formatCurrency as fmtAmount } from '../lib/format';
@@ -59,21 +62,24 @@ export const InvoiceDocument: React.FC = () => {
   const canDeleteDraft = can('invoices.delete_draft');
   const canUpdate = can('invoices.update');
   const canCancel = can('invoices.cancel');
+  // Avoir : ce qu'il peut rendre dépend de la situation de la facture qu'il crédite.
+  const { data: creditedInvoice } = useInvoice(invoice?.kind === 'credit_note' ? invoice.relatesToInvoice?.id ?? null : null);
 
   if (isLoading) return <PageLoader />;
   if (isError || !invoice) return <PageError />;
 
   const isDraft = !invoice.validatedAt;
   const isRefundDoc = invoice.kind === 'credit_note';
-  const totalPaid = invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
-  // Pour un avoir : on ne rend que ce que le client a payé au-delà de la part retenue, le reste de
-  // l'avoir efface une créance impayée (même règle que le serveur, invoice.service.ts: refundableOn).
-  const credited = invoice.relatesToInvoice;
-  const refundCeiling = isRefundDoc && credited?.collectedAmount !== undefined && credited.grossAmount !== undefined
-    ? Math.min(invoice.totalAmount, Math.max(0, credited.collectedAmount - (credited.grossAmount - invoice.totalAmount)))
-    : invoice.totalAmount;
-  const remaining = Math.max(0, refundCeiling - totalPaid);
-  const nothingToRefund = isRefundDoc && !isDraft && refundCeiling === 0;
+  const balance = invoiceBalance(invoice);
+  const totalPaid = balance.paid;
+  // Avoir : on ne rend que ce que le client a payé au-delà de ce qu'il doit encore, jamais plus que
+  // le reste de l'avoir (même règle que le serveur, invoice.service.ts: refundableOn).
+  const refundable = Math.min(
+    Math.max(0, invoice.totalAmount - totalPaid),
+    creditedInvoice ? invoiceBalance(creditedInvoice).overpaid : 0,
+  );
+  const remaining = isRefundDoc ? refundable : balance.remaining;
+  const nothingToRefund = isRefundDoc && !isDraft && !!creditedInvoice && refundable === 0 && totalPaid === 0;
   const payAmountValue = parseInt(payAmount, 10) || 0;
   const overpaid = payAmountValue > remaining ? payAmountValue - remaining : 0;
   // Un remboursement ne dépasse jamais le plafond ; un encaissement (acompte) seulement avec la permission.
@@ -312,11 +318,17 @@ export const InvoiceDocument: React.FC = () => {
           invoice={invoice}
           isDraft={isDraft}
           movementRows={[
-            ...((invoice.kind === 'deposit' || isRefundDoc) && totalPaid > 0
+            ...(!isRefundDoc && balance.credited > 0
+              ? [{ label: t('invoice.creditedTotal'), value: `-${fmtAmount(balance.credited)}`, accent: 'pos' as const }]
+              : []),
+            ...((invoice.kind === 'deposit' || isRefundDoc) && totalPaid !== 0
               ? [{ label: isRefundDoc ? t('invoice.refunded') : t('invoice.status_paid'), value: `-${fmtAmount(totalPaid)}`, accent: 'pos' as const }]
               : []),
             ...((invoice.kind === 'deposit' || isRefundDoc) && remaining > 0 && !isDraft
               ? [{ label: isRefundDoc ? t('invoice.remainingToRefund') : t('invoice.remaining'), value: fmtAmount(remaining), accent: 'neg' as const }]
+              : []),
+            ...(!isRefundDoc && balance.overpaid > 0
+              ? [{ label: t('invoice.overpaidTotal'), value: fmtAmount(balance.overpaid), accent: 'neg' as const }]
               : []),
           ] satisfies MoneyRow[]}
         />
@@ -360,6 +372,8 @@ export const InvoiceDocument: React.FC = () => {
                 )}
               </div>
             )}
+
+            {!isRefundDoc && <OverpaymentRefundPanel invoice={invoice} onError={setApiError} />}
 
             <InvoicePaymentHistory
               title={isRefundDoc ? t('invoice.refundHistory') : t('invoice.paymentHistory')}

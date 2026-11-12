@@ -454,6 +454,9 @@ model Invoice {
   paidAt      DateTime?
   totalAmount Int
   taxAmount   Int           @default(0)
+  // Avoir d'annulation d'une facture : frais d'annulation HT retenus, reclassés de 706000 vers
+  // 708500 au visa de l'avoir. 0 pour tout autre document.
+  retainedAmount Int        @default(0)
   notes       String?
   items       InvoiceItem[]
   payments    Payment[]

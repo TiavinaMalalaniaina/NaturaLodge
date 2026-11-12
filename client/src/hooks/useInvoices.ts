@@ -3,6 +3,7 @@ import {
   fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits, fetchDepositStatus,
   generateInvoice, recordPayment, voidPayment, updateInvoice, deleteDraftInvoice,
   createDeposit, validateInvoice, cancelInvoice,
+  refundOverpayment,
   addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, addInvoiceDiscount,
   PaymentPayload, CreateDepositPayload, InvoiceItemPayload, DiscountPayload,
 } from '../api/invoices';
@@ -170,6 +171,17 @@ export function useBookingDocuments(bookingId: string | null, kind: 'deposit' | 
 
 // Ces trois mutations font apparaître ou disparaître un document plutôt que de simplement modifier
 // celui déjà en cache : on invalide toute la clé plutôt que de cibler une seule entrée.
+export function useRefundOverpayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, ...payload }: { invoiceId: string } & PaymentPayload) => refundOverpayment(invoiceId, payload),
+    onSuccess: (inv) => {
+      writeInvoiceCaches(qc, inv);
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+    },
+  });
+}
+
 export function useCreateDeposit() {
   const qc = useQueryClient();
   return useMutation({

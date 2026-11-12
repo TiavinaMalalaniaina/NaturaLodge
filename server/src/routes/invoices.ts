@@ -117,6 +117,13 @@ invoicesRouter.post('/:id/payments', can('invoices.record_payment'), asyncHandle
   res.status(201).json(await invoiceService.addPayment(req.params.id, parsed.data, req.user!.id, req.user!.role));
 }));
 
+// POST /invoices/:id/refunds  ──  rembourser au client un trop-perçu sur une facture ou un acompte
+invoicesRouter.post('/:id/refunds', can('invoices.record_payment'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
+  const parsed = paymentSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.flatten() }); return; }
+  res.status(201).json(await invoiceService.refundOverpayment(req.params.id, parsed.data, req.user!.id, req.user!.role));
+}));
+
 // DELETE /invoices/:id/payments/:paymentId  ──  annuler un paiement
 invoicesRouter.delete('/:id/payments/:paymentId', can('invoices.void_payment'), asyncHandler(async (req: AuthRequest, res: Response): Promise<void> => {
   res.json(await invoiceService.voidPayment(req.params.id, req.params.paymentId, req.user!.id));
