@@ -304,16 +304,33 @@ describe('Annulation de facture', () => {
     expect((await pay(gerant, credit.id, 1_000)).status).toBe(409);
   });
 
-  it('remboursement plafonné à ce qui a été encaissé', async () => {
+  // Régression : le plafond était « tout ce qui a été encaissé » (100 000) — le client était remboursé
+  // en entier puis redevait la part retenue (72 000), et l'avoir restait « partiellement remboursé ».
+  it('ne rend que ce qui a été payé au-delà de la part retenue, puis l’avoir est soldé', async () => {
     const { gerant, manager } = await staff();
     const { invoiceId } = await validatedInvoice(gerant, manager);
     await pay(gerant, invoiceId, 100_000);
     const credit = (await request(app).post(`/api/invoices/${invoiceId}/cancel`).set(manager).send({}).expect(200)).body.creditNote;
     await request(app).post(`/api/invoices/${credit.id}/validate`).set(manager).expect(200);
 
-    expect((await pay(gerant, credit.id, 100_001)).status).toBe(409);
-    expect((await pay(gerant, credit.id, 100_000)).status).toBe(201);
-    expect(await balance('530000')).toBe(0);
+    expect((await pay(gerant, credit.id, 28_001)).status).toBe(409);
+    expect((await pay(gerant, credit.id, 28_000)).status).toBe(201);
+    expect((await invoice(credit.id)).status).toBe('PAID');
+    expect(await balance('530000')).toBe(72_000);
+    expect(await balance('411000')).toBe(0);
+  });
+
+  it('un avoir sans rien à rendre est soldé dès son visa', async () => {
+    const { gerant, manager } = await staff();
+    const { invoiceId } = await validatedInvoice(gerant, manager);
+    await pay(gerant, invoiceId, 50_000);
+    const credit = (await request(app).post(`/api/invoices/${invoiceId}/cancel`).set(manager).send({}).expect(200)).body.creditNote;
+
+    await request(app).post(`/api/invoices/${credit.id}/validate`).set(manager).expect(200);
+
+    expect((await invoice(credit.id)).status).toBe('PAID');
+    expect((await pay(gerant, credit.id, 1)).status).toBe(409);
+    expect(await balance('411000')).toBe(TOTAL - 50_000 - TOTAL * 0.7);
   });
 });
 
@@ -326,7 +343,7 @@ describe('Grand livre', () => {
     const p1 = (await pay(gerant, invoiceId, 50_000)).body.payments[0].id as string;
     await pay(gerant, invoiceId, 30_000, '517100', 'MVOLA');
     await request(app).delete(`/api/invoices/${invoiceId}/payments/${p1}`).set(manager).expect(200);
-    const credit = (await request(app).post(`/api/invoices/${invoiceId}/cancel`).set(manager).send({ refundRatePercent: 50 }).expect(200)).body.creditNote;
+    const credit = (await request(app).post(`/api/invoices/${invoiceId}/cancel`).set(manager).send({ refundRatePercent: 100 }).expect(200)).body.creditNote;
     await request(app).post(`/api/invoices/${credit.id}/validate`).set(manager).expect(200);
     await pay(gerant, credit.id, 30_000, '517100', 'MVOLA');
 

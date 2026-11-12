@@ -21,9 +21,13 @@ export const generateInvoiceSchema = z.object({
   dueAt:     z.string().datetime().optional(),
 });
 
+// Un acompte n'existe qu'une fois l'argent reçu : sa création embarque l'encaissement.
 export const createDepositSchema = z.object({
   bookingId: z.string().min(1),
   amount:    z.number().int().positive(),
+  method:    z.nativeEnum(PaymentMethod),
+  accountId: z.string().min(1),
+  reference: z.string().optional(),
   notes:     z.string().optional(),
 });
 

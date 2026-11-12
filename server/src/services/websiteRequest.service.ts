@@ -266,23 +266,6 @@ export async function confirm(id: string) {
   return result;
 }
 
-// Called inside addPayment's transaction: once the full deposit is recorded on a validated deposit
-// invoice, the website request confirms itself (email queued in the same transaction; the caller
-// kicks the outbox after commit). A paid hold is never expired (see expireRequests), so the deadline
-// is not rechecked.
-export async function confirmIfDepositPaid(bookingId: string, tx: Prisma.TransactionClient): Promise<boolean> {
-  const [locked] = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "WebsiteRequest" WHERE "bookingId" = ${bookingId} AND "status" = 'AWAITING_PAYMENT' FOR UPDATE`;
-  if (!locked) return false;
-  const row = await tx.websiteRequest.findUnique({ where: { id: locked.id } });
-  if (!row || row.status !== 'AWAITING_PAYMENT' || await depositPaid(tx, bookingId) < row.depositAmount) return false;
-  const booking = await tx.booking.updateMany({ where: { id: bookingId, status: 'AWAITING' }, data: { status: 'CONFIRMED' } });
-  if (!booking.count) return false;
-  await tx.websiteRequest.update({ where: { id: row.id }, data: { status: 'CONFIRMED' } });
-  await enqueueRequestEmail(tx, row.id, 'CONFIRMED');
-  await recordEvent(tx, row.id, 'DEPOSIT_CONFIRMED');
-  return true;
-}
-
 // Self-service cancellation from the website account. Only before any money changed hands: a
 // confirmed stay or a recorded payment goes through the hotel (refund terms are not defined yet).
 export async function cancelByCustomer(id: string, customerId: string) {

@@ -38,18 +38,22 @@ interface RawRelatedInvoiceRef {
   id: string;
   number: string | null;
   kind: keyof typeof KIND_MAP;
+  totalAmount?: number;
   payments?: {
     amount: number;
   }[];
+  appliedDeposits?: { totalAmount: number; payments: { amount: number }[] }[];
 }
 
 export interface RelatedInvoiceRef {
   id:     string;
   number: string | null;
   kind:   InvoiceKind;
-  // Somme des encaissements réels sur ce document. Fourni uniquement sur `relatesToInvoice` du
-  // détail (getById) — sert à borner un remboursement d'avoir.
+  // Somme des encaissements réels sur ce document, acomptes imputés compris. Fourni uniquement sur
+  // `relatesToInvoice` du détail (getById) — sert à borner un remboursement d'avoir.
   collectedAmount?: number;
+  // Montant total du document crédité, acomptes imputés compris (même source que collectedAmount).
+  grossAmount?: number;
 }
 
 export interface Invoice {
@@ -74,6 +78,8 @@ export interface Invoice {
   // Présents uniquement sur le détail (getById/getByBookingId), pas sur la liste.
   relatesToInvoice?: RelatedInvoiceRef | null;
   creditedBy?:       (RelatedInvoiceRef & { totalAmount: number; validatedAt: string | null })[];
+  // Acompte uniquement : facture sur laquelle il a été imputé (null = pas encore imputé).
+  appliedToInvoice?: { id: string; number: string | null } | null;
   booking: {
     id:        string;
     arrival:   string;
@@ -180,7 +186,12 @@ function normalizeRelatedRef(raw: RawRelatedInvoiceRef): RelatedInvoiceRef {
   return {
     id: raw.id, number: raw.number, kind: KIND_MAP[raw.kind] ?? 'standard',
     ...(Array.isArray(raw.payments)
-      ? { collectedAmount: raw.payments.reduce((s, p) => s + p.amount, 0) }
+      ? {
+          collectedAmount: [raw.payments, ...(raw.appliedDeposits ?? []).map(d => d.payments)]
+            .flat()
+            .reduce((s, p) => s + p.amount, 0),
+          grossAmount: (raw.totalAmount ?? 0) + (raw.appliedDeposits ?? []).reduce((s, d) => s + d.totalAmount, 0),
+        }
       : {}),
   };
 }
@@ -400,14 +411,40 @@ export const deleteDraftInvoice = async (id: string): Promise<void> => {
   await api.delete(`/invoices/${id}`);
 };
 
+// Situation d'une facture visée : ce que ses avoirs visés en retirent, ce qui reste dû, et le
+// trop-perçu à rendre au client. Même calcul que le serveur (invoice.service.ts: balanceOf) ; les
+// paiements sont nets (un remboursement de trop-perçu y est négatif).
+export function invoiceBalance(invoice: Invoice) {
+  const credits  = (invoice.creditedBy ?? []).filter(c => c.kind === 'credit_note' && c.validatedAt);
+  const credited = credits.reduce((s, c) => s + c.totalAmount, 0);
+  const refundedByCredits = credits.reduce((s, c) => s + (c.collectedAmount ?? 0), 0);
+  const paid = invoice.payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0);
+  const due  = invoice.totalAmount - credited;
+  return {
+    credited,
+    paid,
+    remaining: Math.max(0, due - paid),
+    overpaid:  Math.max(0, paid - due - refundedByCredits),
+  };
+}
+
+export const refundOverpayment = async (invoiceId: string, payload: PaymentPayload): Promise<Invoice> => {
+  const { data } = await api.post<RawInvoice>(`/invoices/${invoiceId}/refunds`, { ...payload, method: payload.method.toUpperCase() });
+  return normalizeInvoice(data);
+};
+
+// Un acompte s'émet à l'encaissement : la facture d'acompte est créée, visée et payée en un geste.
 export interface CreateDepositPayload {
-  bookingId: string;
-  amount:    number;
-  notes?:    string;
+  bookingId:  string;
+  amount:     number;
+  method:     PaymentMethod;
+  accountId:  string;
+  reference?: string;
+  notes?:     string;
 }
 
 export const createDeposit = async (payload: CreateDepositPayload): Promise<Invoice> => {
-  const { data } = await api.post<RawInvoice>('/invoices/deposit', payload);
+  const { data } = await api.post<RawInvoice>('/invoices/deposit', { ...payload, method: payload.method.toUpperCase() });
   return normalizeInvoice(data);
 };
 
@@ -520,6 +557,21 @@ export interface OutstandingDeposit {
 
 // Acomptes visés pas encore absorbés par la facture définitive de leur réservation — trace le
 // solde du compte 419100 (avances et acomptes reçus) au bilan, réservation par réservation.
+// Acompte attendu (une nuit pour l'ensemble des chambres, ou le montant figé par la demande du
+// site), déjà reçu et restant pour une réservation.
+export interface DepositStatus {
+  expected:  number;
+  received:  number;
+  remaining: number;
+  // Demande du site liée à la réservation : à confirmer à la main une fois l'acompte reçu.
+  websiteRequest: { id: string; reference: string; status: string } | null;
+}
+
+export const fetchDepositStatus = async (bookingId: string): Promise<DepositStatus> => {
+  const { data } = await api.get<DepositStatus>(`/invoices/deposits/status/${bookingId}`);
+  return data;
+};
+
 export const fetchOutstandingDeposits = async (): Promise<OutstandingDeposit[]> => {
   const { data } = await api.get<OutstandingDeposit[]>('/invoices/deposits/outstanding');
   return data.map(d => ({ ...d, validatedAt: d.validatedAt.split('T')[0] }));

@@ -441,15 +441,22 @@ model Invoice {
   // c'est la date d'émission légale, pas la date de création du brouillon.
   validatedAt DateTime?
   issuedAt    DateTime      @default(now())
-  // Un CREDIT_NOTE pointe vers la facture qu'il crédite. Un DEPOSIT n'a pas besoin de FK vers la
-  // facture finale qu'il alimente : il se retrouve par bookingId + kind (voir invoice.service.ts).
+  // Un CREDIT_NOTE pointe vers la facture qu'il crédite.
   relatesToInvoiceId String?
   relatesToInvoice   Invoice? @relation("InvoiceCredits", fields: [relatesToInvoiceId], references: [id])
   creditedBy         Invoice[] @relation("InvoiceCredits")
+  // DEPOSIT uniquement : facture STANDARD sur laquelle l'acompte a été imputé (au visa de celle-ci).
+  // null = acompte reçu, pas encore imputé. Un acompte n'est imputé qu'une seule fois.
+  appliedToInvoiceId String?
+  appliedToInvoice   Invoice?  @relation("DepositApplications", fields: [appliedToInvoiceId], references: [id])
+  appliedDeposits    Invoice[] @relation("DepositApplications")
   dueAt       DateTime?
   paidAt      DateTime?
   totalAmount Int
   taxAmount   Int           @default(0)
+  // Avoir d'annulation d'une facture : frais d'annulation HT retenus, reclassés de 706000 vers
+  // 708500 au visa de l'avoir. 0 pour tout autre document.
+  retainedAmount Int        @default(0)
   notes       String?
   items       InvoiceItem[]
   payments    Payment[]

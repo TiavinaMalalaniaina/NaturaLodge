@@ -63,7 +63,8 @@ export async function insertBooking(status: BookingStatus, options: { arrival?: 
   return { booking, guest, room };
 }
 
-// Facture STANDARD minimale : seul son statut compte pour computePaymentStatus (booking.service.ts).
+// Facture STANDARD minimale, déjà visée (seule une facture visée reçoit des paiements) : seul son
+// statut compte pour computePaymentStatus (booking.service.ts).
 export async function insertInvoice(bookingId: string, guestId: string, status: InvoiceStatus) {
-  return prisma.invoice.create({ data: { bookingId, guestId, status, totalAmount: 200_000, kind: 'STANDARD' } });
+  return prisma.invoice.create({ data: { bookingId, guestId, status, totalAmount: 200_000, kind: 'STANDARD', validatedAt: new Date() } });
 }

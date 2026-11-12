@@ -11,6 +11,7 @@ interface ConfirmModalProps {
   title: string;
   message: string;
   confirmLabel?: string;
+  cancelLabel?: string;
   variant?: 'danger' | 'warning';
   isPending?: boolean;
   zIndexClassName?: string;
@@ -22,6 +23,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   isOpen, onClose, onConfirm,
   title, message,
   confirmLabel,
+  cancelLabel,
   variant = 'danger',
   isPending = false,
   zIndexClassName = 'z-[110]',
@@ -56,7 +58,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       <div className="flex gap-3">
         <button onClick={onClose}
           className="flex-1 py-3 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
-          {t('common.keepIt')}
+          {cancelLabel ?? t('common.keepIt')}
         </button>
         <button onClick={onConfirm} disabled={isPending}
           className={cn(
