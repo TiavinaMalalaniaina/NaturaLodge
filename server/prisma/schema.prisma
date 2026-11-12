@@ -237,6 +237,8 @@ model WebsiteRequest {
   arrival             DateTime
   departure           DateTime
   guests              Int
+  // Heure d'arrivée estimée saisie par le client (« HH:MM », heure de l'hôtel) ; vide si non renseignée.
+  arrivalTime         String   @default("")
   lines               Json
   totalAmount         Int
   depositAmount       Int

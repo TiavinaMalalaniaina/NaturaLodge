@@ -764,6 +764,7 @@
     "deposit": "Acompte",
     "total": "Total",
     "guests": "{{count}} voyageur(s)",
+    "arrivalTime": "Arrivée estimée vers {{time}}",
     "deadline": "échéance",
     "previous": "Précédent",
     "next": "Suivant",

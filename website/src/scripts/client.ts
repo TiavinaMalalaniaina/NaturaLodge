@@ -5,7 +5,7 @@ import { errorText, initAccount, lang, loginUrl, s } from './account';
 type Room = { id: string; name: string; price: number; capacity: number; available: number };
 type Proof = { id: string; fileName: string; size: number; note: string; createdAt: string };
 type RequestView = { proofs: Proof[]; id: string; reference: string; name: string; arrival: string; departure: string; guests: number; status: string; totalAmount: number; depositAmount: number; paymentInstructions: string; decisionNote: string; expiresAt: string | null; lines: { name: string; quantity: number }[] };
-type Draft = { arrival: string; departure: string; guests: string; quantities: Record<string, number>; name?: string; phone?: string; notes?: string; savedAt: number };
+type Draft = { arrival: string; departure: string; guests: string; quantities: Record<string, number>; name?: string; phone?: string; arrivalTime?: string; notes?: string; savedAt: number };
 const base = (import.meta.env.PUBLIC_API_URL || 'http://localhost:4000/api/public').replace(/\/$/, '');
 const draftKey = 'naturalodge-draft';
 const price = (value: number) => formatPrice(value, lang);
@@ -53,7 +53,7 @@ async function start() {
     const saveDraft = () => {
       const draft: Draft = { arrival: input('arrival').value, departure: input('departure').value, guests: input('guests').value,
         quantities: Object.fromEntries(selected().map(x => [x.room.id, x.quantity])),
-        name: field('name').value, phone: field('phone').value, notes: field('notes').value, savedAt: Date.now() };
+        name: field('name').value, phone: field('phone').value, arrivalTime: field('arrivalTime').value, notes: field('notes').value, savedAt: Date.now() };
       try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* storage unavailable: selection is simply not kept */ }
     };
     function update() {
@@ -98,7 +98,7 @@ async function start() {
     form.addEventListener('submit', async event => {
       event.preventDefault(); if (!customer || sending || details.disabled || !form.reportValidity()) return;
       const data = new FormData(form);
-      const payload = JSON.stringify({ arrival: input('arrival').value, departure: input('departure').value, guests: Number(input('guests').value), name: data.get('name'), email: data.get('email'), phone: data.get('phone'), notes: data.get('notes'), locale: lang, conditionsAccepted: data.get('conditions') === 'on', lines: selected().map(x => ({ roomTypeId: x.room.id, quantity: x.quantity, unitPrice: x.room.price })) });
+      const payload = JSON.stringify({ arrival: input('arrival').value, departure: input('departure').value, guests: Number(input('guests').value), name: data.get('name'), email: data.get('email'), phone: data.get('phone'), arrivalTime: data.get('arrivalTime') ?? '', notes: data.get('notes'), locale: lang, conditionsAccepted: data.get('conditions') === 'on', lines: selected().map(x => ({ roomTypeId: x.room.id, quantity: x.quantity, unitPrice: x.room.price })) });
       try {
         // Persist the retry credential before sending so a network interruption cannot lose the request.
         const pending = JSON.parse(localStorage.getItem('naturalodge-pending-request') || 'null');
@@ -115,6 +115,7 @@ async function start() {
       input('arrival').value = draft.arrival; input('departure').value = draft.departure; input('guests').value = draft.guests;
       if (draft.name) field('name').value = draft.name;
       if (draft.phone) field('phone').value = draft.phone;
+      if (draft.arrivalTime) field('arrivalTime').value = draft.arrivalTime;
       if (draft.notes) field('notes').value = draft.notes;
       await runSearch(draft.quantities);
     }
@@ -174,17 +175,21 @@ async function start() {
     }
     function proofForm(row: RequestView) {
       const form = document.createElement('form'); form.className = 'proof-form';
-      const fileLabel = el('label', '', s.proofFile);
-      const file = document.createElement('input'); file.type = 'file'; file.accept = PROOF_TYPES.join(','); file.required = true;
-      fileLabel.append(file);
       const noteLabel = el('label', '', s.proofNote);
       const note = document.createElement('input'); note.type = 'text'; note.maxLength = 200; note.placeholder = s.proofNotePlaceholder;
       noteLabel.append(note);
-      const button = el('button', 'button button-green', s.proofSend) as HTMLButtonElement; button.type = 'submit';
+      const file = document.createElement('input'); file.type = 'file'; file.accept = PROOF_TYPES.join(','); file.hidden = true;
+      const button = el('button', 'button button-green', s.proofImport) as HTMLButtonElement; button.type = 'button';
       const status = el('p', 'proof-status'); status.setAttribute('role', 'status');
-      form.addEventListener('input', () => { editingProof = true; status.textContent = ''; });
-      form.addEventListener('submit', event => { event.preventDefault(); const chosen = file.files?.[0]; if (chosen) void sendProof(row, chosen, note.value.trim(), status, button); });
-      form.append(el('p', 'payment-title', s.proofTitle), el('p', 'muted', s.proofHelp), fileLabel, noteLabel, button, status);
+      note.addEventListener('input', () => { editingProof = true; status.textContent = ''; });
+      button.addEventListener('click', () => { editingProof = true; status.textContent = ''; file.click(); });
+      file.addEventListener('change', () => {
+        const chosen = file.files?.[0];
+        file.value = '';
+        if (chosen) void sendProof(row, chosen, note.value.trim(), status, button);
+      });
+      form.addEventListener('submit', event => event.preventDefault());
+      form.append(el('p', 'payment-title', s.proofTitle), el('p', 'muted', s.proofHelp), noteLabel, button, file, status);
       return form;
     }
     async function cancel(row: RequestView, button: HTMLButtonElement) {
