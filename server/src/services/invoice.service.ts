@@ -620,7 +620,7 @@ export async function validateInTx(tx: Prisma.TransactionClient, id: string, act
           quantity:    1,
           unitPrice:   -d.totalAmount,
           total:       -d.totalAmount,
-          source:      'MANUAL' as const,
+          source:      'BOOKING' as const,
         })),
       });
       await tx.invoice.update({ where: { id }, data: { totalAmount: invoice.totalAmount - depositTotal } });

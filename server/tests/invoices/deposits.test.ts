@@ -109,6 +109,23 @@ describe('Imputation au visa de la facture', () => {
     expect(await balance('530000')).toBe(TOTAL);
   });
 
+  // La déduction était créée en ligne MANUAL : affichée comme une remise et supprimable à la
+  // main, ce qui l'aurait passée en 709000 (remises accordées).
+  it('la déduction d’acompte n’est ni une remise ni une ligne manuelle', async () => {
+    const { gerant, manager } = await staff();
+    const bookingId = await bookedStay(gerant);
+    await receiveDeposit(gerant, bookingId);
+    const invoiceId = await draftInvoice(gerant, bookingId);
+
+    const res = await validate(manager, invoiceId).expect(200);
+    const deduction = res.body.items.find((i: { total: number }) => i.total === -DEPOSIT);
+
+    expect(deduction.source).toBe('BOOKING');
+    expect(deduction.discountRate).toBeNull();
+    expect((await request(app).delete(`/api/invoices/${invoiceId}/items/${deduction.id}`).set(manager)).status).toBeGreaterThanOrEqual(400);
+    expect(await balance('709000')).toBe(0);
+  });
+
   // Cas 2 : un acompte annulé était quand même déduit — le client payait moins que dû.
   it('ne déduit pas un acompte annulé', async () => {
     const { gerant, manager } = await staff();
