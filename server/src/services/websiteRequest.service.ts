@@ -93,7 +93,7 @@ export async function submit(input: WebsiteRequestInput, token: string, customer
       const row = await prisma.websiteRequest.create({ data: {
         reference: newReference(), idempotencyKeyHash, payloadHash, customerId,
         name: input.name, email: input.email, phone: input.phone, notes: input.notes, locale: input.locale === 'en' ? 'EN' : 'FR',
-        arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests,
+        arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests, arrivalTime: input.arrivalTime,
         lines, totalAmount: depositAmount * nights, depositAmount,
         emails: { create: { status: 'PENDING' } },
         events: { create: { kind: 'REQUEST_RECEIVED' } },
@@ -224,7 +224,7 @@ export async function approve(id: string, instructions: string, hours: number, r
     const taken = chosen.filter(room => !free.some(f => f.id === room.id)).sort(byNumber);
     if (taken.length) throw new ConflictError(`Chambre(s) ${taken.map(room => room.number).join(', ')} plus disponible(s) sur ces dates. Choisissez-en une autre.`);
     const guest = await guestFor(tx, row);
-    const booking = await tx.booking.create({ data: { guestId: guest.id, createdById: actorId, arrival: row.arrival, departure: row.departure, totalAmount: row.totalAmount, status: 'AWAITING', notes: `${row.reference}\n${row.email}\n${row.notes}`, rooms: { create: allocated } } });
+    const booking = await tx.booking.create({ data: { guestId: guest.id, createdById: actorId, arrival: row.arrival, departure: row.departure, totalAmount: row.totalAmount, status: 'AWAITING', notes: [row.reference, row.email, row.arrivalTime && `Arrivée estimée : ${row.arrivalTime}`, row.notes].filter(Boolean).join('\n'), rooms: { create: allocated } } });
     const arrivalEnd = new Date(`${row.arrival.toISOString().slice(0, 10)}T23:59:59+03:00`);
     const expiresAt = new Date(Math.min(Date.now() + hours * 3600000, arrivalEnd.getTime()));
     const result = await tx.websiteRequest.update({ where: { id }, data: { status: 'AWAITING_PAYMENT', bookingId: booking.id, paymentInstructions: instructions, expiresAt }, include });

@@ -736,6 +736,7 @@
     "deposit": "Acompte",
     "total": "Total",
     "guests": "{{count}} voyageur(s)",
+    "arrivalTime": "Ora hahatongavana (tombana) : {{time}}",
     "deadline": "échéance",
     "previous": "Précédent",
     "next": "Suivant",

@@ -2,7 +2,7 @@ import { api } from './client';
 
 export type RequestStatus = 'PENDING' | 'AWAITING_PAYMENT' | 'CONFIRMED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED';
 export interface WebsiteRequest {
-  id: string; reference: string; name: string; email: string; phone: string; notes: string;
+  id: string; reference: string; name: string; email: string; phone: string; notes: string; arrivalTime: string;
   arrival: string; departure: string; guests: number; createdAt: string;
   lines: { roomTypeId: string; name: string; quantity: number; unitPrice: number }[];
   totalAmount: number; depositAmount: number; status: RequestStatus;

@@ -180,6 +180,7 @@ export const WebsiteRequests: React.FC = () => {
         <Section icon={CalendarDays} title={t('websiteRequests.stay')}>
           <p className="font-semibold">{formatDate(row.arrival)} → {formatDate(row.departure)}</p>
           <p className="text-on-surface-variant">{t('websiteRequests.nights', { count: nights })} · {t('websiteRequests.guests', { count: row.guests })}</p>
+          {row.arrivalTime && <p className="flex items-center gap-1.5 text-on-surface-variant"><Clock className="h-3.5 w-3.5 shrink-0 text-on-surface-variant/50" />{t('websiteRequests.arrivalTime', { time: row.arrivalTime })}</p>}
         </Section>
         <Section icon={BedDouble} title={t('websiteRequests.rooms')}>
           {row.lines.map(line => {

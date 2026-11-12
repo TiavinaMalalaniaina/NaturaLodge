@@ -29,6 +29,7 @@ const en: Record<string, string> = {
   'Demande introuvable': 'Request not found',
   'Disponibilités modifiées. Relancez la recherche.': 'Availability has changed. Please search again.',
   'Erreur serveur interne': 'Server error. Please try again.',
+  'Heure d’arrivée invalide': 'Invalid arrival time',
   'Indiquez votre nom': 'Please enter your name',
   'Le départ doit suivre l’arrivée': 'Departure must be after arrival',
   'Message trop long (1000 caractères max.)': 'Message too long (1000 characters max.)',

@@ -31,6 +31,7 @@ const t = ui[lang].reservation;
         <label>{t.name}<input name="name" autocomplete="name" required maxlength="80" /></label>
         <label>{t.email}<input name="email" type="email" autocomplete="email" required maxlength="254" /></label>
         <label>{t.phone}<input name="phone" type="tel" autocomplete="tel" required maxlength="30" pattern="[\+0-9 \(\)\.\-]{6,30}" title={t.phoneTitle} placeholder="+261…" /></label>
+        <label>{t.arrivalTime} <span class="optional">{t.optional}</span><input name="arrivalTime" type="time" /></label>
         <label>{t.notes} <span class="optional">{t.optional}</span><textarea name="notes" rows="3" maxlength="1000" placeholder={t.notesPlaceholder}></textarea></label>
         <section class="booking-conditions" aria-label={t.conditionsLabel}>
           <h3>{t.conditionsTitle}</h3>

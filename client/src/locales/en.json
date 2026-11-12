@@ -736,6 +736,7 @@
     "deposit": "Deposit",
     "total": "Total",
     "guests": "{{count}} guest(s)",
+    "arrivalTime": "Estimated arrival around {{time}}",
     "deadline": "Deadline",
     "previous": "Previous",
     "next": "Next",
