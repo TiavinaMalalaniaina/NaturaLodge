@@ -93,7 +93,7 @@ export async function submit(input: WebsiteRequestInput, token: string, customer
       const row = await prisma.websiteRequest.create({ data: {
         reference: newReference(), idempotencyKeyHash, payloadHash, customerId,
         name: input.name, email: input.email, phone: input.phone, notes: input.notes, locale: input.locale === 'en' ? 'EN' : 'FR',
-        arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests,
+        arrival: new Date(input.arrival), departure: new Date(input.departure), guests: input.guests, arrivalTime: input.arrivalTime,
         lines, totalAmount: depositAmount * nights, depositAmount,
         emails: { create: { status: 'PENDING' } },
         events: { create: { kind: 'REQUEST_RECEIVED' } },
@@ -224,7 +224,7 @@ export async function approve(id: string, instructions: string, hours: number, r
     const taken = chosen.filter(room => !free.some(f => f.id === room.id)).sort(byNumber);
     if (taken.length) throw new ConflictError(`Chambre(s) ${taken.map(room => room.number).join(', ')} plus disponible(s) sur ces dates. Choisissez-en une autre.`);
     const guest = await guestFor(tx, row);
-    const booking = await tx.booking.create({ data: { guestId: guest.id, createdById: actorId, arrival: row.arrival, departure: row.departure, totalAmount: row.totalAmount, status: 'AWAITING', notes: `${row.reference}\n${row.email}\n${row.notes}`, rooms: { create: allocated } } });
+    const booking = await tx.booking.create({ data: { guestId: guest.id, createdById: actorId, arrival: row.arrival, departure: row.departure, totalAmount: row.totalAmount, status: 'AWAITING', notes: [row.reference, row.email, row.arrivalTime && `Arrivée estimée : ${row.arrivalTime}`, row.notes].filter(Boolean).join('\n'), rooms: { create: allocated } } });
     const arrivalEnd = new Date(`${row.arrival.toISOString().slice(0, 10)}T23:59:59+03:00`);
     const expiresAt = new Date(Math.min(Date.now() + hours * 3600000, arrivalEnd.getTime()));
     const result = await tx.websiteRequest.update({ where: { id }, data: { status: 'AWAITING_PAYMENT', bookingId: booking.id, paymentInstructions: instructions, expiresAt }, include });
@@ -264,23 +264,6 @@ export async function confirm(id: string) {
   });
   kickOutbox(); kickPush();
   return result;
-}
-
-// Called inside addPayment's transaction: once the full deposit is recorded on a validated deposit
-// invoice, the website request confirms itself (email queued in the same transaction; the caller
-// kicks the outbox after commit). A paid hold is never expired (see expireRequests), so the deadline
-// is not rechecked.
-export async function confirmIfDepositPaid(bookingId: string, tx: Prisma.TransactionClient): Promise<boolean> {
-  const [locked] = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "WebsiteRequest" WHERE "bookingId" = ${bookingId} AND "status" = 'AWAITING_PAYMENT' FOR UPDATE`;
-  if (!locked) return false;
-  const row = await tx.websiteRequest.findUnique({ where: { id: locked.id } });
-  if (!row || row.status !== 'AWAITING_PAYMENT' || await depositPaid(tx, bookingId) < row.depositAmount) return false;
-  const booking = await tx.booking.updateMany({ where: { id: bookingId, status: 'AWAITING' }, data: { status: 'CONFIRMED' } });
-  if (!booking.count) return false;
-  await tx.websiteRequest.update({ where: { id: row.id }, data: { status: 'CONFIRMED' } });
-  await enqueueRequestEmail(tx, row.id, 'CONFIRMED');
-  await recordEvent(tx, row.id, 'DEPOSIT_CONFIRMED');
-  return true;
 }
 
 // Self-service cancellation from the website account. Only before any money changed hands: a

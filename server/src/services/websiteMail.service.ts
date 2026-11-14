@@ -3,9 +3,9 @@ import { logger } from '../lib/logger';
 import { env, isPreprod } from '../lib/env';
 
 type Lang = 'fr' | 'en';
-// En preprod, aucun email ne doit partir vers un vrai client : tout est redirigé vers MAIL_REDIRECT_TO,
-// et rien n'est envoyé si cette adresse n'est pas définie.
-const configured = () => !!(process.env.SMTP_HOST && process.env.MAIL_FROM && process.env.WEBSITE_URL && (!isPreprod || env.MAIL_REDIRECT_TO));
+// En preprod, si MAIL_REDIRECT_TO est défini, tout est redirigé vers cette adresse ; sinon les emails
+// partent au vrai destinataire (démonstration à un client).
+const configured = () => !!(process.env.SMTP_HOST && process.env.MAIL_FROM && process.env.WEBSITE_URL);
 let cached: Transporter | null = null;
 function transport(): Transporter {
   cached ??= nodemailer.createTransport({

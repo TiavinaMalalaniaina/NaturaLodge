@@ -16,6 +16,7 @@ export const requestSchema = z.object({
   name: z.string().trim().min(1, 'Indiquez votre nom').max(80, 'Nom trop long (80 caractères max.)'),
   email: z.string().trim().email('Adresse email invalide').max(254).transform(value => value.toLowerCase()),
   phone: z.string().trim().min(6, 'Numéro de téléphone trop court').max(30, 'Numéro de téléphone trop long').regex(/^[+0-9 ().-]+$/, 'Numéro de téléphone invalide (chiffres, espaces, + ( ) . - uniquement)'),
+  arrivalTime: z.string().trim().regex(/^(?:([01]\d|2[0-3]):[0-5]\d)?$/, 'Heure d’arrivée invalide').default(''),
   notes: z.string().trim().max(1000, 'Message trop long (1000 caractères max.)').default(''),
   locale: z.enum(['fr', 'en']).default('fr'),
   conditionsAccepted: z.literal(true, { errorMap: () => ({ message: 'Acceptez les conditions de la demande' }) }),

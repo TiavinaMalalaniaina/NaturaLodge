@@ -40,7 +40,7 @@ cd client && npm run dev
 Trois environnements : `development` (local), `preprod` (branche `preprod`, Coolify) et `production` (branche `main`, Coolify). Détail complet dans `ENVIRONNEMENTS.md`.
 - `APP_ENV` ≠ `NODE_ENV` : la préprod tourne en `NODE_ENV=production` et se distingue uniquement par `APP_ENV`. Pour un comportement propre à un environnement, tester `appEnv`/`isPreprod`/`isProduction` (`server/src/lib/env.ts`) ou `APP_ENV` (`client/src/lib/appEnv.ts`), jamais `NODE_ENV`.
 - `server/src/lib/env.ts` est importé en premier dans `server.ts`. Hors développement, il fait échouer le démarrage si la configuration est dangereuse (secret JWT faible, URLs non https…).
-- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO`. Tout nouvel envoi doit passer par cette fonction.
+- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO` s'il est défini (vide : envoyé au vrai destinataire, pour les démos client). Tout nouvel envoi doit passer par cette fonction.
 - Le seed de démo (`prisma/seed.ts`) est bloqué si `APP_ENV=production`.
 
 ---
@@ -62,7 +62,7 @@ make dev-client    # client en local, hot-reload (port 3000)
 - Le client est servi par nginx en prod (`client/Dockerfile`, `client/nginx.conf`), qui proxy `/api/*` vers le service `server`.
 - Le site public (`website/`) suit le même principe : son nginx relaie `/api/public/*` vers `API_UPSTREAM`, et `PUBLIC_API_URL` vaut `/api/public` par défaut. Le cookie de session client est `SameSite=Lax` et suppose que le site et l'API sont sur le même site : ne jamais faire pointer le site vers une API sur un autre domaine.
 - Le serveur applique les migrations Prisma automatiquement au démarrage du conteneur (`prisma migrate deploy`).
-- Préprod : `docker-compose.preprod.yml`, déployé comme ressource « Docker Compose » Coolify (variables : `.env.preprod.example`). Stack isolée de la prod : réseau et volumes propres, identifiants obligatoires, base et API jamais exposées, emails redirigés vers `MAIL_REDIRECT_TO`. Voir `ENVIRONNEMENTS.md`.
+- Préprod : `docker-compose.preprod.yml`, déployé comme ressource « Docker Compose » Coolify (variables : `.env.preprod.example`). Stack isolée de la prod : réseau et volumes propres, identifiants obligatoires, base et API jamais exposées, emails redirigés vers `MAIL_REDIRECT_TO` s'il est défini. Voir `ENVIRONNEMENTS.md`.
 - Sous Windows sans Git Bash configuré comme `SHELL` de `make`, les recettes s'exécutent via `cmd.exe` : éviter `trap`/`&`/`wait`/`awk` dans le Makefile (syntaxe POSIX indisponible).
 
 ### Monitoring (VPS de production)
@@ -258,6 +258,24 @@ Le check-out (`PATCH /:id/status` avec `status: 'CHECKED_OUT'`, `can('bookings.u
 - La route POST `/api/invoices/generate` lit `HotelConfig` si `taxRate` n'est pas fourni dans le body
 - `InvoiceView.tsx` utilise `useSettings()` pour afficher la TVA — pas d'input manuel
 - L'échéance (`dueAt`) est fixée automatiquement au jour de génération, non visible dans l'UI
+
+### Acomptes
+Un acompte, c'est de l'argent reçu. `POST /api/invoices/deposit` (`invoice.service.ts: receiveDeposit`) crée, vise et encaisse la facture d'acompte en un seul geste : il n'existe jamais d'acompte visé mais impayé, et `/validate` refuse un brouillon d'acompte.
+- Au visa de la facture STANDARD, chaque acompte non annulé est déduit (ligne négative, 419100 → 411000) et rattaché via `Invoice.appliedToInvoiceId`. Le visa est refusé s'il reste un brouillon d'acompte ou un acompte pas entièrement encaissé.
+- Une fois la facture visée, plus d'acompte : l'argent se paie sur la facture. L'encaissement d'un acompte et le visa verrouillent la ligne `Booking` (`FOR UPDATE`) pour ne pas se croiser.
+- Un acompte imputé ne s'encaisse, ne se rembourse et ne s'annule plus séparément : on annule la facture. Son avoir porte sur le séjour entier (net + acomptes imputés).
+
+### Une facture par séjour : elle suit le séjour, même visée
+- **Visa automatique au check-out** (`booking.service.ts: updateStatus` → `invoiceService.validateInTx`) : la facture est émise au départ, créance / chiffre d'affaires / TVA constatés à la fin de la prestation. « Viser » reste possible plus tôt (`invoices.validate`).
+- **La facture suit toujours le séjour** (`syncInvoiceWithBooking`, appelée après toute mutation de chambres / dates / suppléments) : lignes de séjour réécrites, remises % et TVA recalculées au taux effectif. Sur une facture visée, la variation passe une écriture correctrice (706000 / 709000 / 4457000 contre 411000). Seules les lignes `source: BOOKING` à total positif sont réécrites : les déductions d'acompte des anciennes factures (`BOOKING` négatif) ne sont jamais touchées.
+- **Modifiable à la main, même visée** (lignes, remises, TVA) : écriture correctrice à chaque variation (`applyInvoiceItemDelta`, `update`).
+- **Annulation** : avoir d'annulation. La part retenue HT (`Invoice.retainedAmount`) est reclassée de 706000 vers 708500 au visa de l'avoir ; sa TVA reste collectée.
+
+### Soldes, avoirs et trop-perçu
+`invoice.service.ts: balanceOf` (miroir client `invoiceBalance`) : dû = montant − avoirs visés ; trop-perçu = encaissé − dû − déjà rendu par les avoirs. Encaissé inclut les acomptes imputés.
+- Un avoir rend au plus le trop-perçu du document crédité (`refundableOn`), et passe `PAID` (« Soldé ») quand plus rien n'est à rendre.
+- Un trop-perçu (paiement en trop, séjour réduit après paiement) se rend par `POST /invoices/:id/refunds` : paiement **négatif** sur le document (411000 au débit, trésorerie au crédit). Toutes les sommes de paiements sont donc nettes.
+- Tout mouvement resynchronise le document et ses avoirs (`syncDocumentAndRelated`).
 
 ### Filtrage des chambres — par RoomType uniquement
 Le champ `category` (enum `RoomCategory`) a été entièrement retiré du modèle `RoomType` (redondant avec `RoomType.name`) — supprimé du schéma Prisma, des routes serveur, des DTOs client et de tous les badges/formulaires d'affichage. Le filtrage et la catégorisation des chambres se font uniquement via `RoomType.name` (`useRoomTypes()`). Ne pas réintroduire un champ `category` séparé.
