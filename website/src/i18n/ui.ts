@@ -239,7 +239,7 @@ const scriptFr = {
   searching: 'Recherche des disponibilités…',
   chooseRooms: 'Choisissez vos chambres.',
   noRooms: 'Aucune chambre disponible à ces dates.',
-  roomLine: (name: string, capacity: number, price: string, available: number) => `${name} · ${capacity} personnes · ${price} Ar / nuit · ${available} disponible(s)`,
+  roomLine: (name: string, capacity: number, price: string) => `${name} · ${capacity} personnes · ${price} Ar / nuit`,
   quantity: (name: string) => `Quantité : ${name}`,
   labels: { PENDING: 'En attente de validation', AWAITING_PAYMENT: 'Acompte à régler', CONFIRMED: 'Réservation confirmée', REJECTED: 'Demande refusée', EXPIRED: 'Délai expiré', CANCELLED: 'Annulée' } as Record<string, string>,
   help: {
@@ -292,7 +292,7 @@ const scriptEn: typeof scriptFr = {
   searching: 'Checking availability…',
   chooseRooms: 'Choose your rooms.',
   noRooms: 'No room available for these dates.',
-  roomLine: (name, capacity, price, available) => `${name} · ${capacity} guests · ${price} Ar / night · ${available} available`,
+  roomLine: (name, capacity, price) => `${name} · ${capacity} guests · ${price} Ar / night`,
   quantity: name => `Quantity: ${name}`,
   labels: { PENDING: 'Awaiting approval', AWAITING_PAYMENT: 'Deposit due', CONFIRMED: 'Booking confirmed', REJECTED: 'Request declined', EXPIRED: 'Deadline passed', CANCELLED: 'Cancelled' },
   help: {
