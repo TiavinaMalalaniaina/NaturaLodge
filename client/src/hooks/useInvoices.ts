@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits,
+  fetchInvoiceByBooking, fetchInvoice, fetchInvoices, fetchOutstandingDeposits, fetchDepositStatus,
   generateInvoice, recordPayment, voidPayment, updateInvoice, deleteDraftInvoice,
   createDeposit, validateInvoice, cancelInvoice,
+  refundOverpayment,
   addInvoiceItem, updateInvoiceItem, deleteInvoiceItem, addInvoiceDiscount,
   PaymentPayload, CreateDepositPayload, InvoiceItemPayload, DiscountPayload,
 } from '../api/invoices';
@@ -55,6 +56,7 @@ export function useRecordPayment() {
     onSuccess: (inv) => {
       writeInvoiceCaches(qc, inv);
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: depositStatusKey(inv.bookingId) });
     },
   });
 }
@@ -67,6 +69,7 @@ export function useVoidPayment() {
     onSuccess: (inv) => {
       writeInvoiceCaches(qc, inv);
       qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+      qc.invalidateQueries({ queryKey: depositStatusKey(inv.bookingId) });
     },
   });
 }
@@ -139,6 +142,16 @@ export function useInvoices(params?: Parameters<typeof fetchInvoices>[0]) {
 
 // Acomptes visés pas encore absorbés par une facture définitive — trace le solde du compte 419100
 // au bilan (voir Reports.tsx).
+const depositStatusKey = (bookingId: string) => [...INVOICES_KEY, 'deposits', 'status', bookingId] as const;
+
+export function useDepositStatus(bookingId: string | null) {
+  return useQuery({
+    queryKey: depositStatusKey(bookingId ?? ''),
+    queryFn:  () => fetchDepositStatus(bookingId!),
+    enabled:  !!bookingId,
+  });
+}
+
 export function useOutstandingDeposits() {
   return useQuery({
     queryKey: [...INVOICES_KEY, 'deposits', 'outstanding'],
@@ -158,6 +171,17 @@ export function useBookingDocuments(bookingId: string | null, kind: 'deposit' | 
 
 // Ces trois mutations font apparaître ou disparaître un document plutôt que de simplement modifier
 // celui déjà en cache : on invalide toute la clé plutôt que de cibler une seule entrée.
+export function useRefundOverpayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ invoiceId, ...payload }: { invoiceId: string } & PaymentPayload) => refundOverpayment(invoiceId, payload),
+    onSuccess: (inv) => {
+      writeInvoiceCaches(qc, inv);
+      qc.invalidateQueries({ queryKey: CASH_ACCOUNTS_KEY });
+    },
+  });
+}
+
 export function useCreateDeposit() {
   const qc = useQueryClient();
   return useMutation({

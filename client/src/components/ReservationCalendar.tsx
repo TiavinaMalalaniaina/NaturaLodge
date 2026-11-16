@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, X, LogIn, LogOut, Users, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useBookings } from '../hooks/useBookings';
-import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_LABEL } from '../lib/bookingStatus';
+import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY } from '../lib/bookingStatus';
 import { RichBooking, EffectiveStatus } from '../api/bookings';
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -20,11 +21,18 @@ function toStr(d: Date) {
 }
 function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 
-const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
+// 1er janvier 2024 = lundi : sert de référence pour nommer les jours dans la langue courante.
+const MONDAY = new Date(2024, 0, 1);
+const LEGEND: { status: EffectiveStatus; cls: string }[] = [
+  { status: 'upcoming',           cls: 'bg-primary/15 border-primary/20' },
+  { status: 'due_checkin',        cls: 'bg-amber-100 border-amber-200' },
+  { status: 'in_progress',        cls: 'bg-teal-700 border-teal-600' },
+  { status: 'overdue',            cls: 'bg-red-100 border-red-200' },
+  { status: 'checked_out_unpaid', cls: 'bg-rose-50 border-rose-100' },
+  { status: 'checked_out_paid',   cls: 'bg-stone-100 border-stone-200' },
 ];
-const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DEFAULT_BAR_CLS = 'bg-stone-100 text-stone-400 border-stone-200';
+const NOON = 'T12:00:00';
 
 // ─── Bar styles by status ─────────────────────────────────────────
 
@@ -89,6 +97,8 @@ const LANE_H   = 26;  // px per lane
 const HEADER_H = 36;  // day-number row height
 
 export const ReservationCalendar: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.resolvedLanguage || i18n.language;
   const navigate = useNavigate();
   const today    = new Date();
 
@@ -142,7 +152,7 @@ export const ReservationCalendar: React.FC = () => {
             <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
           </button>
           <h3 className="font-display italic text-2xl text-on-surface w-52 text-center">
-            {MONTHS[month]} {year}
+            {new Date(year, month, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
           </h3>
           <button onClick={nextMonth}
             className="w-9 h-9 flex items-center justify-center rounded-full border border-stone-200 hover:bg-stone-50 transition-colors">
@@ -150,10 +160,10 @@ export const ReservationCalendar: React.FC = () => {
           </button>
         </div>
         <div className="flex items-center gap-3">
-          {isLoading && <span className="text-[10px] font-bold text-primary/50 uppercase tracking-widest animate-pulse">Loading…</span>}
+          {isLoading && <span className="text-[10px] font-bold text-primary/50 uppercase tracking-widest animate-pulse">{t('common.loading')}</span>}
           <button onClick={() => { setMonth(today.getMonth()); setYear(today.getFullYear()); setSelectedDay(todayStr); }}
             className="px-4 py-2 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-stone-200 transition-colors">
-            Today
+            {t('calendar.today')}
           </button>
         </div>
       </div>
@@ -165,9 +175,9 @@ export const ReservationCalendar: React.FC = () => {
 
           {/* Day-of-week header */}
           <div className="grid grid-cols-7 border-b border-stone-100 bg-stone-50/60">
-            {DOW.map(d => (
-              <div key={d} className="py-3 text-center text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">
-                {d}
+            {Array.from({ length: 7 }, (_, i) => addDays(MONDAY, i)).map(d => (
+              <div key={d.getDay()} className="py-3 text-center text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">
+                {d.toLocaleDateString(locale, { weekday: 'short' })}
               </div>
             ))}
           </div>
@@ -217,11 +227,11 @@ export const ReservationCalendar: React.FC = () => {
                 {/* Booking bars overlay */}
                 <div className="absolute inset-0 pointer-events-none" style={{ top: HEADER_H }}>
                   {bars.map(bar => {
-                    const cls = BAR_CLS[bar.booking.effectiveStatus] ?? 'bg-stone-100 text-stone-400 border-stone-200';
+                    const cls = BAR_CLS[bar.booking.effectiveStatus] ?? DEFAULT_BAR_CLS;
                     return (
                       <div
                         key={`${bar.booking.id}-${wi}`}
-                        title={`${bar.booking.guestName} · ${EFFECTIVE_STATUS_LABEL[bar.booking.effectiveStatus]}`}
+                        title={`${bar.booking.guestName} · ${t(EFFECTIVE_STATUS_I18N_KEY[bar.booking.effectiveStatus])}`}
                         onClick={() => navigate(`/reservations/${bar.booking.id}`)}
                         className={cn(
                           'absolute flex items-center px-2 rounded-md border text-[9px] font-bold pointer-events-auto cursor-pointer hover:brightness-95 transition-all overflow-hidden select-none',
@@ -261,10 +271,10 @@ export const ReservationCalendar: React.FC = () => {
               <div className="flex items-start justify-between px-5 py-4 border-b border-stone-100 bg-stone-50/60">
                 <div>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">
-                    {new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })}
+                    {new Date(selectedDay + NOON).toLocaleDateString(locale, { weekday: 'long' })}
                   </p>
                   <p className="font-display italic text-xl text-primary leading-none mt-0.5">
-                    {new Date(selectedDay + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}
+                    {new Date(selectedDay + NOON).toLocaleDateString(locale, { day: 'numeric', month: 'long' })}
                   </p>
                 </div>
                 <button onClick={() => setSelectedDay(null)}
@@ -275,24 +285,24 @@ export const ReservationCalendar: React.FC = () => {
 
               <div className="p-4 space-y-4 max-h-[540px] overflow-y-auto no-scrollbar">
                 {selArrivals.length > 0 && (
-                  <PanelSection icon={<LogIn className="w-3 h-3" />} label={`Arrivals (${selArrivals.length})`} color="text-emerald-600">
+                  <PanelSection icon={<LogIn className="w-3 h-3" />} label={t('calendar.arrivals', { count: selArrivals.length })} color="text-emerald-600">
                     {selArrivals.map(b => <MiniCard key={b.id} booking={b} onNav={() => navigate(`/reservations/${b.id}`)} />)}
                   </PanelSection>
                 )}
                 {selDepartures.length > 0 && (
-                  <PanelSection icon={<LogOut className="w-3 h-3" />} label={`Departures (${selDepartures.length})`} color="text-stone-400">
+                  <PanelSection icon={<LogOut className="w-3 h-3" />} label={t('calendar.departures', { count: selDepartures.length })} color="text-stone-400">
                     {selDepartures.map(b => <MiniCard key={b.id} booking={b} onNav={() => navigate(`/reservations/${b.id}`)} />)}
                   </PanelSection>
                 )}
                 {selStaying.length > 0 && (
-                  <PanelSection icon={<Users className="w-3 h-3" />} label={`In-house (${selStaying.length})`} color="text-teal-600">
+                  <PanelSection icon={<Users className="w-3 h-3" />} label={t('calendar.inHouse', { count: selStaying.length })} color="text-teal-600">
                     {selStaying.map(b => <MiniCard key={b.id} booking={b} onNav={() => navigate(`/reservations/${b.id}`)} />)}
                   </PanelSection>
                 )}
                 {!selArrivals.length && !selDepartures.length && !selStaying.length && (
                   <div className="py-10 text-center text-on-surface-variant/25">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm font-display italic">No activity</p>
+                    <p className="text-sm font-display italic">{t('calendar.noActivity')}</p>
                   </div>
                 )}
               </div>
@@ -303,17 +313,10 @@ export const ReservationCalendar: React.FC = () => {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-5">
-        {([
-          { label: 'Upcoming',    cls: 'bg-primary/15 border-primary/20' },
-          { label: 'Due check-in',cls: 'bg-amber-100 border-amber-200'   },
-          { label: 'In progress', cls: 'bg-teal-700 border-teal-600'     },
-          { label: 'Overdue',     cls: 'bg-red-100 border-red-200'       },
-          { label: 'Checked out (unpaid)', cls: 'bg-rose-50 border-rose-100'   },
-          { label: 'Checked out (paid)',   cls: 'bg-stone-100 border-stone-200' },
-        ] as const).map(({ label, cls }) => (
-          <div key={label} className="flex items-center gap-1.5">
+        {LEGEND.map(({ status, cls }) => (
+          <div key={status} className="flex items-center gap-1.5">
             <span className={cn('w-5 h-3 rounded border', cls)} />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">{label}</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t(EFFECTIVE_STATUS_I18N_KEY[status])}</span>
           </div>
         ))}
       </div>
@@ -332,19 +335,22 @@ const PanelSection: React.FC<{ icon: React.ReactNode; label: string; color: stri
   </section>
 );
 
-const MiniCard: React.FC<{ booking: RichBooking; onNav: () => void }> = ({ booking, onNav }) => (
+const MiniCard: React.FC<{ booking: RichBooking; onNav: () => void }> = ({ booking, onNav }) => {
+  const { t } = useTranslation();
+  return (
   <div className="flex items-center justify-between p-2.5 bg-stone-50 rounded-xl border border-stone-100 hover:border-stone-200 transition-colors">
     <div className="min-w-0">
       <p className="text-xs font-semibold text-on-surface truncate">{booking.guestName}</p>
       <p className="text-[9px] text-on-surface-variant/50 truncate">
-        {booking.rooms.map(br => `#${br.room.number}`).join(' · ')} · {booking.nights}n
+        {t('calendar.miniCard', { rooms: booking.rooms.map(br => `#${br.room.number}`).join(' · '), nights: booking.nights })}
       </p>
       <span className={cn('inline-flex mt-1 px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[booking.effectiveStatus])}>
-        {EFFECTIVE_STATUS_LABEL[booking.effectiveStatus]}
+        {t(EFFECTIVE_STATUS_I18N_KEY[booking.effectiveStatus])}
       </span>
     </div>
     <button onClick={onNav} className="p-1.5 ml-2 text-on-surface-variant/30 hover:text-primary transition-colors shrink-0">
       <FileText className="w-3.5 h-3.5" />
     </button>
   </div>
-);
+  );
+};

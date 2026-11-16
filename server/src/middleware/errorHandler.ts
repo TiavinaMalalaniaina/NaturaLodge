@@ -10,6 +10,12 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return;
   }
 
+  // body-parser (express.json / express.raw) rejects oversized bodies before any handler runs.
+  if ((err as Error & { type?: string }).type === 'entity.too.large') {
+    res.status(413).json({ error: 'Fichier ou contenu trop volumineux.' });
+    return;
+  }
+
   if (err instanceof ZodError) {
     res.status(422).json({ error: err.flatten() });
     return;

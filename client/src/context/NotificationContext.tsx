@@ -8,12 +8,16 @@ export interface AppNotification {
   amount: string;
   read: boolean;
   createdAt: Date;
+  // Page opened when the notification is clicked.
+  link?: string;
+  // Server-side event id: the same event delivered twice (polling overlap, several tabs) is added once.
+  externalId?: string;
 }
 
 interface NotificationContextProps {
   notifications: AppNotification[];
   unreadCount: number;
-  addNotification: (notification: Omit<AppNotification, 'id' | 'read' | 'createdAt'>) => void;
+  addNotification: (notification: Omit<AppNotification, 'id' | 'read' | 'createdAt'> & { createdAt?: Date }) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotification: (id: string) => void;
@@ -42,14 +46,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const addNotification = useCallback((notif: Omit<AppNotification, 'id' | 'read' | 'createdAt'>) => {
+  const addNotification = useCallback((notif: Omit<AppNotification, 'id' | 'read' | 'createdAt'> & { createdAt?: Date }) => {
     const newNotif: AppNotification = {
       ...notif,
       id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
       read: false,
-      createdAt: new Date(),
+      createdAt: notif.createdAt ?? new Date(),
     };
-    setNotifications(prev => [newNotif, ...prev]);
+    setNotifications(prev => (newNotif.externalId && prev.some(n => n.externalId === newNotif.externalId) ? prev : [newNotif, ...prev].slice(0, 100)));
   }, []);
 
   const markAsRead = useCallback((id: string) => {

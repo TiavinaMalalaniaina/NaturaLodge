@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 
 const BED_TYPES  = ['King Size', 'Super King', 'Twin Signature', 'Double'];
 const VIEWS      = ['Garden View', 'Ocean View', 'Valley View', 'Pool View', 'Mountain View', 'Courtyard'];
+const STEPS      = ['type', 'room'] as const;
 
 interface AddRoomModalProps {
   isOpen: boolean;
@@ -107,7 +108,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   {step === 'type' ? t('rooms.unitRegistration') : `${t('rooms.roomNumber')} — ${selectedType?.name ?? ''}`}
                 </h3>
                 <div className="flex gap-2 mt-2">
-                  {(['type', 'room'] as const).map((s) => (
+                  {STEPS.map((s) => (
                     <div key={s} className={cn('h-1 w-16 rounded-full transition-all', step === s || (s === 'type' && step === 'room') ? 'bg-primary' : 'bg-stone-200')} />
                   ))}
                 </div>
@@ -134,7 +135,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   {!creatingNew && (
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60">
-                        {t('rooms.typeName')} existants ({roomTypes.length})
+                        {t('addRoom.existingTypes', { count: roomTypes.length })}
                       </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {roomTypes.map(rt => (
@@ -151,10 +152,10 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                               {selectedType?.id === rt.id && <Check className="w-4 h-4 text-primary" />}
                             </div>
                             <p className="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">
-                              {rt.capacity} pers. · {formatCurrency(rt.rate)}/n
+                              {t('addRoom.typeSummary', { capacity: rt.capacity, rate: formatCurrency(rt.rate) })}
                             </p>
                             <p className="text-[10px] text-on-surface-variant/40 mt-1">
-                              {rt.rooms.length} chambre{rt.rooms.length !== 1 ? 's' : ''}
+                              {t('addRoom.roomCount', { count: rt.rooms.length })}
                             </p>
                           </button>
                         ))}
@@ -164,7 +165,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                             onClick={() => { setCreatingNew(true); setSelectedType(null); }}
                             className="p-4 rounded-2xl border-2 border-dashed border-stone-200 flex items-center gap-3 hover:border-primary/40 transition-all text-on-surface-variant/50 hover:text-primary">
                             <Plus className="w-5 h-5" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">Nouveau type</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest">{t('addRoom.newType')}</span>
                           </button>
                         )}
                       </div>
@@ -175,21 +176,21 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                   {creatingNew && (
                     <div className="space-y-5">
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60">Nouveau type de chambre</p>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/60">{t('addRoom.newTypeTitle')}</p>
                         <button type="button" onClick={() => setCreatingNew(false)}
                           className="text-[10px] font-bold text-on-surface-variant/40 hover:text-on-surface uppercase tracking-widest">
-                          ← Choisir existant
+                          {t('addRoom.pickExisting')}
                         </button>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2">
                           <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.typeName')}</label>
-                          <input type="text" placeholder="ex. Natura Suite" value={newType.name}
+                          <input type="text" placeholder={t('addRoom.typeNamePlaceholder')} value={newType.name}
                             onChange={e => setNewType(p => ({ ...p, name: e.target.value }))} required={creatingNew} className={field} />
                         </div>
                         <div>
                           <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.nightlyRate')}</label>
-                          <input type="number" placeholder="1 500 000" min={1} required={creatingNew} value={newType.rate}
+                          <input type="number" placeholder={t('addRoom.ratePlaceholder')} min={1} required={creatingNew} value={newType.rate}
                             onChange={e => setNewType(p => ({ ...p, rate: e.target.value }))} className={field} />
                         </div>
                         <div>
@@ -198,7 +199,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                             onChange={e => setNewType(p => ({ ...p, capacity: e.target.value }))} className={field} />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.surface')} (m²)</label>
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('addRoom.surfaceLabel', { label: t('rooms.surface') })}</label>
                           <input type="number" placeholder="45" min={1} value={newType.area}
                             onChange={e => setNewType(p => ({ ...p, area: e.target.value }))} className={field} />
                         </div>
@@ -242,7 +243,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                     disabled={!selectedType && !creatingNew}
                     onClick={() => setStep('room')}
                     className="w-full py-4 bg-primary text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-primary-container disabled:opacity-40 transition-all shadow-lg shadow-primary/10">
-                    Suivant — Numéro de chambre
+                    {t('addRoom.nextStep')}
                   </button>
                 </motion.div>
               )}
@@ -258,12 +259,12 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                         <div className="flex-1">
                           <p className="text-xs font-bold text-primary">{creatingNew ? newType.name : selectedType?.name}</p>
                           <p className="text-[10px] text-on-surface-variant/50 mt-0.5">
-                            {formatCurrency(creatingNew ? Number(newType.rate) : selectedType?.rate ?? 0)}/n
+                            {t('addRoom.perNight', { rate: formatCurrency(creatingNew ? Number(newType.rate) : selectedType?.rate ?? 0) })}
                           </p>
                         </div>
                         <button type="button" onClick={() => setStep('type')}
                           className="text-[9px] font-bold text-primary/60 hover:text-primary uppercase tracking-widest">
-                          Modifier
+                          {t('common.edit')}
                         </button>
                       </div>
                     )}
@@ -271,13 +272,13 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">{t('rooms.roomNumber')} *</label>
-                        <input type="text" placeholder="ex. 402" required value={number}
+                        <input type="text" placeholder={t('addRoom.numberPlaceholder')} required value={number}
                           onChange={e => setNumber(e.target.value)}
                           className={field} />
                       </div>
                       <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50 block mb-2">
-                          Tarif spécifique (MGA) <span className="normal-case font-normal opacity-40">optionnel</span>
+                          {t('addRoom.rateOverride')} <span className="normal-case font-normal opacity-40">{t('common.optional')}</span>
                         </label>
                         <input type="number" min={1}
                           placeholder={`Défaut : ${(creatingNew ? Number(newType.rate) : selectedType?.rate ?? 0).toLocaleString()}`}

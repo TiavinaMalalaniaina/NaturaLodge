@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Plus, Trash2, Wifi, Coffee, Wind, Tv, ShieldCheck, Map, Edit2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -20,6 +21,7 @@ interface FeatureManagerModalProps {
 }
 
 export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
   const { can } = useAuth();
   const canManage = can('rooms.manage_features');
   const { data: features = [], isLoading } = useRoomFeatures();
@@ -44,7 +46,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
       await createFeature.mutateAsync({ label: data.label.trim(), iconName: data.iconName });
       resetAdd();
     } catch (err) {
-      setApiError(getApiErrorMessage(err, 'Erreur lors de la création.'));
+      setApiError(getApiErrorMessage(err, t('common.error')));
     }
   };
 
@@ -60,13 +62,13 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Room Features" zIndexClassName="z-[110]"
+    <Modal isOpen={isOpen} onClose={onClose} title={t('features.title')} zIndexClassName="z-[110]"
       className="max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 overflow-hidden">
 
             <div className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
               <div>
-                <h3 className="font-display italic text-2xl text-on-surface">Room Features</h3>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">Global Attributes Catalog</p>
+                <h3 className="font-display italic text-2xl text-on-surface">{t('features.title')}</h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('features.subtitle')}</p>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-colors border border-transparent hover:border-stone-200">
                 <X className="w-5 h-5 text-on-surface-variant" />
@@ -77,7 +79,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
               {/* Feature list */}
               <div className="space-y-3">
                 {isLoading ? (
-                  <p className="text-xs text-on-surface-variant/40 text-center py-8">Chargement...</p>
+                  <p className="text-xs text-on-surface-variant/40 text-center py-8">{t('common.loading')}</p>
                 ) : features.map(feature => {
                   const Icon = ICON_MAP[feature.iconName] ?? Wifi;
                   const isDeleting = deletingId === feature.id;
@@ -91,7 +93,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-on-surface">{feature.label}</p>
-                          <p className="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-tighter">ID: {feature.id}</p>
+                          <p className="text-[10px] font-mono text-on-surface-variant/40 uppercase tracking-tighter">{t('features.id', { id: feature.id })}</p>
                         </div>
                       </div>
                       {canManage && (
@@ -120,13 +122,13 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
                     </div>
                   )}
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2 block">Feature Label</label>
-                    <input autoFocus type="text" placeholder="e.g. Mini Bar" {...register('label')}
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2 block">{t('features.label')}</label>
+                    <input autoFocus type="text" placeholder={t('features.labelPlaceholder')} {...register('label')}
                       className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm" />
                     {errors.label && <p className="text-[10px] text-red-500 mt-1.5 font-medium">{errors.label.message}</p>}
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2 block">Icon</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2 block">{t('features.icon')}</label>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(ICON_MAP).map(([name, Icon]) => (
                         <button key={name} type="button" onClick={() => setValue('iconName', name, { shouldValidate: true })}
@@ -140,11 +142,11 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
                   <div className="flex gap-2 pt-2">
                     <button type="button" onClick={resetAdd}
                       className="flex-1 py-3 bg-white text-on-surface-variant rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-stone-100 transition-all">
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                     <button type="submit" disabled={createFeature.isPending}
                       className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-primary-container disabled:opacity-40 transition-all">
-                      {createFeature.isPending ? 'Saving...' : 'Save Feature'}
+                      {createFeature.isPending ? t('common.saving') : t('common.save')}
                     </button>
                   </div>
                 </motion.form>
@@ -152,7 +154,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
                 <button onClick={() => setIsAdding(true)}
                   className="w-full py-4 border-2 border-dashed border-stone-200 rounded-2xl flex items-center justify-center gap-3 text-on-surface-variant/60 hover:border-primary/40 hover:text-primary transition-all group">
                   <Plus className="w-4 h-4 group-hover:scale-125 transition-transform" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">New Attribute Definition</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{t('features.add')}</span>
                 </button>
               ))}
             </div>
@@ -160,8 +162,8 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
             <div className="p-8 bg-stone-50 border-t border-stone-100">
               <p className="text-[10px] text-on-surface-variant/40 leading-relaxed text-center">
                 {canManage
-                  ? 'Modifying features here updates all available options in inventory management.'
-                  : 'Catalogue en lecture seule — seuls ADMIN et MANAGER peuvent le modifier.'}
+                  ? t('features.manageHint')
+                  : t('features.readOnlyHint')}
               </p>
             </div>
     </Modal>

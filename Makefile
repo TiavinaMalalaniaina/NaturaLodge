@@ -1,7 +1,7 @@
 COMPOSE = docker compose
 
 .PHONY: help build up down restart stop logs logs-server logs-client ps clean migrate seed studio sh-server sh-client sh-db \
-	install install-server install-client dev dev-server dev-client db-up db-down local-migrate local-seed local-studio \
+	test install install-server install-client dev dev-server dev-client db-up db-down local-migrate local-seed local-studio \
 	monitoring-up monitoring-down monitoring-logs
 
 help: ## Affiche cette aide
@@ -37,6 +37,7 @@ help: ## Affiche cette aide
 	@echo     local-migrate Migrations Prisma en local
 	@echo     local-seed    Seed en local
 	@echo     local-studio  Prisma Studio en local
+	@echo     test          Tests serveur (base locale dediee, voir server/.env.test)
 
 build: ## Build les images (server + client)
 	$(COMPOSE) build
@@ -135,3 +136,6 @@ local-seed: ## Injecte les données de démo en local (contre server/.env)
 
 local-studio: ## Ouvre Prisma Studio en local (http://localhost:5555)
 	cd server && npm run db:studio
+
+test: ## Lance les tests serveur contre la base locale dédiée (server/.env.test)
+	cd server && npm test

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { Invoice } from '../../api/invoices';
 import { formatDate as fmtDate, formatCurrency as fmtAmount } from '../../lib/format';
+import { BRAND_NAME, HOTEL_LOCATION } from '../../lib/brand';
 
 export interface MoneyRow {
   label:  string;
@@ -61,11 +62,11 @@ export const InvoiceDocumentCard: React.FC<Props> = ({
       {/* Branding */}
       <div className="flex justify-between items-start">
         <div className="w-24 h-24 flex items-center justify-center">
-          <img src="/logo.png" alt="Natura Lodge Logo" />
+          <img src="/logo.png" alt={t('invoice.logoAlt', { brand: BRAND_NAME })} />
         </div>
         <div className="text-right space-y-1">
-          <p className="text-xs font-bold uppercase tracking-widest">Natura Lodge</p>
-          <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">Madagascar - Manambato</p>
+          <p className="text-xs font-bold uppercase tracking-widest">{BRAND_NAME}</p>
+          <p className="text-[10px] text-on-surface-variant/60 leading-relaxed">{HOTEL_LOCATION}</p>
         </div>
       </div>
 

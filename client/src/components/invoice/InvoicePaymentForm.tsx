@@ -1,8 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { PaymentMethod } from '../../api/invoices';
+import { cn } from '../../lib/utils';
 
 interface CashAccount { id: string; name: string }
+
+const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'mvola', 'orange_money'];
 
 interface Props {
   amount: string;
@@ -21,6 +24,7 @@ interface Props {
   onSubmit: () => void;
   isPending: boolean;
   submitDisabled: boolean;
+  notice?: { tone: 'error' | 'warning'; text: string };
 }
 
 // Formulaire d'encaissement (facture/acompte) ou de remboursement (avoir) — mêmes champs dans les
@@ -29,7 +33,7 @@ interface Props {
 export const InvoicePaymentForm: React.FC<Props> = ({
   amount, onAmountChange, amountPlaceholder, method, onMethodChange, accountId, onAccountChange,
   availableAccounts, reference, onReferenceChange, notes, onNotesChange,
-  onCancel, onSubmit, isPending, submitDisabled,
+  onCancel, onSubmit, isPending, submitDisabled, notice,
 }) => {
   const { t } = useTranslation();
 
@@ -51,7 +55,7 @@ export const InvoicePaymentForm: React.FC<Props> = ({
           onChange={e => onMethodChange(e.target.value as PaymentMethod)}
           className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
         >
-          {(['cash', 'mvola', 'orange_money'] as PaymentMethod[]).map(m => (
+          {PAYMENT_METHODS.map(m => (
             <option key={m} value={m}>{t(`invoice.method_${m}`)}</option>
           ))}
         </select>
@@ -84,6 +88,11 @@ export const InvoicePaymentForm: React.FC<Props> = ({
           className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
         />
       </div>
+      {notice && (
+        <p role="alert" className={cn('text-xs font-medium', notice.tone === 'error' ? 'text-red-600' : 'text-amber-700')}>
+          {notice.text}
+        </p>
+      )}
       <div className="flex justify-end gap-3">
         <button onClick={onCancel}
           className="px-4 py-2.5 border border-stone-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-50 transition-colors">

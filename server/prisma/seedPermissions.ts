@@ -45,6 +45,7 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'invoices.delete_draft',    domain: 'invoices', description: 'Supprimer un brouillon jamais visé',                             roles: FRONT_DESK },
   { key: 'invoices.record_payment',  domain: 'invoices', description: 'Enregistrer un paiement',                                         roles: FRONT_DESK },
   { key: 'invoices.void_payment',    domain: 'invoices', description: 'Annuler un paiement',                                             roles: ADMIN_MANAGER },
+  { key: 'invoices.overpay',         domain: 'invoices', description: 'Enregistrer un paiement supérieur au reste dû (trop-perçu)',       roles: ADMIN_MANAGER },
 
   // ── guests ──
   { key: 'guests.view',        domain: 'guests', description: 'Consulter les clients',                                                   roles: ALL_STAFF },
@@ -66,6 +67,9 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'bookings.delete',        domain: 'bookings', description: 'Supprimer une réservation',                                         roles: ADMIN_MANAGER },
   { key: 'bookings.add_note',      domain: 'bookings', description: 'Ajouter une note à une réservation',                                roles: FRONT_DESK },
   { key: 'bookings.delete_note',   domain: 'bookings', description: 'Supprimer une note de réservation',                                 roles: ADMIN_MANAGER },
+
+  // ── website requests ──
+  { key: 'websiteRequests.view',   domain: 'websiteRequests', description: 'Consulter les demandes du site (coordonnées clients, preuves de paiement) et en recevoir les notifications', roles: FRONT_DESK },
 
   // ── staff ── (déjà restreint ADMIN/MANAGER aujourd'hui, HOUSEKEEPING n'y gagne pas d'accès en lecture)
   { key: 'staff.view',             domain: 'staff', description: 'Consulter l\'annuaire du personnel',                                   roles: ADMIN_MANAGER },

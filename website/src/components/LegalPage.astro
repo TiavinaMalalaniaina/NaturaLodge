@@ -1,0 +1,48 @@
+---
+import '../styles/global.css';
+import '../styles/client.css';
+import { alternatePath, localePath, type Lang } from '../i18n';
+import { ui } from '../i18n/ui';
+import { legalPage, legalSlugs, missingLegalFields, type LegalKind } from '../i18n/legal';
+import Alternates from './Alternates.astro';
+import LegalLinks from './LegalLinks.astro';
+
+const { kind, lang } = Astro.props as { kind: LegalKind; lang: Lang };
+const page = legalPage(kind, lang);
+const meta = ui[lang].meta;
+const t = ui[lang].layout;
+const other: Lang = lang === 'fr' ? 'en' : 'fr';
+// Visible in the build output so an incomplete legal page is not published by accident.
+const missing = missingLegalFields();
+if (missing.length && kind !== 'terms' && lang === 'fr') console.warn(`[legal] Champs à compléter dans src/data/hotel.ts (legal) : ${missing.join(', ')}`);
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#164d43" />
+    <title>{page.title} · Natura Lodge</title>
+    <meta name="description" content={page.title} />
+    <Alternates />
+    <link rel="icon" href="/favicon-rounded-32.png" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" />
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">{meta.skip}</a>
+    <header class="header client-header">
+      <a href={localePath(lang, '/')} class="brand"><img src="/logo-symbol.png" alt="" width="88" height="44" /><span class="brand-name">Natura Lodge</span></a>
+      <nav aria-label={t.nav}>
+        <a href={localePath(lang, '/reservation/')}>{t.book}</a>
+        <a href={localePath(lang, '/mes-reservations/')}>{t.myBookings}</a>
+        <a href={alternatePath(Astro.url.pathname, other)} hreflang={other} lang={other} aria-label={meta.switchLabel}>{meta.switchShort}</a>
+      </nav>
+    </header>
+    <main id="contenu" class="wrap client-main legal-page">
+      <p class="eyebrow green">{page.eyebrow}</p><h1>{page.title}</h1>
+      <p class="muted">{page.intro}</p>
+      {page.sections.map(section => <section class="legal-section"><h2>{section.title}</h2>{section.paragraphs.map(text => <p>{text}</p>)}</section>)}
+    </main>
+    <footer class="wrap client-footer"><a href={localePath(lang, '/')}>{t.back}</a><LegalLinks lang={lang} current={legalSlugs[kind]} /></footer>
+  </body>
+</html>

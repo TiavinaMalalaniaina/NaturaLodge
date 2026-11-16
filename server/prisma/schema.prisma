@@ -36,6 +36,8 @@ model User {
   auditLogs         AuditLog[]
 
   @@index([roleId])
+  websiteSettings WebsiteSetting[]
+  pushSubscriptions StaffPushSubscription[]
 }
 
 // Rôles configurables par l'ADMIN (écran Permissions) — les 4 rôles historiques (isSystem: true)
@@ -145,6 +147,7 @@ model RoomFeature {
 // ─── Bookings ────────────────────────────────────────────────────
 
 model Booking {
+  websiteRequest WebsiteRequest?
   id           String        @id @default(cuid())
   guest        Guest         @relation(fields: [guestId], references: [id])
   guestId      String
@@ -165,6 +168,177 @@ model Booking {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   bookingNotes BookingNote[]
+}
+
+// Invariant : l'email d'un WebsiteCustomer est toujours vérifié (lien reçu par email ou compte Google
+// vérifié). Les anciennes demandes du site sont rattachées par email : ne jamais créer de compte avant.
+model WebsiteCustomer {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String?
+  googleId     String? @unique
+  createdAt    DateTime @default(now())
+  requests     WebsiteRequest[]
+  sessions     WebsiteSession[]
+}
+
+enum WebsiteTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+// Jeton à usage unique envoyé par email. VERIFY_EMAIL porte le mot de passe choisi à l'inscription :
+// il n'est appliqué au compte qu'une fois l'adresse prouvée.
+model WebsiteEmailToken {
+  tokenHash    String @id
+  purpose      WebsiteTokenPurpose
+  email        String
+  passwordHash String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  @@index([expiresAt])
+  @@index([email, purpose])
+}
+
+model WebsiteSession {
+  tokenHash  String @id
+  customerId String
+  customer   WebsiteCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  @@index([expiresAt])
+}
+
+// Langue du site au moment de la demande : emails de suivi et liens envoyés dans cette langue.
+enum WebsiteLocale {
+  FR
+  EN
+}
+
+enum WebsiteRequestStatus {
+  PENDING
+  AWAITING_PAYMENT
+  CONFIRMED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model WebsiteRequest {
+  id                  String   @id @default(cuid())
+  reference           String   @unique
+  // Hash of customerId + Idempotency-Key header: a retried submission returns the same request.
+  idempotencyKeyHash  String   @unique
+  payloadHash         String
+  customerId          String?
+  customer            WebsiteCustomer? @relation(fields: [customerId], references: [id])
+  name                String
+  email               String
+  phone               String
+  arrival             DateTime
+  departure           DateTime
+  guests              Int
+  // Heure d'arrivée estimée saisie par le client (« HH:MM », heure de l'hôtel) ; vide si non renseignée.
+  arrivalTime         String   @default("")
+  lines               Json
+  totalAmount         Int
+  depositAmount       Int
+  notes               String   @default("")
+  locale              WebsiteLocale @default(FR)
+  status              WebsiteRequestStatus @default(PENDING)
+  paymentInstructions String   @default("")
+  decisionNote        String   @default("")
+  expiresAt           DateTime?
+  bookingId           String?  @unique
+  booking             Booking? @relation(fields: [bookingId], references: [id])
+  emails              WebsiteEmail[]
+  proofs              WebsitePaymentProof[]
+  events              WebsiteEvent[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([customerId, createdAt])
+}
+
+// Événements du site à signaler au personnel (cloche de l'admin). Écrits dans la même transaction que
+// l'action, lus par les postes ouverts (polling) ; purgés après 30 jours par le scheduler.
+enum WebsiteEventKind {
+  REQUEST_RECEIVED
+  PROOF_UPLOADED
+  CANCELLED_BY_GUEST
+  EXPIRED
+  DEPOSIT_CONFIRMED
+}
+
+model WebsiteEvent {
+  id        String           @id @default(cuid())
+  kind      WebsiteEventKind
+  requestId String
+  request   WebsiteRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  // Null until sent as a push notification to subscribed staff devices.
+  pushedAt  DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([createdAt])
+  @@index([pushedAt])
+}
+
+// Appareil d'un membre du personnel abonné aux notifications push (navigateur ou PWA installée).
+// Un même utilisateur peut avoir plusieurs appareils ; supprimé quand le service push répond 404/410.
+model StaffPushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Preuve de paiement déposée par le client depuis son espace (capture MVola, reçu PDF…). Stockée en base
+// (petits fichiers, 5 Mo max., 5 par demande) : pas de volume disque à gérer, incluse dans les sauvegardes Postgres.
+model WebsitePaymentProof {
+  id        String         @id @default(cuid())
+  requestId String
+  request   WebsiteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fileName  String
+  mimeType  String
+  size      Int
+  data      Bytes
+  note      String         @default("")
+  createdAt DateTime       @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// Réglages du site public modifiables depuis l'admin (clé/valeur), ex. modèles d'instructions de
+// paiement par langue ("paymentInstructions.fr", "paymentInstructions.en").
+model WebsiteSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime @updatedAt
+}
+
+// Outbox des emails de suivi : inséré dans la même transaction que le changement de statut, envoyé
+// par le scheduler avec réessais — un SMTP lent ou en panne ne bloque ni ne perd aucune notification.
+model WebsiteEmail {
+  id            String         @id @default(cuid())
+  requestId     String
+  request       WebsiteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status        WebsiteRequestStatus
+  attempts      Int            @default(0)
+  nextAttemptAt DateTime       @default(now())
+  sentAt        DateTime?
+  lastError     String         @default("")
+  createdAt     DateTime       @default(now())
+
+  @@index([sentAt, nextAttemptAt])
+  @@index([requestId])
 }
 
 model BookingRoom {
@@ -269,15 +443,22 @@ model Invoice {
   // c'est la date d'émission légale, pas la date de création du brouillon.
   validatedAt DateTime?
   issuedAt    DateTime      @default(now())
-  // Un CREDIT_NOTE pointe vers la facture qu'il crédite. Un DEPOSIT n'a pas besoin de FK vers la
-  // facture finale qu'il alimente : il se retrouve par bookingId + kind (voir invoice.service.ts).
+  // Un CREDIT_NOTE pointe vers la facture qu'il crédite.
   relatesToInvoiceId String?
   relatesToInvoice   Invoice? @relation("InvoiceCredits", fields: [relatesToInvoiceId], references: [id])
   creditedBy         Invoice[] @relation("InvoiceCredits")
+  // DEPOSIT uniquement : facture STANDARD sur laquelle l'acompte a été imputé (au visa de celle-ci).
+  // null = acompte reçu, pas encore imputé. Un acompte n'est imputé qu'une seule fois.
+  appliedToInvoiceId String?
+  appliedToInvoice   Invoice?  @relation("DepositApplications", fields: [appliedToInvoiceId], references: [id])
+  appliedDeposits    Invoice[] @relation("DepositApplications")
   dueAt       DateTime?
   paidAt      DateTime?
   totalAmount Int
   taxAmount   Int           @default(0)
+  // Avoir d'annulation d'une facture : frais d'annulation HT retenus, reclassés de 706000 vers
+  // 708500 au visa de l'avoir. 0 pour tout autre document.
+  retainedAmount Int        @default(0)
   notes       String?
   items       InvoiceItem[]
   payments    Payment[]

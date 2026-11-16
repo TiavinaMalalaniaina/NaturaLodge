@@ -3,7 +3,7 @@ import {
   ArrowLeft, Calendar, Users, CreditCard, FileText,
   LogIn, LogOut, AlertTriangle, Bed, Hash, Clock, Check,
   ChevronRight, ExternalLink, RefreshCw, RotateCcw, Plus, X, Sparkles,
-  Send, Lock,
+  Send, Lock, PiggyBank, AlertCircle,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
@@ -14,10 +14,11 @@ import {
   useAddBookingNote,
 } from '../hooks/useBookings';
 import { useExtras } from '../hooks/useExtras';
-import { useInvoiceByBooking, useInvoices } from '../hooks/useInvoices';
+import { useInvoiceByBooking, useInvoices, useDepositStatus } from '../hooks/useInvoices';
 import { PageLoader, PageError } from '../components/QueryLoader';
 import { ReassignRoomModal } from '../components/ReassignRoomModal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { ConfirmWebsiteRequestModal } from '../components/ConfirmWebsiteRequestModal';
 import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, StatusActionKey, canModifyBooking as computeCanModifyBooking, canCheckOutBooking } from '../lib/bookingStatus';
 import { PAYMENT_STATUS_CLASS, invoiceStatusI18nKey } from '../lib/statusColors';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,11 @@ export const BookingDetail: React.FC = () => {
   const { data: booking, isLoading, isError } = useBooking(id!);
   const { data: invoice } = useInvoiceByBooking(id ?? null);
   const { data: documentsList } = useInvoices(id ? { bookingId: id, limit: 50 } : undefined);
+  const { data: depositStatus } = useDepositStatus(id && can('invoices.view') ? id : null);
+  const [requestToConfirm, setRequestToConfirm] = useState<{ id: string; reference: string } | null>(null);
+  const awaitingRequest = depositStatus?.websiteRequest?.status === 'AWAITING_PAYMENT' && depositStatus.remaining === 0
+    && can('bookings.update_status') && can('invoices.record_payment')
+    ? depositStatus.websiteRequest : null;
   const updateStatus = useUpdateBookingStatus();
   const closeBooking = useCloseBooking();
   const { data: extrasCatalog = [] } = useExtras();
@@ -75,6 +81,11 @@ export const BookingDetail: React.FC = () => {
   const canCancel = es === 'upcoming' || es === 'due_checkin' || es === 'awaiting';
   const canRevertCancel = es === 'cancelled';
   const canClose = can('bookings.close') && es === 'checked_out_paid';
+  // Une fois la facture visée, l'acompte reçu y est déduit ; sans acompte reçu, la carte disparaît.
+  const depositState: 'unpaid' | 'partial' | 'paid' | 'applied' | null = !depositStatus ? null
+    : invoice?.validatedAt ? (depositStatus.received > 0 ? 'applied' : null)
+      : depositStatus.remaining === 0 ? 'paid'
+        : depositStatus.received > 0 ? 'partial' : 'unpaid';
   const canModifyBooking = computeCanModifyBooking(es, can);
 
   const handleStatus = (status: string, refundRatePercent?: number) => {
@@ -414,6 +425,62 @@ export const BookingDetail: React.FC = () => {
             </div>
           </div>
 
+          {/* Acompte : attendu (une nuit pour toutes les chambres), reçu, reste. Une fois la facture
+              visée, l'acompte reçu y est déduit et le reste se paie sur la facture. */}
+          {depositStatus && depositState && (
+            <div className="bg-white rounded-3xl border border-stone-200/60 p-6 organic-shadow">
+              <div className="flex items-center justify-between gap-3 mb-5">
+                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase flex items-center gap-2">
+                  <PiggyBank className="w-3.5 h-3.5" /> {t('invoice.deposit')}
+                </h4>
+                <span className={cn(
+                  'px-2.5 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border',
+                  depositState === 'paid' || depositState === 'applied' ? 'bg-teal-50 text-teal-700 border-teal-200'
+                    : depositState === 'partial' ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200',
+                )}>
+                  {t(`invoice.depositState_${depositState}`)}
+                </span>
+              </div>
+              <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.depositExpected')}</span>
+                  <span className="text-sm font-semibold text-on-surface">{fmtAmount(depositStatus.expected)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.depositReceived')}</span>
+                  <span className="text-sm font-semibold text-teal-700">{fmtAmount(depositStatus.received)}</span>
+                </div>
+                {depositStatus.received > depositStatus.expected && (
+                  <p role="alert" className="flex items-start gap-2 text-xs font-medium text-amber-700">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {t('invoice.depositOverReceived', { amount: fmtAmount(depositStatus.received - depositStatus.expected) })}
+                  </p>
+                )}
+                {depositState !== 'applied' && depositStatus.remaining > 0 && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">{t('invoice.depositRemaining')}</span>
+                    <span className="text-sm font-semibold text-red-600">{fmtAmount(depositStatus.remaining)}</span>
+                  </div>
+                )}
+              </div>
+              {awaitingRequest && (
+                <button onClick={() => setRequestToConfirm(awaitingRequest)}
+                  className="mt-4 w-full flex items-center justify-between px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-[10px] font-bold uppercase tracking-widest text-amber-800 hover:bg-amber-100 transition-colors group">
+                  {t('websiteRequests.confirmRequest', { reference: awaitingRequest.reference })}
+                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
+              {depositState !== 'applied' && depositStatus.remaining > 0 && can('invoices.issue_deposit') && (
+                <button onClick={() => navigate(`/invoices/${booking.id}`)}
+                  className="mt-4 w-full flex items-center justify-between px-4 py-3 bg-stone-50 border border-stone-100 rounded-xl text-[10px] font-bold uppercase tracking-widest text-on-surface-variant hover:bg-stone-100 transition-colors group">
+                  {t('invoice.issueDeposit')}
+                  <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Invoice summary */}
           <div className="bg-white rounded-3xl border border-stone-200/60 p-6 organic-shadow">
             <div className="flex items-center justify-between gap-3 mb-5">
@@ -605,6 +672,7 @@ export const BookingDetail: React.FC = () => {
         bookingId={booking.id}
         rooms={booking.rooms.map(br => ({ roomId: br.roomId, roomNumber: br.room.number, arrival: br.arrival, departure: br.departure }))}
       />
+      <ConfirmWebsiteRequestModal request={requestToConfirm} onClose={() => setRequestToConfirm(null)} />
     </motion.div>
   );
 };

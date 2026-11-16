@@ -36,6 +36,13 @@ cd client && npm run dev
 
 ⚠️ **CORS** : le serveur n'autorise qu'une seule origine (`FRONTEND_URL`, défaut `http://localhost:3000`). `vite preview` (build de prod local) est donc épinglé sur le port 3000 dans `client/vite.config.ts` — sinon il tourne sur 4173 par défaut et tous les appels API sont bloqués silencieusement par le navigateur. Ne peut pas tourner en même temps que `npm run dev` (même port).
 
+### Environnements (`APP_ENV`)
+Trois environnements : `development` (local), `preprod` (branche `preprod`, Coolify) et `production` (branche `main`, Coolify). Détail complet dans `ENVIRONNEMENTS.md`.
+- `APP_ENV` ≠ `NODE_ENV` : la préprod tourne en `NODE_ENV=production` et se distingue uniquement par `APP_ENV`. Pour un comportement propre à un environnement, tester `appEnv`/`isPreprod`/`isProduction` (`server/src/lib/env.ts`) ou `APP_ENV` (`client/src/lib/appEnv.ts`), jamais `NODE_ENV`.
+- `server/src/lib/env.ts` est importé en premier dans `server.ts`. Hors développement, il fait échouer le démarrage si la configuration est dangereuse (secret JWT faible, URLs non https…).
+- En préprod, tout email passe par `send()` (`websiteMail.service.ts`) et est redirigé vers `MAIL_REDIRECT_TO` s'il est défini (vide : envoyé au vrai destinataire, pour les démos client). Tout nouvel envoi doit passer par cette fonction.
+- Le seed de démo (`prisma/seed.ts`) est bloqué si `APP_ENV=production`.
+
 ---
 
 ## Docker (optionnel)
@@ -53,7 +60,9 @@ make dev-client    # client en local, hot-reload (port 3000)
 ```
 
 - Le client est servi par nginx en prod (`client/Dockerfile`, `client/nginx.conf`), qui proxy `/api/*` vers le service `server`.
+- Le site public (`website/`) suit le même principe : son nginx relaie `/api/public/*` vers `API_UPSTREAM`, et `PUBLIC_API_URL` vaut `/api/public` par défaut. Le cookie de session client est `SameSite=Lax` et suppose que le site et l'API sont sur le même site : ne jamais faire pointer le site vers une API sur un autre domaine.
 - Le serveur applique les migrations Prisma automatiquement au démarrage du conteneur (`prisma migrate deploy`).
+- Préprod : `docker-compose.preprod.yml`, déployé comme ressource « Docker Compose » Coolify (variables : `.env.preprod.example`). Stack isolée de la prod : réseau et volumes propres, identifiants obligatoires, base et API jamais exposées, emails redirigés vers `MAIL_REDIRECT_TO` s'il est défini. Voir `ENVIRONNEMENTS.md`.
 - Sous Windows sans Git Bash configuré comme `SHELL` de `make`, les recettes s'exécutent via `cmd.exe` : éviter `trap`/`&`/`wait`/`awk` dans le Makefile (syntaxe POSIX indisponible).
 
 ### Monitoring (VPS de production)
@@ -134,7 +143,6 @@ InvoiceView.tsx      # Affichage + génération + paiements de facture (page) �
 Staff.tsx
 Settings.tsx
 Login.tsx
-Amenities.tsx
 ```
 
 Convention : les flux « création / consultation d'un document complet » (nouvelle réservation, facture) sont des **pages dédiées**, pas des modals — plus d'espace, impression propre (`InvoiceView.tsx` a son propre CSS `@media print` + classe `.no-print` sur le shell `AppLayout`), navigation cohérente avec le reste de l'app. Réservé aux dialogues d'action courte (confirmation, formulaire rapide).
@@ -183,12 +191,15 @@ Toutes les routes sont protégées par `authenticate`. La plupart nécessitent e
 ### Middleware auth
 - `authenticate` — vérifie le token JWT Bearer, injecte `req.user`
 - `can(permissionKey)` — vérifie que le rôle de `req.user` a la permission demandée, via la matrice `Permission`/`RolePermission` en base (cache mémoire, voir `lib/permissions.ts`) — remplace l'ancien `authorize(...roles)` codé en dur, configurable sans redéploiement depuis l'écran `/permissions` (ADMIN uniquement)
+- **Nouvelle permission** : la déclarer dans `prisma/seedPermissions.ts` **et** ajouter une migration SQL idempotente (`INSERT ... ON CONFLICT DO NOTHING` sur `Permission` + `RolePermission`, voir `20261109110000_add_website_requests_view_permission`). Le seed n'est jamais rejoué en prod ; seule la migration (`migrate deploy` au démarrage du conteneur) l'y fait arriver.
 
 ### Gestion des erreurs (`errors/`, `middleware/asyncHandler.ts`, `middleware/errorHandler.ts`)
 Chaque handler de route est enveloppé dans `asyncHandler(...)`, qui capture les rejets de promesses et les transmet à `errorHandler` (monté en dernier dans `server.ts`) — **Express 4 ne rattrape pas nativement les rejets async**, sans ce wrapper une seule requête invalide plante tout le process. Les services lèvent des `AppError` (`NotFoundError`, `ConflictError`, `ForbiddenError`, `UnauthorizedError`) que `errorHandler` traduit en réponse JSON avec le bon code HTTP ; les erreurs Prisma connues (P2025/P2002/P2003) sont aussi mappées en filet de sécurité. Un `process.on('unhandledRejection', ...)` couvre le code hors cycle de requête (ex. `lib/scheduler.ts`).
 
 ### Transactions
 Les écritures multi-étapes non atomiques passent par `prisma.$transaction` : création de réservation (vérification de conflit + create + statut chambres), réassignation (idem + recalcul montant/dates), génération de facture (vérification d'existence + génération du numéro + create), paiement (create/update + resynchronisation du statut facture). `lib/roomStatus.ts` accepte un client Prisma optionnel (`tx`) pour participer à ces transactions.
+
+⚠️ **Double booking** : sous READ COMMITTED, une vérification de conflit dans une transaction ne suffit pas — deux transactions concurrentes peuvent la passer toutes les deux. Toute écriture qui occupe une chambre (création, acceptation d'une demande du site, réassignation, ajout de chambre, retour d'un statut terminal vers un statut actif comme « Annuler l'annulation ») verrouille d'abord les lignes `Room` concernées (`SELECT ... FOR UPDATE`, triées par `id` pour éviter les interblocages) puis vérifie les conflits. À reproduire dans tout nouveau chemin qui attribue une chambre.
 
 ### Validation
 Toutes les entrées sont validées avec **Zod** avant toute opération métier, schémas centralisés dans `validation/*.schema.ts`. Pattern dans les routes :
@@ -248,6 +259,24 @@ Le check-out (`PATCH /:id/status` avec `status: 'CHECKED_OUT'`, `can('bookings.u
 - `InvoiceView.tsx` utilise `useSettings()` pour afficher la TVA — pas d'input manuel
 - L'échéance (`dueAt`) est fixée automatiquement au jour de génération, non visible dans l'UI
 
+### Acomptes
+Un acompte, c'est de l'argent reçu. `POST /api/invoices/deposit` (`invoice.service.ts: receiveDeposit`) crée, vise et encaisse la facture d'acompte en un seul geste : il n'existe jamais d'acompte visé mais impayé, et `/validate` refuse un brouillon d'acompte.
+- Au visa de la facture STANDARD, chaque acompte non annulé est déduit (ligne négative, 419100 → 411000) et rattaché via `Invoice.appliedToInvoiceId`. Le visa est refusé s'il reste un brouillon d'acompte ou un acompte pas entièrement encaissé.
+- Une fois la facture visée, plus d'acompte : l'argent se paie sur la facture. L'encaissement d'un acompte et le visa verrouillent la ligne `Booking` (`FOR UPDATE`) pour ne pas se croiser.
+- Un acompte imputé ne s'encaisse, ne se rembourse et ne s'annule plus séparément : on annule la facture. Son avoir porte sur le séjour entier (net + acomptes imputés).
+
+### Une facture par séjour : elle suit le séjour, même visée
+- **Visa automatique au check-out** (`booking.service.ts: updateStatus` → `invoiceService.validateInTx`) : la facture est émise au départ, créance / chiffre d'affaires / TVA constatés à la fin de la prestation. « Viser » reste possible plus tôt (`invoices.validate`).
+- **La facture suit toujours le séjour** (`syncInvoiceWithBooking`, appelée après toute mutation de chambres / dates / suppléments) : lignes de séjour réécrites, remises % et TVA recalculées au taux effectif. Sur une facture visée, la variation passe une écriture correctrice (706000 / 709000 / 4457000 contre 411000). Seules les lignes `source: BOOKING` à total positif sont réécrites : les déductions d'acompte des anciennes factures (`BOOKING` négatif) ne sont jamais touchées.
+- **Modifiable à la main, même visée** (lignes, remises, TVA) : écriture correctrice à chaque variation (`applyInvoiceItemDelta`, `update`).
+- **Annulation** : avoir d'annulation. La part retenue HT (`Invoice.retainedAmount`) est reclassée de 706000 vers 708500 au visa de l'avoir ; sa TVA reste collectée.
+
+### Soldes, avoirs et trop-perçu
+`invoice.service.ts: balanceOf` (miroir client `invoiceBalance`) : dû = montant − avoirs visés ; trop-perçu = encaissé − dû − déjà rendu par les avoirs. Encaissé inclut les acomptes imputés.
+- Un avoir rend au plus le trop-perçu du document crédité (`refundableOn`), et passe `PAID` (« Soldé ») quand plus rien n'est à rendre.
+- Un trop-perçu (paiement en trop, séjour réduit après paiement) se rend par `POST /invoices/:id/refunds` : paiement **négatif** sur le document (411000 au débit, trésorerie au crédit). Toutes les sommes de paiements sont donc nettes.
+- Tout mouvement resynchronise le document et ses avoirs (`syncDocumentAndRelated`).
+
 ### Filtrage des chambres — par RoomType uniquement
 Le champ `category` (enum `RoomCategory`) a été entièrement retiré du modèle `RoomType` (redondant avec `RoomType.name`) — supprimé du schéma Prisma, des routes serveur, des DTOs client et de tous les badges/formulaires d'affichage. Le filtrage et la catégorisation des chambres se font uniquement via `RoomType.name` (`useRoomTypes()`). Ne pas réintroduire un champ `category` séparé.
 
@@ -274,11 +303,31 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 
 ---
 
+## Tests (serveur)
+
+Vitest + Supertest contre un **vrai Postgres** : une base simulée ne prouverait ni le verrou anti double booking ni les transactions.
+
+```bash
+cd server
+cp .env.test.example .env.test   # une fois : TEST_DATABASE_URL vers une base locale *_test
+npm test                          # ou `make test`
+npm run test:typecheck
+```
+
+- La base de test est **supprimée et recréée** à chaque lancement (`tests/globalSetup.ts` : `migrate deploy` + seeds de référence rôles/permissions/plan comptable). `vitest.config.ts` refuse de démarrer si la base ne finit pas par `_test`, et ne lit jamais `server/.env` pour la base, qui peut pointer vers une base distante.
+- `tests/helpers/db.ts` (`resetDb`, appelé en `beforeEach`) vide les tables métier et garde les tables de référence. `tests/helpers/factories.ts` crée staff + jeton JWT, clients, chambres, et insère des réservations ou factures directement dans un état donné.
+- Les tests importent `app` depuis `src/app.ts` (Express sans `listen` ni scheduler) ; `src/server.ts` ne fait que démarrer.
+- CI : `.github/workflows/server-tests.yml` lance tsc et les tests sur chaque PR vers `develop`/`preprod`/`main`.
+- Pour toute nouvelle règle métier, en particulier un chemin qui attribue une chambre, ajouter un test d'intégration. Un bug corrigé reçoit un test qui le reproduit.
+
+---
+
 ## Commandes de lint/typage
 
 ```bash
-# Vérification TypeScript client
-cd client && npx tsc --noEmit
+# Vérification client (aussi exécutée par la CI : .github/workflows/client-checks.yml)
+cd client && npm run typecheck   # tsc --noEmit
+cd client && npm run lint        # ESLint, dont i18next/no-literal-string : aucun texte UI en dur
 
 # Vérification TypeScript serveur
 cd server && npx tsc --noEmit

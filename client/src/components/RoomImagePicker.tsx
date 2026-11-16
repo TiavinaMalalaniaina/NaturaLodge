@@ -41,7 +41,7 @@ export const RoomImagePicker: React.FC<RoomImagePickerProps> = ({ images, onChan
           onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
         {images[0] ? (
           <>
-            <img src={images[0]} alt={previewAlt ?? 'preview'} className="w-full h-full object-cover" />
+            <img src={images[0]} alt={previewAlt ?? t('roomImage.previewAlt')} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all gap-2">
               <Upload className="w-5 h-5 text-white" />
               <span className="text-[10px] font-bold text-white uppercase tracking-widest">{t('rooms.uploadImage')}</span>
@@ -73,7 +73,7 @@ export const RoomImagePicker: React.FC<RoomImagePickerProps> = ({ images, onChan
         <div className="flex items-center gap-2 text-[9px] font-bold text-on-surface-variant/40 uppercase shrink-0">
           <LinkIcon className="w-3 h-3" /> URL
         </div>
-        <input type="text" placeholder="https://..." value={imageUrl}
+        <input type="text" placeholder={t('roomImage.urlPlaceholder')} value={imageUrl}
           onChange={e => setImageUrl(e.target.value)}
           className="flex-1 h-9 px-3 bg-stone-50 border border-stone-200 rounded-lg text-xs outline-none focus:border-primary transition-all" />
         <button type="button"

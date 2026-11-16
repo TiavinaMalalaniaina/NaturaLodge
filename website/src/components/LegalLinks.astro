@@ -1,0 +1,14 @@
+---
+import { localePath, type Lang } from '../i18n';
+import { legalSlugs } from '../i18n/legal';
+
+const { lang, current } = Astro.props as { lang: Lang; current?: string };
+const labels = lang === 'en'
+  ? { notice: 'Legal notice', privacy: 'Privacy', terms: 'Booking terms' }
+  : { notice: 'Mentions légales', privacy: 'Confidentialité', terms: 'Conditions de réservation' };
+---
+<nav class="legal-links" aria-label={lang === 'en' ? 'Legal information' : 'Informations légales'}>
+  {(Object.keys(legalSlugs) as (keyof typeof legalSlugs)[]).map(kind => (
+    <a href={localePath(lang, legalSlugs[kind])} aria-current={current === legalSlugs[kind] ? 'page' : undefined}>{labels[kind]}</a>
+  ))}
+</nav>

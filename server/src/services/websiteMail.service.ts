@@ -1,0 +1,122 @@
+import nodemailer, { Transporter } from 'nodemailer';
+import { logger } from '../lib/logger';
+import { env, isPreprod } from '../lib/env';
+
+type Lang = 'fr' | 'en';
+// En preprod, si MAIL_REDIRECT_TO est défini, tout est redirigé vers cette adresse ; sinon les emails
+// partent au vrai destinataire (démonstration à un client).
+const configured = () => !!(process.env.SMTP_HOST && process.env.MAIL_FROM && process.env.WEBSITE_URL);
+let cached: Transporter | null = null;
+function transport(): Transporter {
+  cached ??= nodemailer.createTransport({
+    host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 587), secure: process.env.SMTP_SECURE === 'true',
+    ...(process.env.SMTP_USER ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } } : {}),
+    connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000,
+  });
+  return cached;
+}
+function send(to: string, subject: string, body: string) {
+  const redirect = isPreprod ? env.MAIL_REDIRECT_TO : undefined;
+  return transport().sendMail({
+    from: process.env.MAIL_FROM,
+    to: redirect ?? to,
+    subject: redirect ? `[PREPROD → ${to}] ${subject}` : subject,
+    text: body,
+  });
+}
+// English pages live under /en/ on the website, French ones at the root.
+const siteUrl = (lang: Lang, path: string) => new URL(`${lang === 'en' ? '/en' : ''}${path}`, process.env.WEBSITE_URL);
+const dateLocale = (lang: Lang) => (lang === 'en' ? 'en-GB' : 'fr-FR');
+// Stay dates are stored at UTC midnight: format them in UTC so they never shift by a day.
+const day = (date: Date, lang: Lang) => date.toLocaleDateString(dateLocale(lang), { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const amount = (value: number, lang: Lang) => `${value.toLocaleString(lang === 'en' ? 'en-US' : 'fr-FR')} Ar`;
+
+const text = {
+  fr: {
+    verifySubject: 'Natura Lodge — Confirmez votre adresse email',
+    verify: (link: string) => `Bonjour,\n\nPour activer votre espace client et enregistrer votre mot de passe, confirmez votre adresse email en ouvrant ce lien :\n${link}\n\nCe lien est valable 1 heure et utilisable une seule fois. Ne le partagez pas. Si vous n’êtes pas à l’origine de cette demande, ignorez cet email : aucun compte ne sera créé et aucun mot de passe ne sera modifié.\n\nNatura Lodge`,
+    resetSubject: 'Natura Lodge — Nouveau mot de passe',
+    reset: (link: string) => `Bonjour,\n\nPour choisir un nouveau mot de passe pour votre espace client, ouvrez ce lien :\n${link}\n\nCe lien est valable 1 heure et utilisable une seule fois. Ne le partagez pas. Si vous n’avez pas fait cette demande, ignorez cet email : votre mot de passe actuel reste valable.\n\nNatura Lodge`,
+    subjects: { PENDING: 'Demande reçue', AWAITING_PAYMENT: 'Demande acceptée — acompte à régler', CONFIRMED: 'Réservation confirmée', REJECTED: 'Réponse à votre demande', EXPIRED: 'Délai de paiement expiré', CANCELLED: 'Réservation annulée' } as Record<string, string>,
+    intros: {
+      PENDING: 'Votre demande a bien été reçue. Elle doit encore être validée par notre équipe.',
+      AWAITING_PAYMENT: 'Votre demande est acceptée. Merci de régler l’acompte selon les instructions ci-dessous.',
+      CONFIRMED: 'Votre acompte a été vérifié. Votre réservation est confirmée.',
+      REJECTED: 'Nous ne pouvons pas donner suite à votre demande.',
+      EXPIRED: 'Le délai de paiement de votre demande est expiré. Les chambres ont été libérées ; vous pouvez faire une nouvelle demande.',
+      CANCELLED: 'Votre réservation est annulée. Contactez-nous pour toute question.',
+    } as Record<string, string>,
+    fallbackSubject: 'Suivi de votre demande', fallbackIntro: 'Voici le suivi de votre demande.',
+    hello: (name: string) => `Bonjour ${name},`,
+    reference: 'Référence', stay: (a: string, b: string) => `Séjour : du ${a} au ${b}`, total: 'Total', deposit: 'Acompte',
+    deadline: (d: string) => `À régler avant le ${d} (heure de Madagascar).`,
+    view: 'Consulter ma réservation', signIn: 'Connectez-vous à votre espace client pour consulter toutes vos demandes.',
+  },
+  en: {
+    verifySubject: 'Natura Lodge — Confirm your email address',
+    verify: (link: string) => `Hello,\n\nTo activate your guest account and save your password, confirm your email address by opening this link:\n${link}\n\nThis link is valid for 1 hour and can be used only once. Do not share it. If you did not request this, simply ignore this email: no account will be created and no password will be changed.\n\nNatura Lodge`,
+    resetSubject: 'Natura Lodge — New password',
+    reset: (link: string) => `Hello,\n\nTo choose a new password for your guest account, open this link:\n${link}\n\nThis link is valid for 1 hour and can be used only once. Do not share it. If you did not request this, simply ignore this email: your current password remains valid.\n\nNatura Lodge`,
+    subjects: { PENDING: 'Request received', AWAITING_PAYMENT: 'Request accepted — deposit due', CONFIRMED: 'Booking confirmed', REJECTED: 'About your request', EXPIRED: 'Payment deadline passed', CANCELLED: 'Booking cancelled' } as Record<string, string>,
+    intros: {
+      PENDING: 'We have received your request. Our team still needs to approve it.',
+      AWAITING_PAYMENT: 'Your request has been accepted. Please pay the deposit following the instructions below.',
+      CONFIRMED: 'Your deposit has been verified. Your booking is confirmed.',
+      REJECTED: 'Unfortunately we cannot accept your request.',
+      EXPIRED: 'The payment deadline for your request has passed. The rooms have been released; you are welcome to make a new request.',
+      CANCELLED: 'Your booking has been cancelled. Please contact us if you have any question.',
+    } as Record<string, string>,
+    fallbackSubject: 'Your request', fallbackIntro: 'Here is an update on your request.',
+    hello: (name: string) => `Hello ${name},`,
+    reference: 'Reference', stay: (a: string, b: string) => `Stay: from ${a} to ${b}`, total: 'Total', deposit: 'Deposit',
+    deadline: (d: string) => `Please pay before ${d} (Madagascar time).`,
+    view: 'View my booking', signIn: 'Sign in to your guest account to see all your requests.',
+  },
+};
+
+// Le jeton est placé dans le fragment (#) : il n'est ni envoyé au serveur web ni journalisé.
+export async function sendAccountMail(kind: 'verify' | 'reset', email: string, token: string, next = '/mes-reservations', lang: Lang = 'fr'): Promise<boolean> {
+  if (!configured()) return false;
+  try {
+    const link = siteUrl(lang, '/connexion/');
+    if (next === '/reservation') link.searchParams.set('next', '/reservation');
+    link.hash = new URLSearchParams({ [kind]: token }).toString();
+    const t = text[lang];
+    await send(email, kind === 'verify' ? t.verifySubject : t.resetSubject, (kind === 'verify' ? t.verify : t.reset)(link.toString()));
+    return true;
+  } catch { logger.error({ kind }, 'Échec de l’envoi de l’email de compte client'); return false; }
+}
+
+// Notes written by the system (not by staff) have a fixed French wording.
+const systemNotesEn: Record<string, string> = {
+  'Annulée à votre demande.': 'Cancelled at your request.',
+  'Le séjour a été annulé par l’hôtel.': 'The stay was cancelled by the hotel.',
+};
+
+type RequestMail = { reference: string; email: string; name: string; arrival: Date; departure: Date; totalAmount: number; depositAmount: number; status: string; paymentInstructions: string; decisionNote: string; expiresAt: Date | null; locale?: 'FR' | 'EN' };
+
+export async function sendRequestMail(row: RequestMail): Promise<boolean> {
+  if (!configured()) {
+    logger.warn({ reference: row.reference }, 'Email réservation indisponible : configuration SMTP incomplète');
+    return false;
+  }
+  const lang: Lang = row.locale === 'EN' ? 'en' : 'fr';
+  const t = text[lang];
+  const sep = lang === 'en' ? ':' : ' :';
+  try {
+    const body = [t.hello(row.name), t.intros[row.status] || t.fallbackIntro,
+      `${t.reference}${sep} ${row.reference}`, t.stay(day(row.arrival, lang), day(row.departure, lang)),
+      `${t.total}${sep} ${amount(row.totalAmount, lang)}`, `${t.deposit}${sep} ${amount(row.depositAmount, lang)}`,
+      row.status === 'AWAITING_PAYMENT' ? row.paymentInstructions : '',
+      row.status === 'AWAITING_PAYMENT' && row.expiresAt ? t.deadline(row.expiresAt.toLocaleString(dateLocale(lang), { timeZone: 'Indian/Antananarivo', dateStyle: 'full', timeStyle: 'short' })) : '',
+      row.status === 'REJECTED' || row.status === 'CANCELLED' ? (lang === 'en' ? systemNotesEn[row.decisionNote] ?? row.decisionNote : row.decisionNote) : '',
+      `${t.view}${sep} ${siteUrl(lang, '/mes-reservations/').toString()}`, t.signIn, 'Natura Lodge',
+    ].filter(Boolean).join('\n\n');
+    await send(row.email, `Natura Lodge — ${t.subjects[row.status] ?? t.fallbackSubject} — ${row.reference}`, body);
+    return true;
+  } catch {
+    // Do not log SMTP credentials, recipient details or the private tracking link.
+    logger.error({ reference: row.reference }, 'Échec de l’envoi de l’email de réservation');
+    return false;
+  }
+}

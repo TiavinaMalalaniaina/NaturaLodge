@@ -280,7 +280,7 @@ export const Accounts: React.FC = () => {
                 )}
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2 block">{t('accounts.code')}</label>
-                  <input autoFocus={!editingId} type="text" placeholder={"ex. 512600"} value={values.code} disabled={!!editingId}
+                  <input autoFocus={!editingId} type="text" placeholder={t('accounts.codePlaceholder')} value={values.code} disabled={!!editingId}
                     onChange={e => setValues(v => ({ ...v, code: e.target.value }))}
                     className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-mono disabled:bg-stone-100 disabled:text-on-surface-variant/50" />
                   {editingId && <p className="text-[10px] text-on-surface-variant/40 mt-1.5">{t('accounts.codeImmutable')}</p>}
