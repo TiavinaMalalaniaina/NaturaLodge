@@ -11,6 +11,7 @@ const baseSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL est obligatoire'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET est obligatoire'),
   MAIL_REDIRECT_TO: z.string().email().optional().or(z.literal('').transform(() => undefined)),
+  API_PUBLIC_URL: z.string().url('API_PUBLIC_URL doit être une URL').optional().or(z.literal('').transform(() => undefined)),
 });
 
 // Hors développement, une variable oubliée dans Coolify doit empêcher le démarrage plutôt que de
@@ -21,6 +22,7 @@ const deployedSchema = baseSchema.extend({
     .refine(v => v !== PLACEHOLDER_SECRET, 'JWT_SECRET est encore la valeur d’exemple'),
   FRONTEND_URL: z.string({ required_error: 'FRONTEND_URL est obligatoire' }).url().startsWith('https://', 'FRONTEND_URL doit être en https'),
   WEBSITE_URL: z.string({ required_error: 'WEBSITE_URL est obligatoire' }).url().startsWith('https://', 'WEBSITE_URL doit être en https'),
+  API_PUBLIC_URL: z.string().url('API_PUBLIC_URL doit être une URL').startsWith('https://', 'API_PUBLIC_URL doit être en https').optional().or(z.literal('').transform(() => undefined)),
 });
 
 function load() {

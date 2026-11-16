@@ -186,7 +186,8 @@ const google = () => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) return null;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || new URL('/api/public/auth/google/callback', process.env.WEBSITE_URL || 'http://localhost:4321').toString();
+  const origin = process.env.API_PUBLIC_URL || process.env.WEBSITE_URL || 'http://localhost:4321';
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || new URL('/api/public/auth/google/callback', origin).toString();
   return { clientId, clientSecret, redirectUri };
 };
 
