@@ -89,11 +89,13 @@ h2 em { color: #658273; font-weight: 400; }
 .price { font-family: var(--font-display); font-size: 34px; line-height: 1; }
 .price > span { font-size: 22px; }
 .price small { display: block; font-family: var(--font-sans); font-size: 10px; color: #6a756d; margin-top: 9px; }
+.price small.per-person { margin-top: 5px; color: #315b4b; font-weight: 600; }
 .room-link { height: 46px; width: 46px; display: grid; place-items: center; background: #164d43; color: white; font-size: 24px; transition: background .2s; }
 .room-link:hover { background: #347461; }
 .booking-note { display: flex; align-items: flex-start; gap: 13px; margin-top: 28px; color: #6a756d; }
 .note-mark { border: 1px solid #819182; border-radius: 50%; min-width: 17px; height: 17px; text-align: center; font-family: Georgia, serif; font-size: 12px; margin-top: 1px; }
 .booking-note p { font-size: 11px; line-height: 1.8; margin: 0; }
+.booking-note strong { color: #315b4b; font-weight: 600; }
 .booking-note a { color: #315b4b; text-decoration: underline; text-underline-offset: 3px; margin-left: 7px; white-space: nowrap; }
 .destination { display: grid; grid-template-columns: .9fr 1.1fr; gap: 100px; align-items: center; }
 .destination-copy h2 { margin-bottom: 26px; }
@@ -215,5 +217,15 @@ h2 em { color: #658273; font-weight: 400; }
   .footer-top > div { flex-basis: 100%; text-align: left; margin-left: 0; gap: 12px; }
   .footer-bottom { flex-wrap: wrap; gap: 16px 24px; font-size: 9px; }
   .footer-bottom > span { flex-basis: 100%; }
+}
+.whatsapp-float { position: fixed; z-index: 40; right: max(20px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 10px; padding: 14px 20px 14px 16px; border-radius: 999px; background: #25d366; color: #0b3d2a; font-size: 13px; font-weight: 600; text-decoration: none; box-shadow: 0 8px 24px rgb(11 61 42 / .25); transition: opacity .25s, transform .25s, visibility .25s; }
+.whatsapp-float svg { width: 24px; height: 24px; }
+.whatsapp-float:hover { transform: translateY(-2px); }
+.whatsapp-float:focus-visible { outline: 3px solid #164d43; outline-offset: 3px; }
+.whatsapp-float.is-hidden { visibility: hidden; opacity: 0; transform: translateY(16px); pointer-events: none; }
+@media (max-width: 600px) {
+  .whatsapp-float { padding: 15px; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
+  .whatsapp-float span { display: none; }
+  .whatsapp-float svg { width: 28px; height: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition: none !important; animation: none !important; } }

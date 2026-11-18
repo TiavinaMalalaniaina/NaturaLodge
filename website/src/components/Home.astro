@@ -1,6 +1,6 @@
 ---
 import '../styles/global.css';
-import { hotel, rooms, whatsappLink } from '../data/hotel';
+import { hotel, policy, rooms, whatsappLink, pricePerPerson } from '../data/hotel';
 import { formatPrice, localePath, alternatePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import Alternates from './Alternates.astro';
@@ -20,7 +20,11 @@ const structuredData = {
   address: { '@type': 'PostalAddress', addressLocality: 'Manambato', addressCountry: 'MG' },
   sameAs: [hotel.facebook],
   hasMap: hotel.maps,
+  ...(Astro.site && { url: new URL(localePath(lang, '/'), Astro.site).toString(), image: new URL(hotel.shareImage.path, Astro.site).toString() }),
 };
+// og:image and og:url must be absolute: only emitted once `site` is known (SITE_URL at build).
+const pageUrl = Astro.site && new URL(Astro.url.pathname, Astro.site).toString();
+const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toString();
 ---
 <!doctype html>
 <html lang={lang}>
@@ -34,6 +38,13 @@ const structuredData = {
     <meta property="og:description" content={hotel.description[lang]} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={meta.ogLocale} />
+    <meta property="og:site_name" content={hotel.name} />
+    {pageUrl && <meta property="og:url" content={pageUrl} />}
+    {shareImage && <meta property="og:image" content={shareImage} />}
+    {shareImage && <meta property="og:image:width" content={String(hotel.shareImage.width)} />}
+    {shareImage && <meta property="og:image:height" content={String(hotel.shareImage.height)} />}
+    {shareImage && <meta property="og:image:alt" content={t.heroAlt} />}
+    <meta name="twitter:card" content="summary" />
     <Alternates />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-rounded-32.png" />
     <link rel="icon" type="image/png" href="/icon-rounded.png" />
@@ -115,14 +126,14 @@ const structuredData = {
                 <div class="room-body">
                   <div class="room-name"><span class="room-number">0{index + 1}</span><h3>{room.name[lang]}</h3></div>
                   <p>{room.description[lang]}</p>
-                  <div class="room-bottom"><div class="price"><span data-price>{formatPrice(room.price, lang)}</span> <span>{hotel.currency}</span><small>{t.perNight}</small></div>
+                  <div class="room-bottom"><div class="price"><span data-price>{formatPrice(room.price, lang)}</span> <span>{hotel.currency}</span><small>{t.perNight}</small><small class="per-person">{t.perPerson} <span data-per-person>{formatPrice(pricePerPerson(room.price, room.capacity), lang)}</span> {t.perPersonUnit}</small></div>
                     <a class="room-link" href={`${localePath(lang, '/reservation/')}?type=${encodeURIComponent(room.roomType)}`} aria-label={`${t.bookRoom} ${room.name[lang]}`}><span aria-hidden="true">↗</span></a>
                   </div>
                 </div>
               </article>
             ))}
           </div>
-          <div class="booking-note"><span class="note-mark" aria-hidden="true">i</span><p>{t.deposit} <a href={whatsapp} target="_blank" rel="noopener noreferrer">{t.contactUs} <span aria-hidden="true">↗</span></a></p></div>
+          <div class="booking-note"><span class="note-mark" aria-hidden="true">i</span><p>{t.deposit} <strong>{t.cancellation(policy.refundDaysBeforeArrival)}</strong> <a href={localePath(lang, '/conditions/')}>{t.conditionsLink}</a> <a href={whatsapp} target="_blank" rel="noopener noreferrer">{t.contactUs} <span aria-hidden="true">↗</span></a></p></div>
         </div>
       </section>
 
@@ -151,6 +162,11 @@ const structuredData = {
       <p id="photos" class="photo-notice">{t.photoNotice}</p>
     </footer>
 
+    <a href={whatsapp} class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label={t.whatsappFloat} data-whatsapp-float>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-13.3 7.9L3 21l1.6-4.7A9 9 0 1 1 21 11.5Z"/><path d="M8 7c-2 3 3 8 6 7l1-2-2-1-1 1-2-2 1-1-1-2Z"/></svg>
+      <span>{t.whatsappFloatShort}</span>
+    </a>
+
     <script>
       const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
       const navigation = document.querySelector<HTMLElement>('#navigation');
@@ -178,9 +194,21 @@ const structuredData = {
         if (event.target instanceof Node && !navigation?.contains(event.target) && !toggle?.contains(event.target)) closeMenu();
       });
       window.matchMedia('(min-width: 861px)').addEventListener('change', event => { if (event.matches) closeMenu(); });
+
+      // The floating button steps aside where the page already shows the contact block or the footer.
+      const whatsappFloat = document.querySelector<HTMLElement>('[data-whatsapp-float]');
+      const covered = new Set<Element>();
+      if (whatsappFloat && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => (entry.isIntersecting ? covered.add(entry.target) : covered.delete(entry.target)));
+          whatsappFloat.classList.toggle('is-hidden', covered.size > 0);
+        });
+        document.querySelectorAll('#contact, footer').forEach(el => observer.observe(el));
+      }
     </script>
     <script>
       import { formatPrice, pageLang } from '../i18n';
+      import { pricePerPerson } from '../data/hotel';
       type RoomType = { name: string; price: number; capacity: number };
       const api = (import.meta.env.PUBLIC_API_URL || 'http://localhost:4000/api/public').replace(/\/$/, '');
       const normalize = (value: string) => value.trim().toLowerCase();
@@ -192,6 +220,7 @@ const structuredData = {
             if (!type) return;
             card.querySelector('[data-price]')!.textContent = formatPrice(type.price, pageLang());
             card.querySelector('[data-capacity]')!.textContent = String(type.capacity);
+            card.querySelector('[data-per-person]')!.textContent = formatPrice(pricePerPerson(type.price, type.capacity), pageLang());
           });
         })
         .catch(() => { /* API unreachable: static prices from hotel.ts stay displayed */ });

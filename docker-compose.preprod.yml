@@ -94,6 +94,7 @@ services:
       args:
         PUBLIC_API_URL: /api/public
         PUBLIC_APP_ENV: preprod
+        SITE_URL: ${PREPROD_WEBSITE_URL}
     restart: unless-stopped
     depends_on:
       - server

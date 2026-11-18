@@ -4,8 +4,8 @@ import type { Lang } from '../i18n';
 export const hotel = {
   name: 'Natura Lodge Manambato',
   location: 'Manambato, Madagascar',
-  phone: '+261 32 37 634 99',
-  phoneLink: '+261323763499',
+  phone: '+261 034 98 894 84',
+  phoneLink: '+261 034 98 894 84',
   whatsappNumber: '261323763499',
   facebook: 'https://www.facebook.com/p/Natura-Lodge-Manambato-61574327443486/',
   // Recherche par nom : le point précis du code 65Q2+V7 Manambolo reste à confirmer.
@@ -15,6 +15,8 @@ export const hotel = {
     en: 'A modern house, a friendly atmosphere and the lake close by. Discover Natura Lodge Manambato for your family holidays.',
   } satisfies Record<Lang, string>,
   currency: 'Ar',
+  // Aperçu des liens partagés (WhatsApp, Facebook). Une photo 1200 × 630 serait idéale pour Facebook.
+  shareImage: { path: '/images/house.png', width: 565, height: 565 },
 };
 
 // Informations légales de l'exploitant, affichées dans les mentions légales et la politique de
@@ -75,5 +77,8 @@ export const rooms: { roomType: string; capacity: number; price: number; image: 
     },
   },
 ];
+
+// Prix par personne à pleine capacité, arrondi à la centaine supérieure (« dès … par personne »).
+export const pricePerPerson = (price: number, capacity: number) => Math.ceil(price / Math.max(capacity, 1) / 100) * 100;
 
 export const whatsappLink = (message: string) => `https://wa.me/${hotel.whatsappNumber}?text=${encodeURIComponent(message)}`;
