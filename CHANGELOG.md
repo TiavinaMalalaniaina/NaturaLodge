@@ -3,6 +3,16 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.5.1] — 2026-11-19
+
+> `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.5.1`, site public à
+> `1.1.1`. Correctif limité au site public.
+
+### Corrigé
+- Photos des chambres Standard et Standard supérieur inversées (photos et textes alternatifs).
+- La plage devient la grande image d'accueil et l'aperçu de partage (`plage-share.jpg`) ; la
+  maison au coucher du soleil passe dans la section Manambato.
+
 ## [2.5.0] — 2026-11-19
 
 > `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.5.0`, site public
