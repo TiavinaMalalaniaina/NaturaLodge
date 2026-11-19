@@ -25,7 +25,7 @@ export const hotel = {
   } satisfies Record<Lang, string>,
   currency: 'Ar',
   // Aperçu des liens partagés (WhatsApp, Facebook). Une photo 1200 × 630 serait idéale pour Facebook.
-  shareImage: { path: '/images/house-share.jpg', width: 565, height: 565 },
+  shareImage: { path: '/images/plage-share.jpg', width: 565, height: 565 },
 };
 
 // Informations légales de l'exploitant, affichées dans les mentions légales et la politique de
@@ -59,30 +59,30 @@ export const rooms: { roomType: string; capacity: number; price: number; image: 
     roomType: 'Standard',
     capacity: 5,
     price: 130000,
-    image: '/images/interior.webp',
+    image: '/images/interior-2.webp',
     name: { fr: 'Standard', en: 'Standard' },
     description: {
       fr: 'Retrouver les siens, se reposer et profiter de vacances ensemble. Un hébergement pour accueillir votre famille jusqu’à cinq personnes.',
       en: 'Get together, rest and enjoy your holidays. A room that welcomes your family of up to five.',
     },
     alt: {
-      fr: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et un lit simple',
-      en: 'Inside a Natura Lodge room, with a double bed and a single bed',
+      fr: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et une fenêtre',
+      en: 'Inside a Natura Lodge room, with a double bed and a window',
     },
   },
   {
     roomType: 'Standard Sup',
     capacity: 6,
     price: 150000,
-    image: '/images/interior-2.webp',
+    image: '/images/interior.webp',
     name: { fr: 'Standard supérieur', en: 'Superior Standard' },
     description: {
       fr: 'Le plaisir de partir avec toute la famille. Une capacité jusqu’à six personnes pour préparer votre prochaine parenthèse à Manambato.',
       en: 'The joy of travelling with the whole family. Room for up to six for your next break in Manambato.',
     },
     alt: {
-      fr: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et une fenêtre',
-      en: 'Inside a Natura Lodge room, with a double bed and a window',
+      fr: 'Intérieur d’une chambre de Natura Lodge, avec un lit double et un lit simple',
+      en: 'Inside a Natura Lodge room, with a double bed and a single bed',
     },
   },
 ];
