@@ -1,8 +1,9 @@
 ---
 import { alternatePath, languages } from '../i18n';
 
-// hreflang requires absolute URLs: only emitted once `site` is set in astro.config.mjs (real domain).
+// canonical and hreflang require absolute URLs: only emitted once `site` is set in astro.config.mjs (real domain).
 const site = Astro.site;
 ---
+{site && <link rel="canonical" href={new URL(Astro.url.pathname, site).toString()} />}
 {site && languages.map(lang => <link rel="alternate" hreflang={lang} href={new URL(alternatePath(Astro.url.pathname, lang), site).toString()} />)}
 {site && <link rel="alternate" hreflang="x-default" href={new URL(alternatePath(Astro.url.pathname, 'fr'), site).toString()} />}

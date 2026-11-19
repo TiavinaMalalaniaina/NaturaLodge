@@ -8,6 +8,9 @@ COPY . .
 # works when the API is on the same site (api.example.com for example.com), never on another domain.
 ARG PUBLIC_API_URL=/api/public
 ENV PUBLIC_API_URL=$PUBLIC_API_URL
+# Public origin of the site (https://example.com). Empty: no share preview (og:image) nor hreflang.
+ARG SITE_URL=
+ENV SITE_URL=$SITE_URL
 RUN API_ORIGIN=$(node -e "const u = process.env.PUBLIC_API_URL; console.log(u.startsWith('/') ? '' : new URL(u).origin)") \
  && sed "s|__API_ORIGIN__|$API_ORIGIN|" security-headers.conf > security-headers.generated.conf
 RUN npm run build
