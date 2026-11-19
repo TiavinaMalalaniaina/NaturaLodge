@@ -1,6 +1,6 @@
 {
   "name": "naturalodge-backend",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/server.ts",
