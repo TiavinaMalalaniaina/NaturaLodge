@@ -3,6 +3,87 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.4.0] — 2026-11-12
+
+> `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.4.0`. Le site public
+> (`website/`) garde sa propre version (`1.0.0`) : c'est sa première mise en production.
+>
+> Version **mineure** : le site vitrine et ses tables sont nouveaux, le reste est additif
+> (colonnes avec valeur par défaut, nouvelles permissions). Aucune donnée existante n'est
+> supprimée ; 16 migrations sont appliquées automatiquement au démarrage du conteneur.
+
+### Ajouté
+
+**Site vitrine (`website/`, Astro)**
+- Pages d'accueil, réservation, espace client, pages légales ; version française et anglaise (`/en/`).
+- Demande de réservation en ligne : disponibilités et tarifs réels, plusieurs chambres, heure
+  d'arrivée estimée (facultative), brouillon conservé dans le navigateur.
+- Espace client : inscription par email et mot de passe (compte créé après confirmation de
+  l'adresse), mot de passe oublié, « Continuer avec Google » (masqué sans `GOOGLE_CLIENT_ID`),
+  blocage de 15 min après 5 échecs.
+- Suivi des demandes, annulation par le client tant qu'aucun paiement n'est enregistré,
+  import de la preuve de paiement (JPG/PNG/WebP/PDF, 5 Mo, 5 preuves max., envoi dès le choix
+  du fichier). Preuves supprimées automatiquement 1 an après le départ prévu.
+- Conditions d'annulation : acompte remboursé si annulation au moins 3 jours avant l'arrivée.
+- Emails transactionnels (file d'envoi avec reprise) dans la langue de la demande.
+
+**Admin — demandes du site**
+- Écran « Demandes du site » : recherche, acceptation avec choix des chambres, refus, fiche de
+  paiement (moyens, titulaires, WhatsApp, notes FR/EN), preuves à vérifier, heure d'arrivée.
+- Notifications des événements du site dans la cloche et en Web Push, même admin fermé.
+- Permission `websiteRequests.view` (ADMIN / MANAGER / GERANT) : HOUSEKEEPING n'y a plus accès.
+
+**Facturation**
+- Acompte encaissé en un seul geste (`POST /invoices/deposit`) ; acompte attendu / reçu /
+  restant sur les pages facture et réservation ; annulation d'un acompte par avoir.
+- Facture visée automatiquement au check-out ; elle suit ensuite le séjour (chambres, dates,
+  suppléments) et reste modifiable à la main, chaque variation passant une écriture correctrice.
+- Remboursement d'un trop-perçu (`POST /invoices/:id/refunds`).
+- Paiement au-delà du reste dû soumis à la permission `invoices.overpay` (ADMIN / MANAGER).
+- Numérotation des factures, acomptes, avoirs et écritures remise à 0001 chaque année.
+- Avoir d'annulation : frais retenus reclassés de 706000 vers 708500.
+- Script d'audit en lecture seule des données de facturation : `server/scripts/audit-facturation.sql`.
+
+**Environnements et qualité**
+- Variable `APP_ENV` (`development` / `preprod` / `production`) ; démarrage refusé hors
+  développement si la configuration est dangereuse (secret JWT faible, URLs non https…).
+- Préprod : `docker-compose.preprod.yml` pour Coolify, isolée de la prod ; emails redirigés vers
+  `MAIL_REDIRECT_TO` s'il est défini. Voir `ENVIRONNEMENTS.md`.
+- Tests d'intégration serveur (Vitest + Supertest sur un vrai Postgres) et CI sur chaque PR :
+  tests et typage serveur, typage, lint et build client.
+
+### Corrigé
+
+- Acomptes : acompte reçu après le visa jamais déduit (client facturé deux fois), acompte annulé
+  ou impayé déduit quand même, second avoir sur un acompte déjà imputé (419100 débité deux fois).
+- Avoirs : seule la part payée au-delà des frais retenus est rendue (tout l'encaissé l'était).
+- La déduction d'acompte sur la facture n'apparaît plus comme une remise et ne peut plus être supprimée.
+- Cookie de session de l'espace client en `SameSite=Lax` via le relais `/api/public` du site
+  (la connexion échouait sous Safari et Firefox).
+- Conflits de chambres à l'acceptation d'une demande du site, avec choix des chambres attribuées.
+- Client : plus aucune erreur TypeScript ni ESLint, 98 textes en dur traduits (fr/en/mg).
+
+### Retiré
+
+- Page maquette « Équipements » (`Amenities`) ; la page Paramètres est réduite au choix de la
+  langue (le reste ne faisait rien).
+- Identifiants de démo masqués sur l'écran de connexion en production.
+
+### Déploiement
+
+1. **Nouveau service `website`** (nginx) dans `docker-compose.yml` : il relaie `/api/public/*`
+   vers le serveur. Le site et l'API doivent être sur le même site (cookie `SameSite=Lax`).
+2. **Variables serveur à ajouter** (modèle : `server/.env.production.example`) :
+   `APP_ENV=production`, `WEBSITE_URL` (https), `TRUST_PROXY`, `SMTP_*` et `MAIL_FROM`,
+   `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (générées une fois, à ne plus
+   changer), et facultativement `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+3. **Migrations** : appliquées par `prisma migrate deploy` au démarrage. Les permissions
+   `invoices.overpay` et `websiteRequests.view` arrivent par migration (le seed n'est pas rejoué).
+4. **Avant d'ouvrir le site au public** : compléter la forme juridique, le NIF, le STAT et le RCS
+   dans `website/src/data/hotel.ts` (affichés « en cours d'attribution » tant qu'ils valent `pending`).
+5. **Après déploiement** : lancer `server/scripts/audit-facturation.sql` sur la base de prod pour
+   repérer d'éventuelles anomalies d'acomptes antérieures à cette version.
+
 ## [2.3.0] — 2026-10-29
 
 > `package.json` (client et serveur), `server.ts` (`/health`) et `Settings.tsx` bumpés à `2.3.0`.

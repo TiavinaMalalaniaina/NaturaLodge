@@ -82,7 +82,7 @@ async function start() {
         rooms = data;
         container.replaceChildren(...rooms.map(room => {
           const label = document.createElement('label'); label.className = 'room-choice';
-          const text = document.createElement('span'); text.textContent = s.roomLine(room.name, room.capacity, price(room.price), room.available);
+          const text = document.createElement('span'); text.textContent = s.roomLine(room.name, room.capacity, price(room.price));
           const max = Math.min(50, room.available);
           const number = document.createElement('input'); number.type = 'number'; number.min = '0'; number.max = String(max); number.step = '1'; number.value = String(Math.min(quantities[room.id] ?? (room.name.trim().toLowerCase() === wantedType ? 1 : 0), max)); number.required = true; number.setAttribute('aria-label', s.quantity(room.name)); number.addEventListener('input', () => { wantedType = ''; update(); });
           label.append(text, number); return label;
