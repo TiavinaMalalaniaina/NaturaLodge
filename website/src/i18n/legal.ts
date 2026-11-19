@@ -65,6 +65,7 @@ function fr(kind: LegalKind, company: string, contact: string): LegalPage {
         'Le personnel habilité de l’hôtel, chacun selon ses fonctions.',
         `Nos prestataires techniques, uniquement pour faire fonctionner le service : l’hébergeur du site (${v(legal.host, 'fr')}) et le service d’envoi des emails (${v(legal.emailProvider, 'fr')}).`,
         'Les polices de caractères du site sont chargées depuis Google Fonts : votre navigateur transmet alors votre adresse IP à Google.',
+        'La carte de la page d’accueil n’est chargée depuis Google Maps que si vous cliquez sur « Afficher la carte » : votre navigateur transmet alors votre adresse IP à Google, qui peut déposer ses propres cookies.',
       ] },
       { title: 'Durées de conservation', paragraphs: [
         'Lien de confirmation d’adresse ou de nouveau mot de passe : 1 heure, utilisable une seule fois. Session : 7 jours, ou jusqu’à la déconnexion.',
@@ -142,6 +143,7 @@ function en(kind: LegalKind, company: string, contact: string): LegalPage {
         'Authorised hotel staff, each according to their role.',
         `Our technical providers, only to run the service: the website host (${v(legal.host, 'en')}) and the email delivery service (${v(legal.emailProvider, 'en')}).`,
         'The website fonts are loaded from Google Fonts: your browser then sends your IP address to Google.',
+        'The map on the home page is only loaded from Google Maps if you click “Show the map”: your browser then sends your IP address to Google, which may set its own cookies.',
       ] },
       { title: 'How long we keep it', paragraphs: [
         'Email confirmation or new password link: 1 hour, single use. Session: 7 days, or until you sign out.',

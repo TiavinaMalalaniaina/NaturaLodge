@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
-import { hotel, rooms, whatsappLink } from '../data/hotel';
+import { hotel, policy, rooms, whatsappLink, pricePerPerson, gallery, reviews, access } from '../data/hotel';
+import { dateLocale } from '../i18n';
 import { formatPrice, localePath, alternatePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import Alternates from './Alternates.astro';
@@ -11,6 +12,9 @@ const t = ui[lang].home;
 const meta = ui[lang].meta;
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const whatsapp = whatsappLink(t.whatsappMessage);
+const accessWhatsapp = whatsappLink(t.accessWhatsappMessage);
+const reviewMonth = (month: string) => new Date(`${month}-01T00:00:00Z`).toLocaleDateString(dateLocale(lang), { timeZone: 'UTC', month: 'long', year: 'numeric' });
+const showReviews = reviews.length > 0 || hotel.googleReviews !== '';
 const structuredData = {
   '@context': 'https://schema.org',
   '@type': 'Hotel',
@@ -20,7 +24,11 @@ const structuredData = {
   address: { '@type': 'PostalAddress', addressLocality: 'Manambato', addressCountry: 'MG' },
   sameAs: [hotel.facebook],
   hasMap: hotel.maps,
+  ...(Astro.site && { url: new URL(localePath(lang, '/'), Astro.site).toString(), image: new URL(hotel.shareImage.path, Astro.site).toString() }),
 };
+// og:image and og:url must be absolute: only emitted once `site` is known (SITE_URL at build).
+const pageUrl = Astro.site && new URL(Astro.url.pathname, Astro.site).toString();
+const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toString();
 ---
 <!doctype html>
 <html lang={lang}>
@@ -34,6 +42,13 @@ const structuredData = {
     <meta property="og:description" content={hotel.description[lang]} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content={meta.ogLocale} />
+    <meta property="og:site_name" content={hotel.name} />
+    {pageUrl && <meta property="og:url" content={pageUrl} />}
+    {shareImage && <meta property="og:image" content={shareImage} />}
+    {shareImage && <meta property="og:image:width" content={String(hotel.shareImage.width)} />}
+    {shareImage && <meta property="og:image:height" content={String(hotel.shareImage.height)} />}
+    {shareImage && <meta property="og:image:alt" content={t.heroAlt} />}
+    <meta name="twitter:card" content="summary" />
     <Alternates />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-rounded-32.png" />
     <link rel="icon" type="image/png" href="/icon-rounded.png" />
@@ -115,26 +130,95 @@ const structuredData = {
                 <div class="room-body">
                   <div class="room-name"><span class="room-number">0{index + 1}</span><h3>{room.name[lang]}</h3></div>
                   <p>{room.description[lang]}</p>
-                  <div class="room-bottom"><div class="price"><span data-price>{formatPrice(room.price, lang)}</span> <span>{hotel.currency}</span><small>{t.perNight}</small></div>
+                  <div class="room-bottom"><div class="price"><span data-price>{formatPrice(room.price, lang)}</span> <span>{hotel.currency}</span><small>{t.perNight}</small><small class="per-person">{t.perPerson} <span data-per-person>{formatPrice(pricePerPerson(room.price, room.capacity), lang)}</span> {t.perPersonUnit}</small></div>
                     <a class="room-link" href={`${localePath(lang, '/reservation/')}?type=${encodeURIComponent(room.roomType)}`} aria-label={`${t.bookRoom} ${room.name[lang]}`}><span aria-hidden="true">↗</span></a>
                   </div>
                 </div>
               </article>
             ))}
           </div>
-          <div class="booking-note"><span class="note-mark" aria-hidden="true">i</span><p>{t.deposit} <a href={whatsapp} target="_blank" rel="noopener noreferrer">{t.contactUs} <span aria-hidden="true">↗</span></a></p></div>
+          <div class="booking-note"><span class="note-mark" aria-hidden="true">i</span><p>{t.deposit} <strong>{t.cancellation(policy.refundDaysBeforeArrival)}</strong> <a href={localePath(lang, '/conditions/')}>{t.conditionsLink}</a> <a href={whatsapp} target="_blank" rel="noopener noreferrer">{t.contactUs} <span aria-hidden="true">↗</span></a></p></div>
         </div>
       </section>
+
+      {gallery.length > 0 && (
+        <section id="galerie" class="gallery-section section wrap" aria-labelledby="gallery-title">
+          <div class="section-heading">
+            <div><p class="eyebrow green">{t.galleryEyebrow}</p><h2 id="gallery-title" set:html={t.galleryTitle} /></div>
+            <p set:html={t.galleryText} />
+          </div>
+          <ul class="gallery-grid">
+            {gallery.map((photo, index) => (
+              <li><button type="button" class="gallery-item" data-gallery-index={index} data-src={photo.src} data-alt={photo.alt[lang]} aria-label={`${t.galleryOpen} : ${photo.alt[lang]}`}><img src={photo.src} alt="" width={photo.width} height={photo.height} loading="lazy" /></button></li>
+            ))}
+          </ul>
+          <dialog class="gallery-dialog" aria-label={t.galleryEyebrow} data-gallery-dialog>
+            <figure>
+              <img data-gallery-image alt="" />
+              <figcaption><span data-gallery-caption></span><span data-gallery-count></span></figcaption>
+            </figure>
+            <button type="button" class="gallery-nav gallery-prev" data-gallery-prev aria-label={t.galleryPrev}>←</button>
+            <button type="button" class="gallery-nav gallery-next" data-gallery-next aria-label={t.galleryNext}>→</button>
+            <button type="button" class="gallery-close" data-gallery-close aria-label={t.galleryClose}>×</button>
+          </dialog>
+        </section>
+      )}
+
+      {showReviews && (
+        <section id="avis" class="reviews-section section" aria-labelledby="reviews-title">
+          <div class="wrap">
+            <p class="eyebrow green">{t.reviewsEyebrow}</p>
+            <h2 id="reviews-title" set:html={t.reviewsTitle} />
+            {reviews.length > 0 && (
+              <ul class="review-grid">
+                {reviews.map(review => (
+                  <li class="review-card">
+                    <blockquote lang={review.lang}><p>« {review.text} »</p></blockquote>
+                    <p class="review-author"><strong>{review.name}</strong>, {review.city}<small>{reviewMonth(review.month)}</small></p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {hotel.googleReviews && <a href={hotel.googleReviews} class="text-link" target="_blank" rel="noopener noreferrer">{t.reviewsAll} <span aria-hidden="true">↗</span></a>}
+          </div>
+        </section>
+      )}
 
       <section id="destination" class="destination section wrap" aria-labelledby="destination-title">
         <div class="destination-copy">
           <p class="eyebrow green">{t.destEyebrow}</p>
           <h2 id="destination-title" set:html={t.destTitle} />
           {t.destText.map(text => <p>{text}</p>)}
-          <a href={hotel.maps} class="text-link" target="_blank" rel="noopener noreferrer">{t.destMap} <span aria-hidden="true">↗</span></a>
+          <a href="#acces" class="text-link">{t.destMap} <span aria-hidden="true">↓</span></a>
           <div class="destination-address"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Natura Lodge Manambato<small>Manambato, Madagascar</small></span></div>
         </div>
         <div class="destination-photo"><img src="/images/plage.png" alt={t.beachAlt} width="565" height="565" loading="lazy" /><span class="photo-caption" aria-hidden="true">{t.beachCaption}</span></div>
+      </section>
+
+      <section id="acces" class="access-section section" aria-labelledby="access-title">
+        <div class="wrap access-inner">
+          <div class="access-copy">
+            <p class="eyebrow green">{t.accessEyebrow}</p>
+            <h2 id="access-title" set:html={t.accessTitle} />
+            <ul class="access-list">
+              {access.map(item => (
+                <li><span class="access-from">{t.accessFrom} {item.from}</span><strong>{item.duration[lang]}</strong><p>{item.route[lang]}</p></li>
+              ))}
+            </ul>
+            <p class="access-note">{t.accessNote}</p>
+            <div class="access-links">
+              <a href={accessWhatsapp} class="text-link" target="_blank" rel="noopener noreferrer">{t.accessAsk} <span aria-hidden="true">↗</span></a>
+              <a href={hotel.maps} class="text-link" target="_blank" rel="noopener noreferrer">{t.accessMapsLink} <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+          <div class="map-frame" data-map data-map-src={hotel.mapsEmbed} data-map-title={t.mapTitle}>
+            <div class="map-consent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              <p>{t.mapConsent}</p>
+              <button type="button" class="button button-green" data-map-show>{t.mapShow}</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="contact" class="contact-section" aria-labelledby="contact-title">
@@ -150,6 +234,11 @@ const structuredData = {
       <div class="footer-bottom"><span>© {new Date().getFullYear()} {hotel.name}</span><a href="#photos">{t.aboutPhotos}</a><LegalLinks lang={lang} /><a href="#accueil">{t.backTop}</a></div>
       <p id="photos" class="photo-notice">{t.photoNotice}</p>
     </footer>
+
+    <a href={whatsapp} class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label={t.whatsappFloat} data-whatsapp-float>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-13.3 7.9L3 21l1.6-4.7A9 9 0 1 1 21 11.5Z"/><path d="M8 7c-2 3 3 8 6 7l1-2-2-1-1 1-2-2 1-1-1-2Z"/></svg>
+      <span>{t.whatsappFloatShort}</span>
+    </a>
 
     <script>
       const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle');
@@ -178,9 +267,60 @@ const structuredData = {
         if (event.target instanceof Node && !navigation?.contains(event.target) && !toggle?.contains(event.target)) closeMenu();
       });
       window.matchMedia('(min-width: 861px)').addEventListener('change', event => { if (event.matches) closeMenu(); });
+
+      // The map is only requested from Google once the visitor asks for it.
+      const mapFrame = document.querySelector<HTMLElement>('[data-map]');
+      mapFrame?.querySelector('[data-map-show]')?.addEventListener('click', () => {
+        const iframe = document.createElement('iframe');
+        iframe.src = mapFrame.dataset.mapSrc ?? '';
+        iframe.title = mapFrame.dataset.mapTitle ?? '';
+        mapFrame.replaceChildren(iframe);
+        iframe.focus();
+      });
+
+      const dialog = document.querySelector<HTMLDialogElement>('[data-gallery-dialog]');
+      const photoButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-gallery-index]'));
+      let current = 0;
+      let opener: HTMLElement | null = null;
+      function showPhoto(index: number) {
+        if (!dialog || photoButtons.length === 0) return;
+        current = (index + photoButtons.length) % photoButtons.length;
+        const { src = '', alt = '' } = photoButtons[current].dataset;
+        const image = dialog.querySelector<HTMLImageElement>('[data-gallery-image]')!;
+        image.src = src;
+        image.alt = alt;
+        dialog.querySelector('[data-gallery-caption]')!.textContent = alt;
+        dialog.querySelector('[data-gallery-count]')!.textContent = `${current + 1} / ${photoButtons.length}`;
+      }
+      photoButtons.forEach((button, index) => button.addEventListener('click', () => {
+        opener = button;
+        showPhoto(index);
+        dialog?.showModal();
+      }));
+      dialog?.querySelector('[data-gallery-prev]')?.addEventListener('click', () => showPhoto(current - 1));
+      dialog?.querySelector('[data-gallery-next]')?.addEventListener('click', () => showPhoto(current + 1));
+      dialog?.querySelector('[data-gallery-close]')?.addEventListener('click', () => dialog.close());
+      dialog?.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+      dialog?.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft') showPhoto(current - 1);
+        if (event.key === 'ArrowRight') showPhoto(current + 1);
+      });
+      dialog?.addEventListener('close', () => opener?.focus());
+
+      // The floating button steps aside where the page already shows the contact block or the footer.
+      const whatsappFloat = document.querySelector<HTMLElement>('[data-whatsapp-float]');
+      const covered = new Set<Element>();
+      if (whatsappFloat && 'IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => (entry.isIntersecting ? covered.add(entry.target) : covered.delete(entry.target)));
+          whatsappFloat.classList.toggle('is-hidden', covered.size > 0);
+        });
+        document.querySelectorAll('#contact, footer').forEach(el => observer.observe(el));
+      }
     </script>
     <script>
       import { formatPrice, pageLang } from '../i18n';
+      import { pricePerPerson } from '../data/hotel';
       type RoomType = { name: string; price: number; capacity: number };
       const api = (import.meta.env.PUBLIC_API_URL || 'http://localhost:4000/api/public').replace(/\/$/, '');
       const normalize = (value: string) => value.trim().toLowerCase();
@@ -192,6 +332,7 @@ const structuredData = {
             if (!type) return;
             card.querySelector('[data-price]')!.textContent = formatPrice(type.price, pageLang());
             card.querySelector('[data-capacity]')!.textContent = String(type.capacity);
+            card.querySelector('[data-per-person]')!.textContent = formatPrice(pricePerPerson(type.price, type.capacity), pageLang());
           });
         })
         .catch(() => { /* API unreachable: static prices from hotel.ts stay displayed */ });
