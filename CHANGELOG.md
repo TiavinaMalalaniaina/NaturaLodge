@@ -3,6 +3,41 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.5.0] — 2026-11-19
+
+> `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.5.0`, site public
+> (`website/`) à `1.1.0`. Changements limités au site public et à un script d'exploitation :
+> aucune migration, aucun changement de l'API ni de l'admin.
+
+### Ajouté
+
+**Site vitrine — conversion**
+- Aperçu de partage (WhatsApp, Facebook) : `og:image`, `og:url`, titre et description.
+- Bouton WhatsApp flottant, mention du paiement MVola, rappel des conditions d'annulation,
+  prix « dès … par personne » sur chaque chambre.
+- Galerie photos, section avis (masquée tant qu'aucun avis réel n'est saisi) et bloc
+  « Comment venir » avec carte chargée au clic.
+
+**Site vitrine — référencement**
+- `sitemap.xml` (accueil et pages légales, FR/EN avec `hreflang`) et `robots.txt` qui le
+  référence. Générés seulement si `SITE_URL` est défini ; la préprod reste en `Disallow: /`.
+- `<link rel="canonical">` sur toutes les pages.
+- Données structurées `Hotel` enrichies : région, email, fourchette de prix, devise, photos.
+  Coordonnées GPS émises dès que `hotel.geo` est renseigné (`website/src/data/hotel.ts`).
+
+**Scripts**
+- `server/scripts/move-mvola-payments.sql` (psql, aperçu par défaut) et sa version SQL pure :
+  rattachent au compte Mvola (517100) les paiements MVOLA saisis sur un autre compte.
+
+### Modifié
+- Photos du site converties en WebP (2,25 Mo → 260 Ko) ; copie JPEG pour l'aperçu de partage.
+
+### Déploiement
+- Vérifier que `APP_ENV=production` et `WEBSITE_URL` sont définis sur la prod : sans le premier,
+  le site est servi en `noindex` ; sans le second, ni sitemap, ni canonical, ni `og:image`.
+- Le script MVola **n'est pas exécuté automatiquement** : sauvegarder la base, lancer l'aperçu,
+  puis l'appliquer à la main.
+
 ## [2.4.0] — 2026-11-12
 
 > `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.4.0`. Le site public
