@@ -10,6 +10,11 @@ export const hotel = {
   facebook: 'https://www.facebook.com/p/Natura-Lodge-Manambato-61574327443486/',
   // Recherche par nom : le point précis du code 65Q2+V7 Manambolo reste à confirmer.
   maps: 'https://www.google.com/maps/search/?api=1&query=Natura%20Lodge%20Manambato',
+  // Données structurées (schema.org) lues par Google. `geo` : coordonnées GPS exactes du lodge, à
+  // renseigner une fois confirmées ({ latitude: -18.xxxxx, longitude: 49.xxxxx }) ; null = non émis.
+  address: { locality: 'Manambato', region: 'Atsinanana', country: 'MG' },
+  geo: null as { latitude: number; longitude: number } | null,
+  email: 'naturalodge.manambato@gmail.com',
   // Carte intégrée, chargée seulement au clic du visiteur (requête envoyée à Google, voir la politique de confidentialité).
   mapsEmbed: 'https://www.google.com/maps?q=Natura%20Lodge%20Manambato&output=embed',
   // Lien « Voir tous nos avis » (fiche Google Business, onglet Avis). Vide : le lien n'est pas affiché.
@@ -20,7 +25,7 @@ export const hotel = {
   } satisfies Record<Lang, string>,
   currency: 'Ar',
   // Aperçu des liens partagés (WhatsApp, Facebook). Une photo 1200 × 630 serait idéale pour Facebook.
-  shareImage: { path: '/images/house.png', width: 565, height: 565 },
+  shareImage: { path: '/images/house-share.jpg', width: 565, height: 565 },
 };
 
 // Informations légales de l'exploitant, affichées dans les mentions légales et la politique de
@@ -54,7 +59,7 @@ export const rooms: { roomType: string; capacity: number; price: number; image: 
     roomType: 'Standard',
     capacity: 5,
     price: 130000,
-    image: '/images/interior.png',
+    image: '/images/interior.webp',
     name: { fr: 'Standard', en: 'Standard' },
     description: {
       fr: 'Retrouver les siens, se reposer et profiter de vacances ensemble. Un hébergement pour accueillir votre famille jusqu’à cinq personnes.',
@@ -69,7 +74,7 @@ export const rooms: { roomType: string; capacity: number; price: number; image: 
     roomType: 'Standard Sup',
     capacity: 6,
     price: 150000,
-    image: '/images/interior-2.png',
+    image: '/images/interior-2.webp',
     name: { fr: 'Standard supérieur', en: 'Superior Standard' },
     description: {
       fr: 'Le plaisir de partir avec toute la famille. Une capacité jusqu’à six personnes pour préparer votre prochaine parenthèse à Manambato.',
@@ -106,11 +111,11 @@ export const access: { from: string; duration: Record<Lang, string>; route: Reco
 
 // Galerie : photos réelles de l’hôtel dans public/images/. Ajouter une entrée par photo (15 à 20 idéalement).
 export const gallery: { src: string; width: number; height: number; alt: Record<Lang, string> }[] = [
-  { src: '/images/house.png', width: 565, height: 565, alt: { fr: 'La maison et le jardin au coucher du soleil', en: 'The house and garden at sunset' } },
-  { src: '/images/house-2.png', width: 480, height: 640, alt: { fr: 'La façade, les terrasses et le jardin en journée', en: 'The front, terraces and garden by day' } },
-  { src: '/images/interior.png', width: 480, height: 360, alt: { fr: 'Une chambre avec un lit double et un lit simple', en: 'A room with a double bed and a single bed' } },
-  { src: '/images/interior-2.png', width: 480, height: 360, alt: { fr: 'Une chambre avec un lit double et une fenêtre', en: 'A room with a double bed and a window' } },
-  { src: '/images/plage.png', width: 565, height: 565, alt: { fr: 'La plage et le bord de l’eau à Manambato', en: 'The beach and waterside in Manambato' } },
+  { src: '/images/house.webp', width: 565, height: 565, alt: { fr: 'La maison et le jardin au coucher du soleil', en: 'The house and garden at sunset' } },
+  { src: '/images/house-2.webp', width: 480, height: 640, alt: { fr: 'La façade, les terrasses et le jardin en journée', en: 'The front, terraces and garden by day' } },
+  { src: '/images/interior.webp', width: 480, height: 360, alt: { fr: 'Une chambre avec un lit double et un lit simple', en: 'A room with a double bed and a single bed' } },
+  { src: '/images/interior-2.webp', width: 480, height: 360, alt: { fr: 'Une chambre avec un lit double et une fenêtre', en: 'A room with a double bed and a window' } },
+  { src: '/images/plage.webp', width: 565, height: 565, alt: { fr: 'La plage et le bord de l’eau à Manambato', en: 'The beach and waterside in Manambato' } },
 ];
 
 export const whatsappLink = (message: string) => `https://wa.me/${hotel.whatsappNumber}?text=${encodeURIComponent(message)}`;
