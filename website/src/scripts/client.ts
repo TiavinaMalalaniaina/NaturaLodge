@@ -1,6 +1,7 @@
 ﻿import { dateLocale, formatPrice, localePath, stripLang } from '../i18n';
 import { translateServer } from '../i18n/server';
 import { errorText, initAccount, lang, loginUrl, s } from './account';
+import { track } from './analytics';
 
 type Room = { id: string; name: string; price: number; capacity: number; available: number };
 type Proof = { id: string; fileName: string; size: number; note: string; createdAt: string };
@@ -107,6 +108,7 @@ async function start() {
         saveDraft();
         sending = true; details.disabled = true; search.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input,button').forEach(el => { el.disabled = true; }); fail('');
         await api<RequestView>('/reservation-requests', JSON.parse(payload), retry!.token);
+        track('reservation-request', { guests: Number(input('guests').value), rooms: selected().reduce((sum, x) => sum + x.quantity, 0) });
         localStorage.removeItem('naturalodge-pending-request'); localStorage.removeItem(draftKey); location.assign(localePath(lang, '/mes-reservations/'));
       } catch (err) { fail(message(err)); } finally { sending = false; details.disabled = false; search.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input,button').forEach(el => { el.disabled = false; }); }
     });

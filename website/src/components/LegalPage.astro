@@ -5,6 +5,7 @@ import { alternatePath, localePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import { legalPage, legalSlugs, missingLegalFields, type LegalKind } from '../i18n/legal';
 import Alternates from './Alternates.astro';
+import Analytics from './Analytics.astro';
 import LegalLinks from './LegalLinks.astro';
 
 const { kind, lang } = Astro.props as { kind: LegalKind; lang: Lang };
@@ -25,6 +26,7 @@ if (missing.length && kind !== 'terms' && lang === 'fr') console.warn(`[legal] C
     <title>{page.title} · Natura Lodge</title>
     <meta name="description" content={page.title} />
     <Alternates />
+    <Analytics />
     <link rel="icon" href="/favicon-rounded-32.png" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" />
   </head>

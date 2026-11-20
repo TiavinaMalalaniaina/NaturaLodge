@@ -4,6 +4,7 @@ import '../styles/client.css';
 import { localePath, alternatePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import Alternates from '../components/Alternates.astro';
+import Analytics from '../components/Analytics.astro';
 import LegalLinks from '../components/LegalLinks.astro';
 
 const { title, eyebrow, lang } = Astro.props as { title: string; eyebrow?: string; lang: Lang };
@@ -21,6 +22,7 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr';
     <meta name="robots" content="noindex" />
     <meta name="referrer" content="no-referrer" />
     <Alternates />
+    <Analytics />
     <link rel="icon" href="/favicon-rounded-32.png" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" />
   </head>

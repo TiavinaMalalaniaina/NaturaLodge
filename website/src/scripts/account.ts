@@ -1,6 +1,7 @@
 import { localePath, pageLang, stripLang } from '../i18n';
 import { translateServer } from '../i18n/server';
 import { scriptText } from '../i18n/ui';
+import { track } from './analytics';
 
 type Customer = { id: string; email: string };
 const base = (import.meta.env.PUBLIC_API_URL || 'http://localhost:4000/api/public').replace(/\/$/, '');
@@ -175,6 +176,7 @@ function initLoginPage(panel: HTMLElement) {
     const body = { email: data.get('email'), password: data.get('password'), next: nextParam(), locale: lang };
     const again = () => request<{ message: string }>('/register', body);
     sent(String(body.email), await again(), 'register', again);
+    track('signup');
     form('register-form').reset();
   });
   submit('forgot-form', async data => {
