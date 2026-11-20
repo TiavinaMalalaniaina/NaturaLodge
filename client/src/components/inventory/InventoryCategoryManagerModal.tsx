@@ -42,7 +42,7 @@ export const InventoryCategoryManagerModal: React.FC<Props> = ({ isOpen, onClose
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('inventory.categories.title')}
       className="max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-100 overflow-hidden">
-      <div className="p-8 max-h-[85vh] overflow-y-auto">
+      <div className="p-5 sm:p-8 sm:max-h-[85vh] sm:overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-display italic text-2xl text-primary leading-none">{t('inventory.categories.title')}</h3>
           <button onClick={onClose} aria-label={t('common.close')} className="p-2 hover:bg-stone-50 rounded-full transition-colors">

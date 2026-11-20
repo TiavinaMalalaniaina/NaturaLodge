@@ -102,7 +102,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
       className="max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-10 pt-8 pb-6 border-b border-stone-100">
+            <div className="flex items-center justify-between px-5 sm:px-10 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-stone-100">
               <div>
                 <h3 className="font-display italic text-2xl text-on-surface">
                   {step === 'type' ? t('rooms.unitRegistration') : `${t('rooms.roomNumber')} — ${selectedType?.name ?? ''}`}
@@ -125,7 +125,7 @@ export const AddRoomModal: React.FC<AddRoomModalProps> = ({ isOpen, onClose, onR
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto no-scrollbar px-10 py-6 max-h-[70vh]">
+            <div className="flex-1 sm:overflow-y-auto no-scrollbar px-5 sm:px-10 py-5 sm:py-6 sm:max-h-[70vh]">
 
               {/* ── Step 1 : sélection du type ── */}
               {step === 'type' && (

@@ -56,7 +56,7 @@ export const EditRoomModal: React.FC<EditRoomModalProps> = ({ isOpen, onClose, r
     <Modal isOpen={isOpen} onClose={onClose} title={t('rooms.modifyUnit')}
       className="max-w-2xl bg-white rounded-[2.5rem] shadow-2xl border border-stone-100 overflow-hidden">
 
-            <div className="flex items-center justify-between px-10 pt-8 pb-6 border-b border-stone-100">
+            <div className="flex items-center justify-between px-5 sm:px-10 pt-6 sm:pt-8 pb-5 sm:pb-6 border-b border-stone-100">
               <div>
                 <h3 className="font-display italic text-2xl text-on-surface">{t('rooms.modifyUnit')}</h3>
                 <p className="text-[10px] text-on-surface-variant/50 mt-1 uppercase tracking-widest">
@@ -68,7 +68,7 @@ export const EditRoomModal: React.FC<EditRoomModalProps> = ({ isOpen, onClose, r
               </button>
             </div>
 
-            <div className="px-10 py-8 overflow-y-auto max-h-[70vh]">
+            <div className="px-5 sm:px-10 py-6 sm:py-8 sm:overflow-y-auto sm:max-h-[70vh]">
               {apiError && (
                 <div className="flex items-center gap-3 p-3 mb-6 bg-red-50 border border-red-100 rounded-xl text-red-600">
                   <AlertCircle className="w-4 h-4 shrink-0" />

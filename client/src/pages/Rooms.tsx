@@ -18,6 +18,7 @@ import { FilterChip } from '../components/FilterChip';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { Modal } from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
 
 type StatusTab = 'all' | 'available' | 'occupied' | 'maintenance';
@@ -99,17 +100,17 @@ export const Rooms: React.FC = () => {
             {filteredRooms.length} / {allRooms.length} {t('rooms.availableRooms').toLowerCase()}
           </p>
         </div>
-        <div className="flex gap-3 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => navigate('/rooms/types')}
-            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-3 sm:px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <Tags className="w-4 h-4" /> {t('roomTypes.title')}
           </button>
           {can('rooms.view') && (
             <button
               onClick={() => setIsFeatureModalOpen(true)}
-              className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-3 sm:px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Layers className="w-4 h-4" /> {t('rooms.attributes')}
             </button>
@@ -117,7 +118,7 @@ export const Rooms: React.FC = () => {
           {can('extras.view') && (
             <button
               onClick={() => setIsExtraModalOpen(true)}
-              className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto bg-stone-100 text-on-surface-variant px-3 sm:px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-stone-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" /> {t('rooms.extras')}
             </button>
@@ -125,7 +126,7 @@ export const Rooms: React.FC = () => {
           {can('rooms.create') && (
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 cursor-pointer"
+              className="col-span-2 w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 cursor-pointer"
             >
               <Plus className="w-4 h-4" /> {t('rooms.addRoom')}
             </button>
@@ -157,15 +158,15 @@ export const Rooms: React.FC = () => {
           </div>
 
           {/* Search + filter toggle */}
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="relative">
+          <div className="flex items-center gap-2 lg:shrink-0">
+            <div className="relative flex-1 min-w-0 lg:flex-none">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
               <input
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder={`${t('rooms.roomNumber')}, ${t('rooms.typeName')}…`}
-                className="h-9 pl-9 pr-8 w-44 bg-white border border-stone-200 rounded-xl text-[10px] uppercase font-bold tracking-widest focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+                className="h-9 pl-9 pr-8 w-full lg:w-44 bg-white border border-stone-200 rounded-xl text-[10px] uppercase font-bold tracking-widest focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
               />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
@@ -364,58 +365,44 @@ export const Rooms: React.FC = () => {
       </div>
 
       {/* ── Modal conflits maintenance ── */}
-      <AnimatePresence>
-        {conflictsInfo && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setConflictsInfo(null)}
-              className="absolute inset-0 bg-stone-900/40 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-stone-100 p-8 space-y-5"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="font-display italic text-xl text-on-surface">
-                    {t('rooms.maintenanceConflicts', { count: conflictsInfo.list.length })}
-                  </h3>
-                  <p className="text-xs text-on-surface-variant/60 mt-1">{t('rooms.maintenanceConflictsNote')}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {conflictsInfo.list.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => { navigate(`/reservations/${c.id}`); setConflictsInfo(null); }}
-                    className="w-full flex items-center justify-between px-4 py-3 bg-stone-50 border border-stone-100 rounded-xl hover:border-amber-200 transition-colors group"
-                  >
-                    <div className="text-left">
-                      <p className="text-xs font-semibold text-on-surface">{c.guest.name}</p>
-                      <p className="text-[10px] font-mono text-on-surface-variant/50">{c.arrival} → {c.departure}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-stone-300 group-hover:text-amber-500 transition-colors" />
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setConflictsInfo(null)}
-                className="w-full py-3 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all"
-              >
-                {t('common.close')}
-              </button>
-            </motion.div>
+      <Modal isOpen={!!conflictsInfo} onClose={() => setConflictsInfo(null)} zIndexClassName="z-[110]"
+        title={t('rooms.maintenanceConflicts', { count: conflictsInfo?.list.length ?? 0 })}
+        className="max-w-md bg-white rounded-3xl shadow-2xl border border-stone-100 p-6 sm:p-8 space-y-5">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
           </div>
-        )}
-      </AnimatePresence>
+          <div>
+            <h3 className="font-display italic text-xl text-on-surface">
+              {t('rooms.maintenanceConflicts', { count: conflictsInfo?.list.length ?? 0 })}
+            </h3>
+            <p className="text-xs text-on-surface-variant/60 mt-1">{t('rooms.maintenanceConflictsNote')}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {(conflictsInfo?.list ?? []).map(c => (
+            <button
+              key={c.id}
+              onClick={() => { navigate(`/reservations/${c.id}`); setConflictsInfo(null); }}
+              className="w-full flex items-center justify-between px-4 py-3 bg-stone-50 border border-stone-100 rounded-xl hover:border-amber-200 transition-colors group"
+            >
+              <div className="text-left">
+                <p className="text-xs font-semibold text-on-surface">{c.guest.name}</p>
+                <p className="text-[10px] font-mono text-on-surface-variant/50">{c.arrival} → {c.departure}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-stone-300 group-hover:text-amber-500 transition-colors" />
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setConflictsInfo(null)}
+          className="w-full py-3 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all"
+        >
+          {t('common.close')}
+        </button>
+      </Modal>
 
       <ConfirmModal
         isOpen={!!maintenanceTarget}

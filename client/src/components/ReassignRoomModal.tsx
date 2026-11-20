@@ -182,7 +182,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
       {/* ═══════════════ Étape "pick" — choisir une chambre à gérer ═══════════════ */}
       {mode === 'pick' && (
         <>
-          <div className="p-8 pb-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
+          <div className="p-5 sm:p-8 pb-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-display italic text-3xl text-on-surface">{t('reservations.reassign')}</h3>
@@ -236,7 +236,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
       {mode === 'form' && (
         <>
             {/* ── Header ── */}
-            <div className="p-8 pb-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
+            <div className="p-5 sm:p-8 pb-6 border-b border-stone-100 bg-stone-50/50 shrink-0">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <button onClick={backToPick} className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-primary hover:underline mb-2">
@@ -320,7 +320,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                   transition={{ duration: 0.25, ease: 'easeInOut' }}
                   className="overflow-hidden shrink-0"
                 >
-                  <div className="px-8 py-5 border-b border-stone-100 bg-white max-h-[45vh] overflow-y-auto no-scrollbar">
+                  <div className="px-5 sm:px-8 py-5 border-b border-stone-100 bg-white max-h-[45vh] overflow-y-auto no-scrollbar">
 
                     <div className="flex items-center justify-between mb-4">
                       <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">
@@ -428,7 +428,7 @@ export const ReassignRoomModal: React.FC<ReassignRoomModalProps> = ({ isOpen, on
                   transition={{ duration: 0.25, ease: 'easeInOut' }}
                   className="overflow-hidden shrink-0"
                 >
-                  <div className="px-8 py-5 border-b border-stone-100 bg-white space-y-1 max-h-[45vh] overflow-y-auto no-scrollbar">
+                  <div className="px-5 sm:px-8 py-5 border-b border-stone-100 bg-white space-y-1 max-h-[45vh] overflow-y-auto no-scrollbar">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('reassign.summary')}</span>
                       <button onClick={() => setShowList(true)} className="text-[9px] font-bold uppercase tracking-widest text-primary hover:underline">

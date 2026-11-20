@@ -41,6 +41,22 @@
   box-shadow: 0 20px 40px -15px rgba(15, 110, 86, 0.08);
 }
 
+/* iOS Safari zoome au focus de tout champ < 16px : sur mobile, on impose 16px. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  /* À 16px, les petites capitales espacées des champs de recherche débordent. */
+  input[type="text"],
+  input[type="search"],
+  input:not([type]) {
+    text-transform: none;
+    letter-spacing: normal;
+  }
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

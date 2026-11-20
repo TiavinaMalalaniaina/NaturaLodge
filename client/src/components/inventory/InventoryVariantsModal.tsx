@@ -55,7 +55,7 @@ export const InventoryVariantsModal: React.FC<Props> = ({ isOpen, onClose, item 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}
       className="max-w-2xl bg-white rounded-3xl shadow-2xl border border-stone-100 overflow-hidden">
-      <div className="p-8 max-h-[90vh] overflow-y-auto">
+      <div className="p-5 sm:p-8 sm:max-h-[90vh] sm:overflow-y-auto">
         <div className="flex justify-between items-start mb-4 gap-4">
           <h3 className="font-display italic text-2xl text-primary leading-none">{title}</h3>
           <button onClick={onClose} aria-label={t('common.close')} className="p-2 hover:bg-stone-50 rounded-full transition-colors">

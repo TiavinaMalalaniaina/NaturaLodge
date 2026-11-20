@@ -82,7 +82,7 @@ export const ExpenseCategoryManagerModal: React.FC<ExpenseCategoryManagerModalPr
     <Modal isOpen={isOpen} onClose={onClose} title={t('expenseCategories.title')} zIndexClassName="z-[110]"
       className="max-w-3xl bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 overflow-hidden">
 
-      <div className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+      <div className="p-5 sm:p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
         <div>
           <h3 className="font-display italic text-2xl text-on-surface">{t('expenseCategories.title')}</h3>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('expenseCategories.subtitle')}</p>
@@ -92,7 +92,7 @@ export const ExpenseCategoryManagerModal: React.FC<ExpenseCategoryManagerModalPr
         </button>
       </div>
 
-      <div className="p-8 grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="p-5 sm:p-8 grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* Category list */}
         <div className="space-y-3 max-h-[55vh] overflow-y-auto no-scrollbar pr-1 md:col-span-3">
           {apiError && !isFormOpen && (
@@ -195,7 +195,7 @@ export const ExpenseCategoryManagerModal: React.FC<ExpenseCategoryManagerModalPr
         </div>
       </div>
 
-      <div className="p-8 pt-0">
+      <div className="p-5 sm:p-8 pt-0">
         <p className="text-[10px] text-on-surface-variant/40 leading-relaxed text-center">
           {t('expenseCategories.footerNote')}
         </p>

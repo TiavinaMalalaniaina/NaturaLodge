@@ -98,7 +98,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
     <Modal isOpen={isOpen} onClose={handleClose} title={t('guests.curatedProfile')}
       className="max-w-3xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row">
             {/* Sidebar */}
-            <div className="w-full md:w-72 bg-zinc-900 p-8 text-white flex flex-col shrink-0">
+            <div className="hidden md:flex md:w-72 bg-zinc-900 p-8 text-white flex-col shrink-0">
               <div className="mb-10">
                 <h3 className="font-display italic text-3xl mb-2">{t('guests.curatedProfile')}</h3>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60">{t('guests.guestRegistry')}</p>
@@ -118,9 +118,12 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
             </div>
 
             {/* Form */}
-            <div className="flex-1 p-8 md:p-12 bg-white overflow-y-auto max-h-[85vh]">
-              <div className="flex justify-between items-center mb-8">
-                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('guests.identityDetails')}</h4>
+            <div className="flex-1 p-5 sm:p-8 md:p-12 bg-white md:overflow-y-auto md:max-h-[85vh]">
+              <div className="flex justify-between items-center mb-6 md:mb-8">
+                <div>
+                  <h3 className="md:hidden font-display italic text-2xl text-on-surface mb-1">{t('guests.curatedProfile')}</h3>
+                  <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('guests.identityDetails')}</h4>
+                </div>
                 <button onClick={handleClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
@@ -224,7 +227,7 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({ isOpen, onClose, g
 
                 <div className="flex items-center gap-4 pt-4">
                   <button type="button" onClick={handleClose}
-                    className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
+                    className="px-6 sm:px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all">
                     {t('common.cancel')}
                   </button>
                   <button type="submit" disabled={isPending}

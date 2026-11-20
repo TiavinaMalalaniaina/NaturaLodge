@@ -69,19 +69,19 @@ export const Staff: React.FC = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-3 sm:gap-6">
         {[
           { label: t('staff.totalPersonnel'), value: staffList.length, icon: Users, color: 'text-primary' },
           { label: t('staff.active'), value: activeCount, icon: UserCheck, color: 'text-teal-500' },
           { label: t('staff.onLeave'), value: onLeaveCount, icon: Shield, color: 'text-amber-500' },
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-6 rounded-3xl border border-stone-200/60 organic-shadow flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{stat.label}</p>
+          <div key={i} className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-stone-200/60 organic-shadow flex flex-col-reverse sm:flex-row items-start sm:items-center justify-between gap-3 min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1 truncate">{stat.label}</p>
               <span className="text-3xl font-display italic">{stat.value}</span>
             </div>
-            <div className={cn("w-12 h-12 rounded-2xl bg-stone-50 flex items-center justify-center", stat.color)}>
-              <stat.icon className="w-6 h-6" />
+            <div className={cn("w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-stone-50 flex items-center justify-center", stat.color)}>
+              <stat.icon className="w-4 h-4 sm:w-6 sm:h-6" />
             </div>
           </div>
         ))}

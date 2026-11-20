@@ -66,7 +66,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title={t('expenses.record')}
       className="max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-100 overflow-hidden">
-      <div className="p-8">
+      <div className="p-5 sm:p-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-display italic text-2xl text-primary leading-none">{t('expenses.record')}</h3>
           <button onClick={handleClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">

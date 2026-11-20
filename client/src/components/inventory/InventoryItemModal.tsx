@@ -94,7 +94,7 @@ export const InventoryItemModal: React.FC<Props> = ({ isOpen, onClose, target })
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}
       className="max-w-lg bg-white rounded-3xl shadow-2xl border border-stone-100 overflow-hidden">
-      <div className="p-8 max-h-[90vh] overflow-y-auto">
+      <div className="p-5 sm:p-8 sm:max-h-[90vh] sm:overflow-y-auto">
         <div className="flex justify-between items-start mb-6 gap-4">
           <div>
             <h3 className="font-display italic text-2xl text-primary leading-none">{title}</h3>

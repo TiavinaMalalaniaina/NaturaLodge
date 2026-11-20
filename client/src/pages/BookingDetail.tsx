@@ -118,12 +118,12 @@ export const BookingDetail: React.FC = () => {
             <ArrowLeft className="w-5 h-5 text-on-surface-variant" />
           </button>
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="font-display text-2xl md:text-3xl text-primary leading-none">{t('reservations.bookingDetails')}</h2>
-              <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', EFFECTIVE_STATUS_CLASS[es])}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-1">
+              <h2 className="font-display text-2xl md:text-3xl text-primary leading-none w-full sm:w-auto">{t('reservations.bookingDetails')}</h2>
+              <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border whitespace-nowrap', EFFECTIVE_STATUS_CLASS[es])}>
                 {t(EFFECTIVE_STATUS_I18N_KEY[es])}
               </span>
-              <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border', PAYMENT_STATUS_CLASS[booking.paymentStatus])}>
+              <span className={cn('px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border whitespace-nowrap', PAYMENT_STATUS_CLASS[booking.paymentStatus])}>
                 {t(`invoice.status_${booking.paymentStatus}`)}
               </span>
             </div>
@@ -236,14 +236,14 @@ export const BookingDetail: React.FC = () => {
 
                 return (
                   <div key={br.id} className="p-4 rounded-2xl border border-stone-100 bg-stone-50/50 hover:border-stone-200 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-white border border-stone-200 flex items-center justify-center font-display italic text-2xl text-primary">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="min-w-12 h-12 px-2 shrink-0 whitespace-nowrap rounded-xl bg-white border border-stone-200 flex items-center justify-center font-display italic text-xl sm:text-2xl text-primary">
                           {br.room.number}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-semibold text-on-surface">{br.room.type}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 mt-0.5">
                             <span className="text-[9px] font-mono text-on-surface-variant/40">{fmtDate(br.arrival)} → {fmtDate(br.departure)}</span>
                             <span className="text-stone-200">·</span>
                             <span className="text-[9px] font-bold text-on-surface-variant/40">
@@ -252,7 +252,7 @@ export const BookingDetail: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="sm:text-right shrink-0 pl-16 sm:pl-0">
                         <p className="text-sm font-display italic text-on-surface">{fmtAmount(br.roomRate * nights + extrasTotal)}</p>
                         <p className="text-[9px] text-on-surface-variant/40 font-mono mt-0.5">{fmtAmount(br.roomRate)} {t('bookingDetail.perNight')}</p>
                       </div>

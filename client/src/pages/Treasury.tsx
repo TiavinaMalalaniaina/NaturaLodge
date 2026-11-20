@@ -64,11 +64,11 @@ export const Treasury: React.FC = () => {
             {t('treasury.totalBalance')} — {formatCurrency(totalBalance)}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {can('ledger.manage_accounts') && (
             <button
               onClick={() => navigate('/accounts')}
-              className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
+              className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 sm:px-5 py-3 whitespace-nowrap bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
             >
               <Settings2 className="w-4 h-4" />
               {t('accounts.title')}
@@ -77,7 +77,7 @@ export const Treasury: React.FC = () => {
           {can('ledger.contribute') && (
             <button
               onClick={() => setContributionOpen(true)}
-              className="flex items-center gap-2 px-5 py-3 bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
+              className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 sm:px-5 py-3 whitespace-nowrap bg-white border border-stone-200 text-on-surface rounded-xl text-[10px] font-bold uppercase tracking-widest hover:border-primary/30 transition-all"
             >
               <PiggyBank className="w-4 h-4" />
               {t('treasury.contribution')}
@@ -86,7 +86,7 @@ export const Treasury: React.FC = () => {
           {can('ledger.transfer') && (
             <button
               onClick={() => setTransferOpen(true)}
-              className="flex items-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
+              className="flex flex-1 sm:flex-none justify-center items-center gap-2 px-4 sm:px-5 py-3 whitespace-nowrap bg-zinc-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-black/10"
             >
               <ArrowLeftRight className="w-4 h-4" />
               {t('treasury.transfer')}

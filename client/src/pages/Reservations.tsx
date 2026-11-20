@@ -3,7 +3,7 @@ import {
   ChevronLeft, ChevronRight, Plus, Users, Calendar, Filter,
   Download, Info, Construction, RefreshCw, LayoutGrid, List,
   Search, MoreVertical, CreditCard, Clock, FileText, X,
-  LogIn, LogOut, AlertTriangle, RotateCcw, Ban, Check, Lock,
+  LogIn, LogOut, AlertTriangle, RotateCcw, Ban, Check, Lock, SlidersHorizontal,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -21,10 +21,12 @@ import { EFFECTIVE_STATUS_CLASS, EFFECTIVE_STATUS_I18N_KEY, STATUS_ACTIONS, Stat
 import { PAYMENT_STATUS_CLASS } from '../lib/statusColors';
 import { RichBooking, BookingRoomEntry, EffectiveStatus } from '../api/bookings';
 import { FilterChip } from '../components/FilterChip';
+import { Modal } from '../components/Modal';
 import { useNotifications } from '../context/NotificationContext';
 import { getApiErrorMessage } from '../lib/apiError';
 import { useVirtualDayGrid } from '../hooks/useVirtualDayGrid';
 import { useBookingsByRoom } from '../hooks/useBookingsByRoom';
+import { useIsMobile } from '../hooks/useMediaQuery';
 import { useAuth } from '../context/AuthContext';
 import i18n from '../i18n';
 
@@ -54,6 +56,7 @@ const BOOKING_STATUS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'AWAITING', 'CANCELLED
 const ROOM_STATUS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'MAINTENANCE'];
 
 const LABEL_W = 176;  // px for room label column
+const LABEL_W_MOBILE = 112;
 
 const SYSTEM_NOTIFICATION_SOURCE = "system" as const;
 
@@ -65,6 +68,8 @@ export const Reservations: React.FC = () => {
 
   // View
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'calendar'>('grid');
+  const isMobile = useIsMobile();
+  const labelW = isMobile ? LABEL_W_MOBILE : LABEL_W;
   const viewOptions = [
     {
       v: "grid",
@@ -88,6 +93,7 @@ export const Reservations: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [roomTypeFilter, setRoomTypeFilter] = useState('ALL');
   const [dateFrom, setDateFrom] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [dateTo, setDateTo] = useState('');
 
   // List pagination
@@ -204,6 +210,68 @@ export const Reservations: React.FC = () => {
     setter(v); setPage(1);
   };
 
+  const clearFilters = () => {
+    setRoomTypeFilter('ALL'); setStatusFilter('ALL'); setDateFrom(''); setDateTo(''); setPage(1);
+  };
+
+  // Les statuts proposés diffèrent d'une vue à l'autre (chambre vs réservation) : un filtre
+  // conservé au changement de vue enverrait un statut invalide à l'autre requête.
+  const changeView = (v: 'grid' | 'list' | 'calendar') => {
+    if (v === viewMode) return;
+    setViewMode(v); setStatusFilter('ALL'); setPage(1);
+  };
+
+  // Types : seule la grille filtre par type de chambre (l'API des réservations ne le permet pas).
+  const activeFiltersCount = viewMode === 'grid'
+    ? Number(roomTypeFilter !== 'ALL') + Number(statusFilter !== 'ALL')
+    : viewMode === 'list'
+      ? Number(statusFilter !== 'ALL') + Number(!!(dateFrom || dateTo))
+      : 0;
+
+  const statusLabel = (s: string) => s === 'ALL'
+    ? t('common.all')
+    : t(`status.${s.toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`, s);
+
+  const renderFilterGroups = (isSheet: boolean) => {
+    const group = (label: string, content: React.ReactNode) => (
+      <div className={cn(isSheet ? 'space-y-2.5' : 'flex items-center gap-2.5')}>
+        <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">{label}</span>
+        <div className={cn('flex gap-1.5', isSheet && 'flex-wrap')}>{content}</div>
+      </div>
+    );
+    const chipCls = isSheet ? 'px-3.5 py-2 text-[10px]' : undefined;
+    return (
+      <>
+        {viewMode === 'grid' && group(t('reservations.filterCategory'),
+          ['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
+            <FilterChip key={rt} className={chipCls} active={roomTypeFilter === rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}>
+              {rt === 'ALL' ? t('common.all') : rt}
+            </FilterChip>
+          )))}
+        {group(t('reservations.filterStatus'),
+          (viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
+            <FilterChip key={s} className={chipCls} active={statusFilter === s} onClick={() => handleFilterChange(setStatusFilter)(s)}
+              activeClassName="bg-zinc-900 text-white border-zinc-900">
+              {statusLabel(s)}
+            </FilterChip>
+          )))}
+        {viewMode === 'list' && group(t('reservations.filterDate'), (
+          <div className={cn('flex items-center gap-1.5', isSheet && 'w-full')}>
+            <input type="date" value={dateFrom} max={dateTo || undefined} aria-label={t('reservations.arrivalDate')}
+              onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+              className={cn('border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none',
+                isSheet ? 'min-w-0 flex-1 h-11 px-3 rounded-xl text-sm' : 'px-2.5 py-1 rounded-full text-[9px] font-bold')} />
+            <span className="text-on-surface-variant/30 text-[9px]">→</span>
+            <input type="date" value={dateTo} min={dateFrom || undefined} aria-label={t('reservations.departureDate')}
+              onChange={e => { setDateTo(e.target.value); setPage(1); }}
+              className={cn('border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none',
+                isSheet ? 'min-w-0 flex-1 h-11 px-3 rounded-xl text-sm' : 'px-2.5 py-1 rounded-full text-[9px] font-bold')} />
+          </div>
+        ))}
+      </>
+    );
+  };
+
   // ── Render ────────────────────────────────────────────────────────
 
   const isGridLoading = viewMode === 'grid' && (gridLoading || roomsLoading);
@@ -243,8 +311,8 @@ export const Reservations: React.FC = () => {
     <div className="space-y-8 h-full overflow-x-hidden">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 sm:gap-4 min-w-0">
-        <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-5 sm:gap-4 min-w-0">
+        <div className="w-full sm:w-auto min-w-0">
           <h2 className="font-display italic text-3xl md:text-4xl text-on-surface mb-3 leading-none">
             {viewLabel}
           </h2>
@@ -253,7 +321,7 @@ export const Reservations: React.FC = () => {
             {/* View toggle */}
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 w-fit">
               {viewOptions.map(({ v, icon, label }) => (
-                <button key={v} onClick={() => setViewMode(v)}
+                <button key={v} onClick={() => changeView(v)} aria-label={label} aria-pressed={viewMode === v}
                   className={cn('p-2 rounded-lg transition-all flex items-center gap-2',
                     viewMode === v ? 'bg-white shadow-sm text-primary' : 'text-on-surface-variant/40 hover:text-on-surface-variant/60')}>
                   {icon}
@@ -264,14 +332,13 @@ export const Reservations: React.FC = () => {
 
             {/* Grid navigation + visible date indicator */}
             {viewMode === 'grid' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button onClick={() => scrollByDays(-14)}
-                  className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
+                  className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
 
-                {/* Visible date info */}
-                <div className="text-center min-w-[140px] select-none">
+                <div className="text-center flex-1 min-w-0 sm:flex-none sm:min-w-[140px] select-none">
                   <p className="text-sm font-bold text-on-surface leading-tight capitalize">
                     {visibleMonth} {visibleYear}
                   </p>
@@ -281,11 +348,11 @@ export const Reservations: React.FC = () => {
                 </div>
 
                 <button onClick={scrollToToday}
-                  className="px-3 py-1.5 rounded-lg border border-stone-200 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 hover:text-primary transition-colors text-on-surface-variant/60">
+                  className="shrink-0 px-3 py-1.5 rounded-lg border border-stone-200 font-mono text-[10px] font-bold uppercase tracking-widest hover:bg-stone-50 hover:text-primary transition-colors text-on-surface-variant/60">
                   {t('reservations.today')}
                 </button>
                 <button onClick={() => scrollByDays(14)}
-                  className="flex items-center justify-center w-8 h-8 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
+                  className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full border border-stone-200 hover:bg-stone-50 transition-colors text-on-surface-variant/60">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -293,7 +360,7 @@ export const Reservations: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-4 w-full sm:w-auto">
+        <div className="flex flex-col items-end gap-3 sm:gap-4 w-full sm:w-auto">
           {can('bookings.create') && (
             <button onClick={() => navigate('/reservations/new')}
               className="w-full sm:w-auto bg-primary text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-sans text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase hover:bg-primary-container transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/10 shrink-0">
@@ -301,89 +368,52 @@ export const Reservations: React.FC = () => {
             </button>
           )}
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
-              <input type="text" value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={viewMode === 'grid' ? t('reservations.searchRoom') : t('reservations.searchGuestOrRoom')}
-                className="w-full pl-9 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl text-[10px] uppercase font-bold tracking-widest focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all" />
+          {viewMode !== 'calendar' && (
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 min-w-0 sm:w-56 sm:flex-none">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+                <input type="text" value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder={viewMode === 'grid' ? t('reservations.searchRoom') : t('reservations.searchGuestOrRoom')}
+                  className="w-full h-10 pl-9 pr-4 bg-white border border-stone-200 rounded-xl text-[10px] uppercase font-bold tracking-widest focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all" />
+              </div>
+              <button onClick={() => setFiltersOpen(true)}
+                className={cn('sm:hidden relative h-10 px-3 flex items-center gap-1.5 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-colors',
+                  activeFiltersCount > 0 ? 'bg-primary text-white border-primary' : 'bg-white border-stone-200 text-on-surface-variant')}>
+                <SlidersHorizontal className="w-4 h-4" />
+                {t('reservations.filters')}
+                {activeFiltersCount > 0 && (
+                  <span className="ml-0.5 min-w-4 h-4 px-1 rounded-full bg-white text-primary text-[9px] flex items-center justify-center">{activeFiltersCount}</span>
+                )}
+              </button>
+              <button className="h-10 w-10 shrink-0 flex items-center justify-center border border-stone-200 bg-white rounded-xl hover:bg-stone-50 text-on-surface-variant transition-colors">
+                <Download className="w-4 h-4" />
+              </button>
             </div>
-            <button className="p-2 border border-outline-variant/60 rounded-xl hover:bg-stone-50 text-on-surface-variant transition-colors">
-              <Download className="w-5 h-5" />
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* ── Filter bar ── */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 border-b border-stone-100">
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
-            {t('reservations.filterCategory')}
-          </span>
-          <div className="flex gap-1.5">
-            {['ALL', ...roomTypes.map(rt => rt.name)].map(rt => (
-              <FilterChip key={rt} active={roomTypeFilter === rt} onClick={() => handleFilterChange(setRoomTypeFilter)(rt)}>
-                {rt === 'ALL' ? t('common.all') : rt}
-              </FilterChip>
-            ))}
-          </div>
+      {/* ── Filter bar (desktop) ── */}
+      {viewMode !== 'calendar' && (
+        <div className="hidden sm:flex flex-wrap items-center gap-x-6 gap-y-3 py-3 border-y border-stone-100">
+          {renderFilterGroups(false)}
+          {activeFiltersCount > 0 && (
+            <button onClick={clearFilters}
+              className="ml-auto flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600 transition-colors whitespace-nowrap">
+              <X className="w-3 h-3" /> {t('reservations.clearAllFilters')}
+            </button>
+          )}
         </div>
+      )}
 
-        <div className="h-4 w-px bg-stone-200 shrink-0" />
-
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
-            {t('reservations.filterStatus')}
+      {/* ── Month quick-nav (grid) ── */}
+      {viewMode === 'grid' && (
+        <div className="flex items-center gap-2 min-w-0 -mt-4 sm:-mt-5">
+          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap font-mono shrink-0">
+            {visibleDate.getFullYear()}
           </span>
-          <div className="flex gap-1.5">
-            {(viewMode === 'list' ? BOOKING_STATUS : ROOM_STATUS).map(s => (
-              <FilterChip key={s} active={statusFilter === s} onClick={() => handleFilterChange(setStatusFilter)(s)}
-                activeClassName="bg-zinc-900 text-white border-zinc-900">
-                {s === 'ALL' ? t('common.all') : s}
-              </FilterChip>
-            ))}
-          </div>
-        </div>
-
-        {/* Date filter — list view only */}
-        {viewMode === 'list' && (
-          <>
-            <div className="h-4 w-px bg-stone-200 shrink-0" />
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap">
-                {t('reservations.filterDate')}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <input type="date" value={dateFrom} max={dateTo || undefined}
-                  onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-                  className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
-                <span className="text-on-surface-variant/30 text-[9px]">→</span>
-                <input type="date" value={dateTo} min={dateFrom || undefined}
-                  onChange={e => { setDateTo(e.target.value); setPage(1); }}
-                  className="px-2.5 py-1 rounded-full text-[9px] font-bold border border-stone-200 bg-white text-on-surface-variant/70 focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none" />
-                {(dateFrom || dateTo) && (
-                  <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1); }}
-                    title={t('common.clear')}
-                    className="p-1 rounded-full hover:bg-stone-100 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Month quick-nav — grid mode only */}
-        {viewMode === 'grid' && (
-          <>
-            <div className="h-4 w-px bg-stone-200 shrink-0" />
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40 whitespace-nowrap font-mono">
-                {visibleDate.getFullYear()}
-              </span>
-              <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto no-scrollbar min-w-0 py-0.5 pr-1">
                 {Array.from({ length: 12 }, (_, i) => {
                   const entry = allMonths.find(m => m.year === visibleDate.getFullYear() && m.month === i);
                   const isActive = visibleDate.getMonth() === i;
@@ -410,11 +440,34 @@ export const Reservations: React.FC = () => {
                     </button>
                   );
                 })}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Filter sheet (mobile) ── */}
+      <Modal isOpen={filtersOpen} onClose={() => setFiltersOpen(false)} title={t('reservations.filters')}
+        className="max-w-md bg-white rounded-3xl shadow-2xl border border-stone-100">
+        <div className="p-5 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display italic text-2xl text-on-surface">{t('reservations.filters')}</h3>
+            <button onClick={() => setFiltersOpen(false)} aria-label={t('common.close')}
+              className="p-2 rounded-full hover:bg-stone-50 transition-colors">
+              <X className="w-5 h-5 text-on-surface-variant" />
+            </button>
+          </div>
+          {renderFilterGroups(true)}
+          <div className="flex items-center gap-3 pt-2">
+            <button onClick={clearFilters} disabled={activeFiltersCount === 0}
+              className="px-5 py-3.5 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase disabled:opacity-40">
+              {t('reservations.clearFilters')}
+            </button>
+            <button onClick={() => setFiltersOpen(false)}
+              className="flex-1 py-3.5 bg-primary text-white rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase">
+              {t('reservations.showResults')}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* ── Views ── */}
       <AnimatePresence mode="wait">
@@ -423,13 +476,13 @@ export const Reservations: React.FC = () => {
         {viewMode === 'grid' && (
           <motion.div key="grid" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
             className="w-full bg-white rounded-3xl border border-outline-variant/40 overflow-hidden organic-shadow flex flex-col"
-            style={{ height: 'calc(100vh - 280px)', minHeight: 700 }}>
+            style={isMobile ? { height: '75dvh', minHeight: 420 } : { height: 'calc(100vh - 280px)', minHeight: 700 }}>
 
             {/* ── Month navigator bar ── */}
             <div className="shrink-0 flex border-b border-stone-100 bg-white" style={{ height: 32 }}>
               {/* Corner: label */}
               <div className="shrink-0 border-r border-stone-100 px-3 flex items-center bg-white"
-                style={{ width: LABEL_W }}>
+                style={{ width: labelW }}>
                 <span className="text-[8px] font-bold tracking-[0.2em] text-on-surface-variant/40 uppercase">{t('reservations.month')}</span>
               </div>
               {/* Month chips — synced via monthBarRef, overflow hidden */}
@@ -477,7 +530,7 @@ export const Reservations: React.FC = () => {
             <div className="shrink-0 flex border-b border-stone-200 bg-stone-50/95 z-30">
               {/* Corner cell */}
               <div className="shrink-0 border-r border-stone-200 px-4 flex items-center bg-stone-50"
-                style={{ width: LABEL_W }}>
+                style={{ width: labelW }}>
                 <span className="text-[9px] font-bold tracking-[0.2em] text-on-surface-variant/50 uppercase">
                   {t('reservations.unit')}
                 </span>
@@ -524,7 +577,7 @@ export const Reservations: React.FC = () => {
               className="flex-1 overflow-auto min-h-0"
               style={{ scrollbarWidth: 'thin', scrollbarColor: '#d6d3d1 transparent' }}
             >
-              <div style={{ minWidth: LABEL_W + totalDays * COL_W }}>
+              <div style={{ minWidth: labelW + totalDays * COL_W }}>
 
                 {gridRooms.length === 0 && (
                   <div className="flex flex-col items-center justify-center p-20 text-on-surface-variant/40"
@@ -547,9 +600,9 @@ export const Reservations: React.FC = () => {
                       style={{ height: 60 }}>
 
                       {/* Room label — sticky left */}
-                      <div className="shrink-0 sticky left-0 z-20 border-r border-stone-100 px-4 flex flex-col justify-center bg-white group-hover:bg-stone-50/60 transition-colors"
-                        style={{ width: LABEL_W }}>
-                        <p className="font-display italic text-lg text-primary leading-none truncate">{room.type}</p>
+                      <div className="shrink-0 sticky left-0 z-20 border-r border-stone-100 px-2.5 sm:px-4 flex flex-col justify-center bg-white group-hover:bg-stone-50/60 transition-colors"
+                        style={{ width: labelW }}>
+                        <p className="font-display italic text-base sm:text-lg text-primary leading-none truncate">{room.type}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={cn('w-1.5 h-1.5 rounded-full shrink-0',
                             room.status === 'available' ? 'bg-status-available' :
@@ -664,7 +717,61 @@ export const Reservations: React.FC = () => {
           <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
             className="bg-white rounded-3xl border border-stone-200/60 overflow-hidden organic-shadow">
 
-            <div className="overflow-x-auto">
+            {/* Mobile : cartes */}
+            <ul className="md:hidden divide-y divide-stone-100">
+              {listBookings.map(b => (
+                <li key={b.id} onClick={() => navigate(`/reservations/${b.id}`)}
+                  className="px-4 py-4 active:bg-stone-50 transition-colors cursor-pointer">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-on-surface truncate">{b.guestName}</p>
+                      <p className="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-wider truncate mt-0.5">
+                        {b.rooms.map(br => `#${br.room.number}`).join(' · ') || '—'}
+                        {b.rooms.length > 0 && <span className="normal-case tracking-normal"> · {b.rooms.map(br => br.room.type).join(', ')}</span>}
+                      </p>
+                    </div>
+                    <p className="text-sm font-display italic text-on-surface whitespace-nowrap shrink-0">{b.totalAmount.toLocaleString()}{CURRENCY_SUFFIX}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-on-surface-variant">
+                    <Calendar className="w-3 h-3 text-primary opacity-40 shrink-0" />
+                    <span>{b.arrival}</span>
+                    <span className="text-on-surface-variant/40">→</span>
+                    <span>{b.departure}</span>
+                    <span className="text-[10px] text-on-surface-variant/40 font-mono">· {b.nights} {b.nights > 1 ? t('common.nights') : t('common.night')}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-3">
+                    <div className="flex flex-wrap gap-1.5 min-w-0">
+                      <span className={cn('px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border whitespace-nowrap', EFFECTIVE_STATUS_CLASS[b.effectiveStatus])}>
+                        {t(EFFECTIVE_STATUS_I18N_KEY[b.effectiveStatus])}
+                      </span>
+                      <span className={cn('px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest border whitespace-nowrap', PAYMENT_STATUS_CLASS[b.paymentStatus])}>
+                        {t(`invoice.status_${b.paymentStatus}`)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={e => { e.stopPropagation(); navigate(`/invoices/${b.id}`); }}
+                        aria-label={t('invoice.title')}
+                        className="p-2 rounded-xl text-stone-400 hover:text-primary hover:bg-stone-50 transition-colors">
+                        <FileText className="w-4 h-4" />
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); setSelectedBooking(b); }}
+                        aria-label={t('common.moreActions')}
+                        className="p-2 rounded-xl text-on-surface-variant/40 hover:bg-stone-50 transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+              {listBookings.length === 0 && (
+                <li className="py-20 text-center text-on-surface-variant/40">
+                  <Search className="w-10 h-10 mb-3 opacity-10 mx-auto" />
+                  <p className="font-display italic text-xl px-4">{t('reservations.noMatchingReservations')}</p>
+                </li>
+              )}
+            </ul>
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-stone-50/50 border-b border-stone-100">
@@ -754,7 +861,7 @@ export const Reservations: React.FC = () => {
 
             {/* Pagination */}
 
-            <div className="px-8 py-5 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between">
+            <div className="px-4 sm:px-8 py-4 sm:py-5 bg-stone-50/50 border-t border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/40">
                 {t('reservations.pageInfo', { page: meta?.page ?? 1, total: meta?.totalPages ?? 1, count: meta?.total ?? listBookings.length })}
               </p>

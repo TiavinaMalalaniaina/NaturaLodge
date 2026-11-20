@@ -59,7 +59,7 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
     <Modal isOpen={isOpen} onClose={handleClose} title={t('addStaff.title')}
       className="max-w-4xl bg-stone-50 rounded-[2.5rem] shadow-2xl border border-white overflow-hidden flex flex-col md:flex-row">
             {/* Left Decor */}
-            <div className="w-full md:w-80 bg-zinc-900 p-10 text-white flex flex-col">
+            <div className="hidden md:flex md:w-80 bg-zinc-900 p-10 text-white flex-col">
               <div className="mb-12">
                 <Shield className="w-10 h-10 text-teal-400 mb-6" />
                 <h3 className="font-display italic text-3xl mb-2">{t('addStaff.title')}</h3>
@@ -78,9 +78,12 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
             </div>
 
             {/* Right Form */}
-            <div className="flex-1 p-8 md:p-12 bg-white overflow-y-auto max-h-[85vh]">
-              <div className="flex justify-between items-center mb-10">
-                <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('addStaff.identification')}</h4>
+            <div className="flex-1 p-5 sm:p-8 md:p-12 bg-white md:overflow-y-auto md:max-h-[85vh]">
+              <div className="flex justify-between items-center mb-6 md:mb-10">
+                <div>
+                  <h3 className="md:hidden font-display italic text-2xl text-on-surface mb-1">{t('addStaff.title')}</h3>
+                  <h4 className="text-[10px] font-bold tracking-[0.2em] text-on-surface-variant uppercase">{t('addStaff.identification')}</h4>
+                </div>
                 <button onClick={handleClose} className="p-2 hover:bg-stone-50 rounded-full transition-colors">
                   <X className="w-5 h-5 text-on-surface-variant" />
                 </button>
@@ -202,7 +205,7 @@ export const AddStaffModal: React.FC<AddStaffModalProps> = ({ isOpen, onClose })
                     type="button"
                     onClick={handleClose}
                     disabled={createStaff.isPending}
-                    className="px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all disabled:opacity-40"
+                    className="px-6 sm:px-10 py-4 bg-stone-100 text-on-surface-variant rounded-xl font-bold text-[10px] tracking-[0.2em] uppercase hover:bg-stone-200 transition-all disabled:opacity-40"
                   >
                     {t('common.cancel')}
                   </button>

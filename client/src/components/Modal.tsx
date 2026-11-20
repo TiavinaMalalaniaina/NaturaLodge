@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useIsMobile } from '../hooks/useMediaQuery';
 
 interface ModalProps {
   isOpen: boolean;
@@ -56,10 +57,15 @@ export const Modal: React.FC<ModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
+  useBodyScrollLock(isOpen);
+
+  const isMobile = useIsMobile();
+  const hidden = isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, y: 20 };
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className={cn('fixed inset-0 flex items-center justify-center p-4', zIndexClassName)}>
+        <div className={cn('fixed inset-0 flex items-end sm:items-center justify-center sm:p-4', zIndexClassName)}>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
@@ -71,10 +77,17 @@ export const Modal: React.FC<ModalProps> = ({
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={hidden}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className={cn('relative w-full', className)}
+            exit={hidden}
+            transition={isMobile ? { type: 'tween', duration: 0.25, ease: 'easeOut' } : undefined}
+            className={cn(
+              'relative w-full',
+              className,
+              // Mobile : feuille ancrée en bas, pleine largeur, défilable. Placé après `className`
+              // pour l'emporter sur l'arrondi / la largeur / l'overflow de chaque modale.
+              'max-sm:max-w-none max-sm:max-h-[92dvh] max-sm:overflow-y-auto max-sm:overscroll-contain max-sm:rounded-b-none max-sm:rounded-t-[1.75rem] max-sm:border-x-0 max-sm:border-b-0',
+            )}
           >
             <span id={titleId} className="sr-only">{title}</span>
             {children}
@@ -84,3 +97,18 @@ export const Modal: React.FC<ModalProps> = ({
     </AnimatePresence>
   );
 };
+
+let scrollLocks = 0;
+
+// Compteur partagé : plusieurs modales peuvent être empilées (ex. AddGuestModal dans NewReservation).
+function useBodyScrollLock(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    scrollLocks += 1;
+    if (scrollLocks === 1) document.body.style.overflow = 'hidden';
+    return () => {
+      scrollLocks -= 1;
+      if (scrollLocks === 0) document.body.style.overflow = '';
+    };
+  }, [active]);
+}

@@ -103,16 +103,16 @@ export const Dashboard: React.FC = () => {
         </button>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: i * 0.1 }}
-            className="bg-white p-6 rounded-2xl border border-stone-200/60 organic-shadow group hover:border-primary/20 transition-all cursor-default"
+            className="bg-white p-4 sm:p-6 rounded-2xl min-w-0 border border-stone-200/60 organic-shadow group hover:border-primary/20 transition-all cursor-default"
           >
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-4 sm:mb-6">
               <div className={cn("p-2 rounded-lg bg-stone-50 group-hover:bg-teal-50 transition-colors", m.color)}>
                 <m.icon className="w-5 h-5" />
               </div>
@@ -123,7 +123,7 @@ export const Dashboard: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] font-sans font-bold uppercase tracking-widest text-on-surface-variant/40 mb-1">{m.label}</p>
-            <p className="font-mono text-3xl font-bold text-on-surface">{m.value}</p>
+            <p className="font-mono text-2xl sm:text-3xl font-bold text-on-surface truncate">{m.value}</p>
           </motion.div>
         ))}
       </section>

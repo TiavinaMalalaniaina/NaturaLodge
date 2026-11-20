@@ -65,7 +65,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
     <Modal isOpen={isOpen} onClose={onClose} title={t('features.title')} zIndexClassName="z-[110]"
       className="max-w-lg bg-white rounded-[2.5rem] shadow-2xl border border-stone-200 overflow-hidden">
 
-            <div className="p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+            <div className="p-5 sm:p-8 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
               <div>
                 <h3 className="font-display italic text-2xl text-on-surface">{t('features.title')}</h3>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">{t('features.subtitle')}</p>
@@ -75,7 +75,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
               </button>
             </div>
 
-            <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto no-scrollbar">
+            <div className="p-5 sm:p-8 space-y-6 max-h-[60vh] overflow-y-auto no-scrollbar">
               {/* Feature list */}
               <div className="space-y-3">
                 {isLoading ? (
@@ -159,7 +159,7 @@ export const FeatureManagerModal: React.FC<FeatureManagerModalProps> = ({ isOpen
               ))}
             </div>
 
-            <div className="p-8 bg-stone-50 border-t border-stone-100">
+            <div className="p-5 sm:p-8 bg-stone-50 border-t border-stone-100">
               <p className="text-[10px] text-on-surface-variant/40 leading-relaxed text-center">
                 {canManage
                   ? t('features.manageHint')
