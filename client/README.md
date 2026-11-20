@@ -1,20 +1,24 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# NaturaLodge — back-office
 
-# Run and deploy your AI Studio app
+Application React du personnel de l'hôtel : planning, séjours, clients, chambres, factures,
+paiements, comptabilité, permissions. Démarrage et vue d'ensemble : [`../README.md`](../README.md).
 
-This contains everything you need to run your app locally.
+```bash
+npm install
+cp .env.example .env      # VITE_API_URL, par défaut http://localhost:4000/api
+npm run dev               # http://localhost:3000
+npm run typecheck && npm run lint
+```
 
-View your app in AI Studio: https://ai.studio/apps/f227c002-a096-4e92-a05f-88e10238ae32
+Organisation de `src/` (chaque ressource suit le même schéma page → hook → api) :
 
-## Run Locally
+| Dossier | Contenu |
+|---|---|
+| `pages/` | Un écran par fichier, déclarés dans `App.tsx` |
+| `hooks/` | Lecture et écriture des données avec TanStack Query (`useBookings`, `useCreateBooking`…) |
+| `api/` | Appels au serveur ; `client.ts` est l'instance axios commune |
+| `components/` | Composants partagés ; `Modal.tsx` pour toute fenêtre modale, `AppLayout.tsx` pour le menu |
+| `lib/` | Statuts, couleurs, formatage, schémas de formulaires |
+| `locales/` | Textes FR / EN / MG : aucun texte d'interface en dur (le lint le refuse) |
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Conventions détaillées : [`../CLAUDE.md`](../CLAUDE.md).
