@@ -1,6 +1,6 @@
 # NaturaLodge — Hotel Monorepo
 
-Système de gestion hôtelière full-stack. Deux packages dans le même repo : `client/` (React) et `server/` (Express + Prisma).
+Système de gestion hôtelière full-stack. Trois packages dans le même repo : `client/` (back-office React), `server/` (Express + Prisma) et `website/` (site public Astro).
 
 ---
 
@@ -8,9 +8,13 @@ Système de gestion hôtelière full-stack. Deux packages dans le même repo : `
 
 ```
 hotel-monorepo/
-├── client/          # React 19 + Vite + TailwindCSS v4
-└── server/          # Express + TypeScript + Prisma + PostgreSQL
+├── client/          # React 19 + Vite + TailwindCSS v4 (back-office)
+├── server/          # Express + TypeScript + Prisma + PostgreSQL
+├── website/         # Astro (site public : vitrine + demandes de réservation)
+└── docs/            # Passation, état des lieux, sauvegardes, schéma d'architecture (draw.io)
 ```
+
+Démarrage d'un nouveau développeur : `README.md`, puis `docs/PASSATION.md` et `docs/ETAT_DES_LIEUX.md`.
 
 ---
 
@@ -215,13 +219,16 @@ res.json(await xxxService.someMethod(parsed.data));
 ## Schéma Prisma
 
 Modèles principaux :
-- `User` — staff (rôles : ADMIN, MANAGER, GERANT, HOUSEKEEPING)
+- `User` + `Role` + `Permission`/`RolePermission` — staff ; rôles stockés en base (`seedRoles.ts`), permissions configurables
 - `Guest` — clients hôtel
 - `GuestNote` — notes sur un client
 - `RoomType` + `Room` + `RoomFeature` — catalogue chambres
 - `Booking` + `BookingRoom` — réservations
 - `Invoice` + `InvoiceItem` + `Payment` — facturation
-- `HotelConfig` — configuration globale (singleton `id = "default"`, taxRate TVA)
+- `LedgerAccount` + `JournalEntry` + `JournalLine` — comptabilité
+- `Website*` (`WebsiteRequest`, `WebsiteCustomer`, `WebsitePaymentProof`, `WebsiteEmail`…) — site public
+
+Il n'existe **pas** de modèle `HotelConfig` (voir plus haut).
 
 Commandes utiles :
 ```bash
@@ -255,9 +262,7 @@ Le check-out (`PATCH /:id/status` avec `status: 'CHECKED_OUT'`, `can('bookings.u
 `GET /api/bookings` (`server/src/routes/bookings.ts`) exclut par défaut `CANCELLED`/`CHECKED_OUT_PAID`/`CLOSED` — sauf si un `status` explicite ou une `search` est fourni. `CHECKED_OUT_UNPAID` reste visible tant qu'il reste un paiement à suivre. Combiné au tri par défaut (`arrival asc`), ça fait remonter en premier les séjours en cours/en retard puis à venir, sans jamais montrer les anciennes réservations clôturées ou soldées tant qu'on ne cherche pas explicitement. Ne pas retirer cette exclusion sans réintroduire un tri custom, sinon les vieilles réservations (les plus anciennes en date d'arrivée) redominent la première page.
 
 ### Facturation
-- TVA configurée globalement via `HotelConfig.taxRate` (GET/PATCH `/api/settings`)
-- La route POST `/api/invoices/generate` lit `HotelConfig` si `taxRate` n'est pas fourni dans le body
-- `InvoiceView.tsx` utilise `useSettings()` pour afficher la TVA — pas d'input manuel
+- Taux de TVA saisi à la main à la génération dans `InvoiceView.tsx` et envoyé dans le body de POST `/api/invoices/generate` (`taxRate`, 0 par défaut dans `invoice.schema.ts`). Aucune configuration globale : voir `docs/ETAT_DES_LIEUX.md`.
 - L'échéance (`dueAt`) est fixée automatiquement au jour de génération, non visible dans l'UI
 
 ### Acomptes
