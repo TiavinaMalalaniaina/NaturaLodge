@@ -1142,5 +1142,11 @@
       "cancelTitle": "Hanafoana ny fanisana ?",
       "cancelMessage": "Hariana ny isa voaisa ary tsy hisy fanitsiana hosoratana."
     }
+  },
+  "relativeTime": {
+    "justNow": "izao vao izao",
+    "minutes": "{{count}} min lasa",
+    "hours": "{{count}} ora lasa",
+    "days": "{{count}} andro lasa"
   }
 }

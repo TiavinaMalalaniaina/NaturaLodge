@@ -71,7 +71,7 @@ export const NewBookingsFeed: React.FC = () => {
                       <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase text-[7px] font-bold tracking-wider leading-none">{t('activityFeed.new')}</span>
                     )}
                   </div>
-                  <span className="text-[9px] font-mono text-on-surface-variant/30 group-hover:opacity-0 transition-opacity whitespace-nowrap">{formatRelativeTime(notif.createdAt, now)}</span>
+                  <span className="text-[9px] font-mono text-on-surface-variant/30 group-hover:opacity-0 transition-opacity whitespace-nowrap">{formatRelativeTime(notif.createdAt, now, t)}</span>
                 </div>
                 
                 <div className="flex justify-between items-end">

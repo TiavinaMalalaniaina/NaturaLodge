@@ -1,6 +1,7 @@
 import { api } from './client';
 import { StaffMember } from '../types';
 import { formatRelativeTime } from '../lib/relativeTime';
+import i18n from '../i18n';
 
 interface ApiStaff {
   id: string; username: string; email: string | null; name: string;
@@ -14,7 +15,7 @@ const STATUS_MAP: Record<string, StaffMember['status']> = {
 
 export function normalizeStaff(s: ApiStaff): StaffMember {
   const lastLogin = s.lastLogin
-    ? formatRelativeTime(new Date(s.lastLogin))
+    ? formatRelativeTime(new Date(s.lastLogin), new Date(), i18n.t)
     : 'Jamais';
   return {
     id: s.id,

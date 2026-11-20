@@ -1142,5 +1142,11 @@
       "cancelTitle": "Cancel the stock count?",
       "cancelMessage": "The counted quantities will be discarded and no adjustment will be recorded."
     }
+  },
+  "relativeTime": {
+    "justNow": "just now",
+    "minutes": "{{count}} min ago",
+    "hours": "{{count}} h ago",
+    "days": "{{count}} d ago"
   }
 }

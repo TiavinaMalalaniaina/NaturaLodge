@@ -268,6 +268,8 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
               isDropdownOpen && "bg-teal-50 text-primary"
             )}
             title={t('topbar.notifications')}
+            aria-label={t('topbar.notifications')}
+            aria-expanded={isDropdownOpen}
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
@@ -285,11 +287,14 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-2xl border border-stone-200 shadow-xl overflow-hidden flex flex-col z-50 origin-top-right"
+                // Téléphone : la cloche n'est pas au bord droit (langue et déconnexion à sa droite), un
+                // panneau ancré sur elle déborderait à gauche de l'écran. Il occupe donc toute la
+                // largeur sous la barre du haut ; ancré sur la cloche à partir de sm.
+                className="fixed left-2 right-2 top-[4.5rem] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96 bg-white rounded-2xl border border-stone-200 shadow-xl overflow-hidden flex flex-col z-50 origin-top sm:origin-top-right"
               >
                 {/* Dropdown Header */}
-                <div className="p-4 bg-stone-50 border-b border-stone-100 flex items-center justify-between">
-                  <div>
+                <div className="p-4 bg-stone-50 border-b border-stone-100 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <h5 className="text-xs font-bold text-on-surface uppercase tracking-wider">{t('topbar.alertCenter')}</h5>
                     <p className="text-[9px] text-on-surface-variant/60 tracking-wider font-semibold uppercase">{t('topbar.unreadAlerts', { count: unreadCount })}</p>
                     {can('websiteRequests.view') && <PushToggle />}
@@ -297,7 +302,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                   {unreadCount > 0 && (
                     <button 
                       onClick={markAllAsRead}
-                      className="text-[9px] font-bold text-primary hover:underline uppercase tracking-wider flex items-center gap-1"
+                      className="shrink-0 py-1 text-[9px] font-bold text-primary hover:underline uppercase tracking-wider flex items-center gap-1"
                     >
                       <Check className="w-3 h-3" /> {t('topbar.markAllRead')}
                     </button>
@@ -305,7 +310,7 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                 </div>
 
                 {/* Dropdown List */}
-                <div className="max-h-[320px] overflow-y-auto divide-y divide-stone-100 no-scrollbar">
+                <div className="max-h-[60dvh] sm:max-h-[320px] overflow-y-auto overscroll-contain divide-y divide-stone-100 no-scrollbar">
                   {notifications.length === 0 ? (
                     <div className="p-8 text-center flex flex-col items-center justify-center text-stone-300">
                       <BellOff className="w-8 h-8 mb-2 stroke-1" />
@@ -328,10 +333,10 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                           notif.source === 'system' ? "bg-red-500 animate-pulse" : "bg-teal-500"
                         )} />
                         
-                        <div className="flex-1 space-y-1 pr-6">
+                        <div className="flex-1 min-w-0 space-y-1 pr-8 sm:pr-6">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest">{notif.title}</span>
-                            <span className="text-[9px] font-mono text-on-surface-variant/30">{formatRelativeTime(notif.createdAt, now)}</span>
+                            <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest truncate">{notif.title}</span>
+                            <span className="shrink-0 text-[9px] font-mono text-on-surface-variant/30">{formatRelativeTime(notif.createdAt, now, t)}</span>
                           </div>
                           <p className="text-xs font-medium text-on-surface leading-tight">{notif.subtitle}</p>
                           {notif.amount && notif.amount !== '--' && (
@@ -339,15 +344,16 @@ export const TopBar: React.FC<{ onMenuClick: () => void }> = ({ onMenuClick }) =
                           )}
                         </div>
 
-                        {/* Dropdown individual actions */}
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center gap-1">
+                        {/* Toujours visible au doigt (pas de survol) ; au survol seulement avec une souris. */}
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-fine:opacity-0 pointer-fine:group-hover/item:opacity-100 pointer-fine:focus-within:opacity-100 transition-opacity flex items-center gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               clearNotification(notif.id);
                             }}
-                            className="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-red-500 transition-colors"
+                            className="p-2 sm:p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-red-500 transition-colors"
                             title={t('activityFeed.clear')}
+                            aria-label={t('activityFeed.clear')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
