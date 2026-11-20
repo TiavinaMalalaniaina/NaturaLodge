@@ -100,6 +100,17 @@ const PERMISSIONS: PermissionSeed[] = [
   { key: 'expenses.create', domain: 'expenses', description: 'Enregistrer une dépense',                                                  roles: ADMIN_MANAGER },
   { key: 'expenses.manage_categories', domain: 'expenses', description: 'Créer, modifier ou désactiver une catégorie de dépense',        roles: ADMIN_ONLY },
 
+  // ── inventory ── (migration 20261120100000_inventory)
+  { key: 'inventory.view',           domain: 'inventory', description: 'Consulter les articles de l\'inventaire, leurs quantités et le journal des mouvements', roles: ALL_STAFF },
+  { key: 'inventory.record_usage',   domain: 'inventory', description: 'Déclarer une consommation ou une casse',                                  roles: ALL_STAFF },
+  { key: 'inventory.receive',        domain: 'inventory', description: 'Enregistrer une entrée d\'achat dans l\'inventaire',                     roles: FRONT_DESK },
+  { key: 'inventory.dispose',        domain: 'inventory', description: 'Déclarer une perte ou une mise au rebut',                                 roles: ADMIN_MANAGER },
+  { key: 'inventory.manage_catalog', domain: 'inventory', description: 'Gérer les catégories, articles, variantes et seuils de l\'inventaire',    roles: ADMIN_MANAGER },
+  { key: 'inventory.view_value',     domain: 'inventory', description: 'Voir les coûts et la valeur de l\'inventaire',                            roles: ADMIN_MANAGER },
+  // (migration 20261120110000_inventory_counts)
+  { key: 'inventory.count',          domain: 'inventory', description: 'Saisir des quantités comptées dans un inventaire en cours',               roles: ALL_STAFF },
+  { key: 'inventory.validate_count', domain: 'inventory', description: 'Ouvrir, valider ou annuler un inventaire',                                  roles: ADMIN_MANAGER },
+
   // ── audit ──
   { key: 'auditLogs.view', domain: 'auditLogs', description: 'Consulter le journal d\'audit',                                            roles: ADMIN_ONLY },
 

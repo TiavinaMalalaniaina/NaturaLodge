@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 export const LOCK_KEYS = {
   invoiceNumber:      7_301_001,
   journalEntryNumber: 7_301_002,
+  inventoryCatalog:   7_301_003,
+  inventoryCount:     7_301_004,
 } as const;
 
 // Les numéros de séquence (factures, écritures) sont calculés à partir des lignes existantes : sans

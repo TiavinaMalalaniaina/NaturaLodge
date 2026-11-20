@@ -20,7 +20,8 @@
     "groupAdmin": "Administration",
     "auditLog": "Journal d'audit",
     "permissions": "Permissions",
-    "treasuryAccess": "Accès trésorerie"
+    "treasuryAccess": "Accès trésorerie",
+    "inventory": "Inventaire"
   },
   "topbar": {
     "searchPlaceholder": "Chercher un client, une chambre…",
@@ -982,5 +983,164 @@
   "roomImage": {
     "previewAlt": "Aperçu",
     "urlPlaceholder": "https://…"
+  },
+  "inventory": {
+    "title": "Inventaire",
+    "count": "{{count}} article(s)",
+    "totalValue": "Valeur : {{value}}",
+    "tabs": {
+      "items": "Articles",
+      "movements": "Mouvements",
+      "counts": "Inventaires"
+    },
+    "families": {
+      "equipment": "Équipements",
+      "linen_tableware": "Linge et vaisselle",
+      "consumable": "Consommables"
+    },
+    "toBuy": "À racheter",
+    "searchPlaceholder": "Rechercher un article…",
+    "allCategories": "Toutes les catégories",
+    "showInactive": "Afficher les articles désactivés",
+    "allTypes": "Tous les mouvements",
+    "empty": "Aucun article pour l’instant. Créez d’abord une catégorie, puis vos articles.",
+    "emptyFiltered": "Aucun article ne correspond à ces filtres.",
+    "valueLine": "Valeur : {{value}}",
+    "minStockShort": "seuil {{count}}",
+    "badges": {
+      "belowMin": "À racheter",
+      "inactive": "Désactivé",
+      "variants": "{{count}} variante(s)"
+    },
+    "columns": {
+      "category": "Catégorie",
+      "unit": "Unité",
+      "quantity": "Quantité",
+      "minStock": "Seuil"
+    },
+    "actions": {
+      "categories": "Catégories",
+      "newItem": "Nouvel article",
+      "receive": "Entrée d’achat",
+      "report": "Signaler",
+      "deactivate": "Désactiver",
+      "reactivate": "Réactiver",
+      "toggleVariants": "Afficher les variantes de {{name}}",
+      "reportFor": "Signaler pour {{name}}",
+      "addVariantsFor": "Ajouter des variantes à {{name}}",
+      "editFor": "Modifier {{name}}",
+      "historyFor": "Historique de {{name}}"
+    },
+    "movementTypes": {
+      "initial": "Quantité de départ",
+      "purchase": "Achat",
+      "consumption": "Utilisé",
+      "breakage": "Cassé",
+      "loss": "Perdu",
+      "disposal": "Mis au rebut",
+      "adjustment": "Ajustement",
+      "reclassification": "Répartition"
+    },
+    "movement": {
+      "what": "Que s’est-il passé ?",
+      "item": "Article",
+      "chooseItem": "Choisir un article",
+      "available": "Disponible : {{quantity}} {{unit}}",
+      "decrease": "Diminuer",
+      "increase": "Augmenter",
+      "exceeds": "Il n’en reste que {{quantity}} {{unit}}.",
+      "reason": "Précision",
+      "reasonPlaceholder": "Facultatif : chambre, circonstance…",
+      "typeFilter": "Type de mouvement",
+      "filterItem": "Article : {{name}}",
+      "empty": "Aucun mouvement.",
+      "booking": "séjour de {{name}}",
+      "unitCostLine": "{{value}} l’unité",
+      "after": "reste {{quantity}}",
+      "countRef": "Inventaire {{number}}"
+    },
+    "form": {
+      "createTitle": "Nouvel article",
+      "editTitle": "Modifier l’article",
+      "name": "Nom de l’article",
+      "defaultUnit": "pièce",
+      "unitHint": "pièce, rouleau, litre…",
+      "initialQuantity": "Quantité actuelle",
+      "minStock": "Seuil d’alerte",
+      "minStockHint": "Vide : pas de seuil",
+      "unitCost": "Coût unitaire (Ar)",
+      "noCategory": "Créez d’abord une catégorie d’inventaire (bouton « Catégories »).",
+      "variantLocked": "La catégorie et l’unité d’une variante suivent celles de son article.",
+      "variantsLater": "Couleurs, tailles… : ajoutez des variantes une fois l’article créé."
+    },
+    "variants": {
+      "title": "Variantes de {{name}}",
+      "name": "Variante",
+      "namePlaceholder": "rouge, blanc, 2 places…",
+      "hint": "Saisissez seulement la différence : « rouge » s’affichera « article — rouge ».",
+      "distribute": "Cet article compte déjà {{quantity}} {{unit}} : répartissez-les entre les variantes.",
+      "distributed": "Réparti : {{done}} / {{total}} {{unit}}",
+      "existing": "Variantes existantes : {{names}}",
+      "addRow": "Ajouter une ligne",
+      "removeRow": "Retirer la ligne"
+    },
+    "categories": {
+      "title": "Catégories d’inventaire",
+      "name": "Nom",
+      "family": "Famille",
+      "add": "Ajouter la catégorie",
+      "empty": "Aucune catégorie."
+    },
+    "counts": {
+      "open": "Ouvrir un inventaire",
+      "continue": "Continuer le comptage",
+      "currentTitle": "Inventaire {{number}} en cours",
+      "openHint": "Comptez ce qu’il y a réellement dans l’hôtel et corrigez les écarts.",
+      "openMessage": "Les quantités théoriques de tous les articles actifs sont figées comme point de départ. Le personnel peut ensuite compter, puis un responsable valide.",
+      "empty": "Aucun inventaire pour l’instant.",
+      "gapSummary": "{{count}} écart(s)"
+    },
+    "stockCount": {
+      "title": "Inventaire {{number}}",
+      "back": "Retour aux inventaires",
+      "none": "—",
+      "plus": "+{{value}}",
+      "status": {
+        "in_progress": "En cours",
+        "validated": "Validé",
+        "cancelled": "Annulé"
+      },
+      "openedBy": "Ouvert le {{date}} par {{name}}",
+      "validatedBy": "validé le {{date}} par {{name}}",
+      "cancelledAt": "annulé le {{date}}",
+      "progress": "Avancement",
+      "progressValue": "{{counted}} / {{total}} compté(s)",
+      "gapLines": "Lignes avec écart",
+      "gapValue": "Valeur des écarts",
+      "help": "Saisissez la quantité trouvée (Entrée ou sortie du champ pour enregistrer), ou cochez si elle correspond. Les lignes non comptées ne changent rien à la validation.",
+      "onlyUncounted": "Non comptés seulement",
+      "onlyGaps": "Avec écart seulement",
+      "columns": {
+        "item": "Article",
+        "theoretical": "Théorique",
+        "atValidation": "Théorique à la validation",
+        "counted": "Compté",
+        "gap": "Écart",
+        "value": "Valeur"
+      },
+      "countedBy": "compté par {{name}}",
+      "countedFor": "Quantité comptée pour {{name}}",
+      "asExpected": "Conforme : la quantité théorique est juste",
+      "asExpectedFor": "Conforme pour {{name}}",
+      "recount": "à recompter",
+      "movedSinceCount": "Cet article a bougé après avoir été compté.",
+      "ignored": "Ignoré",
+      "validate": "Valider l’inventaire",
+      "cancel": "Annuler l’inventaire",
+      "validateTitle": "Valider l’inventaire ?",
+      "validateMessage": "{{counted}} ligne(s) comptée(s) sur {{total}}, dont {{gaps}} avec écart. Chaque écart sera enregistré comme ajustement ; les lignes non comptées ne changent rien. Cette action est définitive.",
+      "cancelTitle": "Annuler l’inventaire ?",
+      "cancelMessage": "Les quantités comptées seront abandonnées et aucun ajustement ne sera enregistré."
+    }
   }
 }

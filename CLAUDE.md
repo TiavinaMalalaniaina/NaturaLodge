@@ -185,6 +185,7 @@ Toutes les routes sont protégées par `authenticate`. La plupart nécessitent e
 /api/guests      # CRUD clients
 /api/invoices    # Génération + paiements
 /api/staff       # CRUD staff
+/api/inventory   # Catégories, articles + variantes, mouvements de stock
 ```
 
 ⚠️ `/api/settings` + modèle `HotelConfig` ne sont **pas implémentés** — ce ne sont que des projets non commencés, à ne pas confondre avec de l'existant.
@@ -284,6 +285,16 @@ Le champ `category` (enum `RoomCategory`) a été entièrement retiré du modèl
 ### Grille de réservation (performance)
 La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : seules les colonnes visibles ± 50 jours sont rendues. Les réservations sont pré-indexées par chambre via `bookingsByRoomId` (Map). Ne pas revenir à un rendu de toutes les colonnes.
 
+### Inventaire
+Inventaire **global** (une quantité par article pour tout l'hôtel, pas d'emplacements) ; conception et lots suivants dans `docs/conception/INVENTAIRE.md`.
+- **Variantes dans la même table** : `InventoryItem.parentId` (« rouge » sous « Drap 2 places », affiché « Drap 2 places — rouge »), un seul niveau. Seuls les articles sans variante active et les variantes portent une quantité et des mouvements ; la quantité d'un parent est la somme de ses variantes, calculée à la lecture.
+- **Journal immuable** (`InventoryMovement`) : on ne modifie jamais une quantité, on enregistre un mouvement. `inventoryMovement.service.ts: applyDelta` est le **seul** point qui écrit `InventoryItem.quantity`, après `lockItems` (`FOR UPDATE`, ids triés) ; un `CHECK` en base interdit toute quantité négative. Invariant testé : quantité = somme des `delta`.
+- Les premières variantes d'un article qui a déjà une quantité doivent la répartir entièrement (mouvements `RECLASSIFICATION`, somme nulle).
+- Unicité des noms (racines entre elles, variantes d'un même parent, insensible à la casse) vérifiée par le service sous `LOCK_KEYS.inventoryCatalog` — pas d'index partiel, que Prisma supprimerait.
+- Permission par type de mouvement (`PERMISSION_BY_TYPE`) : consommation et casse pour tout le personnel (HOUSEKEEPING compris), achat pour l'accueil, perte et rebut pour les responsables. Coûts et valeur masqués sans `inventory.view_value`.
+- Aucune écriture comptable : les achats restent des Dépenses.
+- **Inventaires (comptages)** — `inventoryCount.service.ts`, page `InventoryCount.tsx` (`/inventory/counts/:id`) : un seul `IN_PROGRESS` à la fois (`LOCK_KEYS.inventoryCount`). L'ouverture fige une ligne par article mouvementable avec sa quantité théorique ; tout le personnel saisit (`inventory.count`), un responsable valide (`inventory.validate_count`). À la validation, l'écart = compté − quantité **au moment de la validation** (pas à l'ouverture), passé en mouvement `ADJUSTMENT` rattaché à l'inventaire (`countId`) ; lignes non comptées sans effet, article désactivé ou devenu parent ignoré. Saisie et validation verrouillent la ligne `InventoryCount` (`FOR UPDATE`) : jamais de saisie pendant une validation, jamais de double validation.
+
 ---
 
 ## Conventions de code
@@ -294,6 +305,7 @@ La vue grille dans `Reservations.tsx` virtualise les colonnes horizontalement : 
 - Utiliser `cn()` de `src/lib/utils` pour combiner les classes Tailwind
 - Les mutations React Query invalident toujours le cache des queries concernées
 - Vérifier les droits avec `canManage` / `canVoid` côté client avant d'afficher les actions
+- Liste à choix avec recherche : un seul champ, `components/SearchSelect.tsx` (combobox ARIA, options groupables). Jamais un champ de recherche séparé au-dessus d'un `<select>`.
 
 ---
 

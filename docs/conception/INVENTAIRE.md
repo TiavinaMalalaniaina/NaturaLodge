@@ -1,6 +1,8 @@
 # Conception — Inventaire des biens de l'hôtel
 
-**Statut :** proposition, à valider (voir [§ 10 Décisions à valider](#10-décisions-à-valider))
+**Statut :** validée le 20 novembre 2026 (recommandations du § 10 retenues). Lots 1 et 2
+implémentés, sauf l'import CSV, l'export CSV, la carte « À racheter » du tableau de bord et le
+choix d'une réservation lors d'une casse dans l'écran (l'API l'accepte déjà).
 **Date :** 20 novembre 2026 · **Base :** version 2.5.2
 **Choix de départ :** inventaire **global**, sans emplacements : une quantité par article pour
 tout l'hôtel.
@@ -175,10 +177,9 @@ model InventoryItem {
 
   @@index([parentId])
 }
-// Unicité du nom, posée en index partiels dans la migration (Postgres considère les NULL comme
-// distincts, un @@unique([parentId, name]) laisserait passer deux articles racines homonymes) :
-//   CREATE UNIQUE INDEX ... ON "InventoryItem" (lower("name")) WHERE "parentId" IS NULL;
-//   CREATE UNIQUE INDEX ... ON "InventoryItem" ("parentId", lower("name")) WHERE "parentId" IS NOT NULL;
+// Unicité du nom (insensible à la casse) parmi les articles racines, et parmi les variantes d'un
+// même parent : vérifiée par le service sous un verrou consultatif (LOCK_KEYS.inventoryCatalog).
+// Pas d'index partiel : Prisma ne sait pas les décrire, et le prochain `migrate dev` les supprimerait.
 
 model InventoryMovement {
   id          String                @id @default(cuid())

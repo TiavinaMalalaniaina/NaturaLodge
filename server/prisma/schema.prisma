@@ -38,6 +38,10 @@ model User {
   @@index([roleId])
   websiteSettings WebsiteSetting[]
   pushSubscriptions StaffPushSubscription[]
+  inventoryMovements InventoryMovement[]
+  inventoryCountsOpened    InventoryCount[]     @relation("InventoryCountCreatedBy")
+  inventoryCountsValidated InventoryCount[]     @relation("InventoryCountValidatedBy")
+  inventoryCountLines      InventoryCountLine[]
 }
 
 // Rôles configurables par l'ADMIN (écran Permissions) — les 4 rôles historiques (isSystem: true)
@@ -168,6 +172,7 @@ model Booking {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   bookingNotes BookingNote[]
+  inventoryMovements InventoryMovement[]
 }
 
 // Invariant : l'email d'un WebsiteCustomer est toujours vérifié (lien reçu par email ou compte Google
@@ -652,6 +657,7 @@ model Expense {
   incurredAt   DateTime        @default(now())
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  inventoryMovements InventoryMovement[]
 
   @@index([categoryId])
 }
@@ -812,4 +818,134 @@ view KpiRoomInventory {
   roomsTotal     BigInt @map("rooms_total")
 
   @@map("kpi_room_inventory")
+}
+
+// ─── Inventaire ──────────────────────────────────────────────────
+// Inventaire global des biens de l'hôtel, sans emplacements (docs/conception/INVENTAIRE.md).
+
+enum InventoryFamily {
+  EQUIPMENT
+  LINEN_TABLEWARE
+  CONSUMABLE
+}
+
+enum InventoryMovementType {
+  INITIAL
+  PURCHASE
+  CONSUMPTION
+  BREAKAGE
+  LOSS
+  DISPOSAL
+  ADJUSTMENT
+  RECLASSIFICATION
+}
+
+model InventoryCategory {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  family    InventoryFamily
+  isActive  Boolean         @default(true)
+  items     InventoryItem[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model InventoryItem {
+  id         String              @id @default(cuid())
+  // Variante (« rouge » sous « Drap 2 places »), dans la même table. Un seul niveau : un parent
+  // n'a jamais lui-même de parent. Unicité du nom vérifiée par le service (voir inventory.service.ts).
+  parent     InventoryItem?      @relation("ItemVariants", fields: [parentId], references: [id])
+  parentId   String?
+  variants   InventoryItem[]     @relation("ItemVariants")
+  name       String
+  category   InventoryCategory   @relation(fields: [categoryId], references: [id])
+  categoryId String
+  unit       String              @default("pièce")
+  // Cache du journal, modifié uniquement par inventoryMovement.service.ts dans la même transaction
+  // que le mouvement. Jamais négatif (CHECK en base). Toujours 0 sur un article qui a des
+  // variantes actives : son total est la somme de ses variantes.
+  quantity   Int                 @default(0)
+  minStock   Int?
+  unitCost   Int?
+  isActive   Boolean             @default(true)
+  movements  InventoryMovement[]
+  countLines InventoryCountLine[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([parentId])
+  @@index([categoryId])
+}
+
+// Journal immuable : jamais modifié ni supprimé, une erreur se corrige par un mouvement inverse.
+model InventoryMovement {
+  id            String                @id @default(cuid())
+  type          InventoryMovementType
+  item          InventoryItem         @relation(fields: [itemId], references: [id])
+  itemId        String
+  delta         Int
+  quantityAfter Int
+  unitCost      Int?
+  reason        String                @default("")
+  expense       Expense?              @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  expenseId     String?
+  booking       Booking?              @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId     String?
+  createdBy     User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
+  count         InventoryCount?       @relation(fields: [countId], references: [id])
+  countId       String?
+  createdAt     DateTime              @default(now())
+
+  @@index([itemId, createdAt])
+  @@index([type, createdAt])
+  @@index([createdAt])
+}
+
+enum InventoryCountStatus {
+  IN_PROGRESS
+  VALIDATED
+  CANCELLED
+}
+
+// Comptage physique. À l'ouverture, une ligne par article mouvementable (article sans variante
+// active, ou variante) avec la quantité théorique du moment ; un seul inventaire IN_PROGRESS à la
+// fois (vérifié sous LOCK_KEYS.inventoryCount). La validation ramène chaque article compté à la
+// quantité comptée par un mouvement ADJUSTMENT rattaché à l'inventaire.
+model InventoryCount {
+  id            String               @id @default(cuid())
+  number        String               @unique
+  status        InventoryCountStatus @default(IN_PROGRESS)
+  createdBy     User?                @relation("InventoryCountCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
+  validatedBy   User?                @relation("InventoryCountValidatedBy", fields: [validatedById], references: [id], onDelete: SetNull)
+  validatedById String?
+  createdAt     DateTime             @default(now())
+  validatedAt   DateTime?
+  cancelledAt   DateTime?
+  lines         InventoryCountLine[]
+  movements     InventoryMovement[]
+
+  @@index([status])
+}
+
+model InventoryCountLine {
+  id          String         @id @default(cuid())
+  count       InventoryCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+  countId     String
+  item        InventoryItem  @relation(fields: [itemId], references: [id])
+  itemId      String
+  // Quantité théorique à l'ouverture, pour le rapport ; l'écart se calcule à la validation.
+  expectedQty Int
+  countedQty  Int?
+  countedBy   User?          @relation(fields: [countedById], references: [id], onDelete: SetNull)
+  countedById String?
+  countedAt   DateTime?
+  note        String         @default("")
+  // Renseignés à la validation : quantité théorique à ce moment et ajustement passé.
+  // null pour une ligne non comptée, ou ignorée (article désactivé ou devenu parent entre-temps).
+  quantityAtValidation Int?
+  adjustment           Int?
+
+  @@unique([countId, itemId])
 }

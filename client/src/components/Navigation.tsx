@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock, Landmark, BarChart3, Globe } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Bed, Users, Settings, LogOut, Search, Bell, Menu, X, ShieldCheck, Check, Trash2, BellOff, FileText, Receipt, Wallet, Scale, ChevronDown, ShieldAlert, Lock, Landmark, BarChart3, Globe, Package } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchPendingWebsiteRequests } from '../api/websiteRequests';
 import { cn } from '../lib/utils';
@@ -42,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { path: '/website-requests', label: t('websiteRequests.title'), icon: Globe, permission: 'websiteRequests.view', badge: (pendingWeb.data?.pending ?? 0) + (pendingWeb.data?.proofs ?? 0) },
         { path: '/rooms',        label: t('nav.rooms'),        icon: Bed             },
         { path: '/guests',       label: t('nav.guests'),       icon: Users           },
+        { path: '/inventory',    label: t('nav.inventory'),    icon: Package,        permission: 'inventory.view' },
       ],
     },
     {
