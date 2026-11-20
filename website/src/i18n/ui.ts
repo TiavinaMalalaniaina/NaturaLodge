@@ -3,7 +3,7 @@ import type { Lang } from './index';
 // Strings containing markup (<br>, <em>, <strong>) are static, trusted content rendered with set:html.
 const fr = {
   meta: {
-    homeTitle: 'Natura Lodge Manambato — Vacances en famille près du lac',
+    homeTitle: 'Natura Lodge Manambato — Lodge familial près du lac Rasoabe',
     ogLocale: 'fr_FR',
     skip: 'Aller au contenu',
     switchLabel: 'English version',
@@ -14,6 +14,7 @@ const fr = {
     openMenu: 'Ouvrir le menu', closeMenu: 'Fermer le menu', mainNav: 'Navigation principale',
     navSpirit: 'L’esprit Natura', navRooms: 'Nos chambres', navAccount: 'Espace client', navBook: 'Préparer mon séjour',
     heroAlt: 'La plage de sable, les arbres et le bord de l’eau à Manambato',
+    shareAlt: 'La plage de Manambato et la maison Natura Lodge au coucher du soleil',
     heroTitle: 'Les beaux jours<br />se vivent <em>ensemble.</em>',
     heroText: 'Une maison moderne, le lac tout près.<br />Et du temps pour ceux qui comptent.',
     heroCta: 'Découvrir nos chambres', heroBottom: 'Votre parenthèse en famille', heroScroll: 'Prendre le temps',
@@ -24,7 +25,7 @@ const fr = {
     spiritTitle: 'Un lieu pour souffler.<br /><em>Une maison pour se retrouver.</em>',
     spiritText: [
       'Il y a des moments où l’on a simplement envie de partir ensemble. De changer d’air, de ralentir et de profiter de sa famille.',
-      'À Manambato, Natura Lodge vous accueille dans une maison moderne à l’ambiance conviviale, près du lac. Un point de départ pour vos vacances, à votre rythme.',
+      'À Manambato, Natura Lodge vous accueille dans une maison moderne à l’ambiance conviviale, près du lac Rasoabe. Un point de départ pour vos vacances, à votre rythme.',
     ],
     spiritDetails: ['L’esprit famille', 'Le lac à proximité', 'Un cadre moderne'],
     spiritLink: 'Découvrir le cadre',
@@ -40,7 +41,7 @@ const fr = {
     destEyebrow: 'L’envie d’ailleurs',
     destTitle: 'Manambato.<br /><em>Le temps de ralentir.</em>',
     destText: [
-      'Le lac, l’air du dehors et le plaisir de se retrouver. Pour vos vacances en famille, prenez la direction de Manambato, à Madagascar.',
+      'Le lac, l’air du dehors et le plaisir de se retrouver. Pour vos vacances en famille, prenez la direction de Manambato, sur le canal des Pangalanes, à 17 km de Brickaville.',
       'Vous préparez le trajet ? Retrouvez Natura Lodge Manambato sur Google Maps ou écrivez-nous : nous vous aiderons à organiser votre arrivée.',
     ],
     destMap: 'Comment venir',
@@ -128,7 +129,7 @@ type Dict = typeof fr;
 
 const en: Dict = {
   meta: {
-    homeTitle: 'Natura Lodge Manambato — Family holidays by the lake',
+    homeTitle: 'Natura Lodge Manambato — Family lodge by Lake Rasoabe',
     ogLocale: 'en_GB',
     skip: 'Skip to content',
     switchLabel: 'Version française',
@@ -139,6 +140,7 @@ const en: Dict = {
     openMenu: 'Open menu', closeMenu: 'Close menu', mainNav: 'Main navigation',
     navSpirit: 'The Natura spirit', navRooms: 'Our rooms', navAccount: 'Guest account', navBook: 'Plan my stay',
     heroAlt: 'The sandy beach, trees and waterside in Manambato',
+    shareAlt: 'The beach in Manambato and the Natura Lodge house at sunset',
     heroTitle: 'Good days are<br />best spent <em>together.</em>',
     heroText: 'A modern house, the lake close by.<br />And time for the people who matter.',
     heroCta: 'Discover our rooms', heroBottom: 'Your family getaway', heroScroll: 'Take your time',
@@ -149,7 +151,7 @@ const en: Dict = {
     spiritTitle: 'A place to breathe.<br /><em>A house to come together.</em>',
     spiritText: [
       'There are times when you simply want to go away together. To get a change of scenery, slow down and enjoy your family.',
-      'In Manambato, Natura Lodge welcomes you to a modern, friendly house near the lake. A starting point for your holidays, at your own pace.',
+      'In Manambato, Natura Lodge welcomes you to a modern, friendly house near Lake Rasoabe. A starting point for your holidays, at your own pace.',
     ],
     spiritDetails: ['Family spirit', 'The lake nearby', 'A modern setting'],
     spiritLink: 'Discover the setting',
@@ -165,7 +167,7 @@ const en: Dict = {
     destEyebrow: 'Somewhere else',
     destTitle: 'Manambato.<br /><em>Time to slow down.</em>',
     destText: [
-      'The lake, the fresh air and the joy of being together. For your family holidays, head to Manambato, Madagascar.',
+      'The lake, the fresh air and the joy of being together. For your family holidays, head to Manambato, on the Pangalanes Canal, 17 km from Brickaville.',
       'Planning your trip? Find Natura Lodge Manambato on Google Maps or write to us: we will help you organise your arrival.',
     ],
     destMap: 'Getting here',

@@ -3,6 +3,15 @@
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/). Ce fichier n'existait
 pas avant cette release — créé à cette occasion.
 
+## [2.5.2] — 2026-11-19
+
+> `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.5.2`, site public à
+> `1.1.2`. Changement limité au site public.
+
+### Ajouté
+- Fichier de validation Google Search Console (`/google58f19ea587f450ac.html`). À conserver :
+  Google revérifie périodiquement sa présence.
+
 ## [2.5.1] — 2026-11-19
 
 > `package.json` (client et serveur) et `app.ts` (`/health`) bumpés à `2.5.1`, site public à

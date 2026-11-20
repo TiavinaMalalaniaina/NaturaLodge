@@ -1,5 +1,10 @@
 import type { Lang } from '../i18n';
 
+// Coordonnées GPS du lodge (plus code 5HHF65R2+45, « 65R2+45 Manambolo »), reprises par les données
+// structurées `geo`, le lien « Ouvrir dans Google Maps » et la carte intégrée. null = recherche par nom.
+const geo = { latitude: -18.75969, longitude: 49.15044 } as { latitude: number; longitude: number } | null;
+const mapsQuery = encodeURIComponent(geo ? `${geo.latitude},${geo.longitude}` : 'Natura Lodge Manambato');
+
 // Les contenus de la vitrine se modifient ici. Aucun accès à la base de gestion.
 export const hotel = {
   name: 'Natura Lodge Manambato',
@@ -8,24 +13,22 @@ export const hotel = {
   phoneLink: '+261 034 98 894 84',
   whatsappNumber: '261323763499',
   facebook: 'https://www.facebook.com/p/Natura-Lodge-Manambato-61574327443486/',
-  // Recherche par nom : le point précis du code 65Q2+V7 Manambolo reste à confirmer.
-  maps: 'https://www.google.com/maps/search/?api=1&query=Natura%20Lodge%20Manambato',
-  // Données structurées (schema.org) lues par Google. `geo` : coordonnées GPS exactes du lodge, à
-  // renseigner une fois confirmées ({ latitude: -18.xxxxx, longitude: 49.xxxxx }) ; null = non émis.
+  maps: `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
+  // Données structurées (schema.org) lues par Google.
   address: { locality: 'Manambato', region: 'Atsinanana', country: 'MG' },
-  geo: null as { latitude: number; longitude: number } | null,
+  geo,
   email: 'naturalodge.manambato@gmail.com',
   // Carte intégrée, chargée seulement au clic du visiteur (requête envoyée à Google, voir la politique de confidentialité).
-  mapsEmbed: 'https://www.google.com/maps?q=Natura%20Lodge%20Manambato&output=embed',
+  mapsEmbed: `https://www.google.com/maps?q=${mapsQuery}&output=embed`,
   // Lien « Voir tous nos avis » (fiche Google Business, onglet Avis). Vide : le lien n'est pas affiché.
   googleReviews: '',
   description: {
-    fr: 'Une maison moderne, une ambiance conviviale et le lac tout près. Découvrez Natura Lodge Manambato pour vos vacances en famille.',
-    en: 'A modern house, a friendly atmosphere and the lake close by. Discover Natura Lodge Manambato for your family holidays.',
+    fr: 'Lodge familial à Manambato, près du lac Rasoabe sur le canal des Pangalanes. Chambres jusqu’à 6 personnes, à 17 km de Brickaville sur la côte est de Madagascar.',
+    en: 'Family lodge in Manambato, by Lake Rasoabe on the Pangalanes Canal. Rooms for up to 6 guests, 17 km from Brickaville on Madagascar’s east coast.',
   } satisfies Record<Lang, string>,
   currency: 'Ar',
-  // Aperçu des liens partagés (WhatsApp, Facebook). Une photo 1200 × 630 serait idéale pour Facebook.
-  shareImage: { path: '/images/plage-share.jpg', width: 565, height: 565 },
+  // Aperçu des liens partagés (WhatsApp, Facebook) : format 1200 × 630 attendu par Facebook.
+  shareImage: { path: '/images/share.jpg', width: 1200, height: 630 },
 };
 
 // Informations légales de l'exploitant, affichées dans les mentions légales et la politique de
