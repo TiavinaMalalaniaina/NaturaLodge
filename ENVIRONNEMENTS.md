@@ -42,7 +42,7 @@ faut donc **ajouter `APP_ENV` dans Coolify** sur les ressources existantes.
 |---|---|---|---|
 | server | `server/.env.example` → copier en `server/.env` | `server/.env.preprod.example` | `server/.env.production.example` |
 | client | `client/.env.example` → copier en `client/.env` | build arg `VITE_APP_ENV=preprod` | build arg `VITE_APP_ENV=production` (défaut) |
-| website | `website/.env.example` | build arg `PUBLIC_APP_ENV=preprod` ; `API_UPSTREAM` = conteneur server de préprod | `API_UPSTREAM` = conteneur server de prod |
+| website | `website/.env.example` | build arg `PUBLIC_APP_ENV=preprod` ; `API_UPSTREAM` = conteneur server de préprod | `API_UPSTREAM` = conteneur server de prod ; Umami : build arg `PUBLIC_UMAMI_WEBSITE_ID` + `UMAMI_UPSTREAM` |
 
 Les modèles préprod/prod servent de **liste de contrôle des variables à saisir dans Coolify**. Ne
 jamais les committer remplis.

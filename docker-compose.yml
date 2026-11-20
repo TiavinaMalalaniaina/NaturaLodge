@@ -71,6 +71,9 @@ services:
         PUBLIC_API_URL: ${PUBLIC_API_URL:-/api/public}
         PUBLIC_APP_ENV: ${APP_ENV:-development}
         SITE_URL: ${WEBSITE_URL:-}
+        PUBLIC_UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
+    environment:
+      UMAMI_UPSTREAM: ${UMAMI_UPSTREAM:-}
     restart: unless-stopped
     depends_on:
       - server
