@@ -34,6 +34,7 @@ Le tenir à jour à chaque release : déplacer ce qui est fait, ajouter ce qui e
 **Exploitation**
 - Préprod et production sur Coolify, migrations automatiques, contrôle de configuration au démarrage.
 - Monitoring : métriques, logs centralisés, disponibilité.
+- Sauvegarde de la base vers Google Drive (rclone), depuis le VPS.
 - Tests d'intégration serveur sur vrai Postgres et CI sur `server/` et `client/`.
 
 ---
@@ -72,8 +73,9 @@ Le tenir à jour à chaque release : déplacer ce qui est fait, ajouter ce qui e
 - Version de Node non fixée (`.nvmrc` absent) : 22 pour client et serveur, 24 pour le site.
 
 **Exploitation**
-- **Sauvegardes automatiques de la base hors du VPS, et restauration testée** : aucune procédure
-  en place à ce jour. Priorité n°1, voir [`SAUVEGARDES.md`](SAUVEGARDES.md).
+- Sauvegardes : en place (dump + rclone vers Google Drive), mais le script n'est pas dans le
+  dépôt et aucune restauration testée n'est consignée. Compléter [`SAUVEGARDES.md`](SAUVEGARDES.md)
+  et faire un test de restauration.
 - Vérifier que les alertes Uptime Kuma sont configurées et arrivent à quelqu'un.
 
 ---

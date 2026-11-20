@@ -93,7 +93,7 @@ feature/* ou bugfix/* ──PR──▶ develop ──▶ preprod (recette) ─�
 | [`CLAUDE.md`](CLAUDE.md) | **Référence technique** : architecture, conventions, règles métier sensibles (double réservation, factures, acomptes, statuts). À lire en entier. |
 | [`docs/PASSATION.md`](docs/PASSATION.md) | Accès à récupérer, release, que faire en cas de panne, contacts |
 | [`docs/ETAT_DES_LIEUX.md`](docs/ETAT_DES_LIEUX.md) | Ce qui marche, les bugs connus, ce qui reste à faire |
-| [`docs/SAUVEGARDES.md`](docs/SAUVEGARDES.md) | Sauvegarde et restauration de la base de production |
+| [`docs/SAUVEGARDES.md`](docs/SAUVEGARDES.md) | Sauvegarde de la base (rclone → Google Drive) et restauration |
 | [`ENVIRONNEMENTS.md`](ENVIRONNEMENTS.md) | Développement / préprod / production, variables à saisir dans Coolify |
 | [`MANUEL_UTILISATION.md`](MANUEL_UTILISATION.md) | L'application vue par le personnel de l'hôtel |
 | [`CAHIER_DE_CONCEPTION.md`](CAHIER_DE_CONCEPTION.md) | Besoins et conception d'origine |

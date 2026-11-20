@@ -38,7 +38,7 @@ préférer **ajouter le nouveau développeur avec son propre compte** plutôt qu
 | Umami | Statistiques de visite du site | `PUBLIC_UMAMI_WEBSITE_ID`, `UMAMI_UPSTREAM` | [à compléter] |
 | Google Search Console | Référencement du site | Fichier `website/public/google58f19ea587f450ac.html` (ne pas supprimer) | [à compléter] |
 | Grafana, Uptime Kuma | Monitoring et alertes | Tunnel SSH, voir `monitoring/README.md` | [à compléter] |
-| Stockage des sauvegardes | Copies de la base hors du VPS | Voir `SAUVEGARDES.md` | [à compléter] |
+| Google Drive des sauvegardes | Copies quotidiennes de la base (rclone) | Config rclone sur le VPS, voir `SAUVEGARDES.md` | [à compléter] — à transférer à un compte de l'hôtel si c'est un compte personnel |
 | Compte ADMIN du back-office | Administration de l'application | — | Créer un compte nominatif au nouveau développeur |
 
 Côté hôtel, utiles si le développeur fait aussi du support : page Facebook, WhatsApp de l'hôtel,
