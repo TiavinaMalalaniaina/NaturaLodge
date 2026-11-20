@@ -5,6 +5,7 @@ import { dateLocale } from '../i18n';
 import { formatPrice, localePath, alternatePath, type Lang } from '../i18n';
 import { ui } from '../i18n/ui';
 import Alternates from './Alternates.astro';
+import Analytics from './Analytics.astro';
 import LegalLinks from './LegalLinks.astro';
 
 const { lang } = Astro.props as { lang: Lang };
@@ -58,6 +59,7 @@ const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toSt
     {shareImage && <meta property="og:image:alt" content={t.shareAlt} />}
     <meta name="twitter:card" content="summary_large_image" />
     <Alternates />
+    <Analytics />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-rounded-32.png" />
     <link rel="icon" type="image/png" href="/icon-rounded.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-rounded.png" />
@@ -81,7 +83,7 @@ const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toSt
         <a href="#chambres">{t.navRooms}</a>
         <a href={localePath(lang, '/connexion/')}>{t.navAccount}</a>
         <a href={alternatePath(Astro.url.pathname, other)} hreflang={other} lang={other} aria-label={meta.switchLabel}>{meta.switchShort}</a>
-        <a href={localePath(lang, '/reservation/')} class="nav-contact">{t.navBook} <span aria-hidden="true">↗</span></a>
+        <a href={localePath(lang, '/reservation/')} class="nav-contact" data-umami-event="book-click" data-umami-event-source="nav">{t.navBook} <span aria-hidden="true">↗</span></a>
       </nav>
     </header>
 
@@ -139,13 +141,13 @@ const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toSt
                   <div class="room-name"><span class="room-number">0{index + 1}</span><h3>{room.name[lang]}</h3></div>
                   <p>{room.description[lang]}</p>
                   <div class="room-bottom"><div class="price"><span data-price>{formatPrice(room.price, lang)}</span> <span>{hotel.currency}</span><small>{t.perNight}</small><small class="per-person">{t.perPerson} <span data-per-person>{formatPrice(pricePerPerson(room.price, room.capacity), lang)}</span> {t.perPersonUnit}</small></div>
-                    <a class="room-link" href={`${localePath(lang, '/reservation/')}?type=${encodeURIComponent(room.roomType)}`} aria-label={`${t.bookRoom} ${room.name[lang]}`}><span aria-hidden="true">↗</span></a>
+                    <a class="room-link" data-umami-event="book-click" data-umami-event-source="room" data-umami-event-room={room.roomType} href={`${localePath(lang, '/reservation/')}?type=${encodeURIComponent(room.roomType)}`} aria-label={`${t.bookRoom} ${room.name[lang]}`}><span aria-hidden="true">↗</span></a>
                   </div>
                 </div>
               </article>
             ))}
           </div>
-          <div class="booking-note"><span class="note-mark" aria-hidden="true">i</span><p>{t.deposit} <strong>{t.cancellation(policy.refundDaysBeforeArrival)}</strong> <a href={localePath(lang, '/conditions/')}>{t.conditionsLink}</a> <a href={whatsapp} target="_blank" rel="noopener noreferrer">{t.contactUs} <span aria-hidden="true">↗</span></a></p></div>
+          <div class="booking-note"><span class="note-mark" aria-hidden="true">i</span><p>{t.deposit} <strong>{t.cancellation(policy.refundDaysBeforeArrival)}</strong> <a href={localePath(lang, '/conditions/')}>{t.conditionsLink}</a> <a href={whatsapp} target="_blank" rel="noopener noreferrer" data-umami-event="whatsapp" data-umami-event-source="booking-note">{t.contactUs} <span aria-hidden="true">↗</span></a></p></div>
         </div>
       </section>
 
@@ -215,7 +217,7 @@ const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toSt
             </ul>
             <p class="access-note">{t.accessNote}</p>
             <div class="access-links">
-              <a href={accessWhatsapp} class="text-link" target="_blank" rel="noopener noreferrer">{t.accessAsk} <span aria-hidden="true">↗</span></a>
+              <a href={accessWhatsapp} class="text-link" data-umami-event="whatsapp" data-umami-event-source="access" target="_blank" rel="noopener noreferrer">{t.accessAsk} <span aria-hidden="true">↗</span></a>
               <a href={hotel.maps} class="text-link" target="_blank" rel="noopener noreferrer">{t.accessMapsLink} <span aria-hidden="true">↗</span></a>
             </div>
           </div>
@@ -232,7 +234,7 @@ const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toSt
       <section id="contact" class="contact-section" aria-labelledby="contact-title">
         <div class="contact-inner wrap">
           <div><p class="eyebrow">{t.contactEyebrow}</p><h2 id="contact-title" set:html={t.contactTitle} /><p set:html={t.contactText} /></div>
-          <div class="contact-actions"><a href={whatsapp} target="_blank" rel="noopener noreferrer" class="button button-cream"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-13.3 7.9L3 21l1.6-4.7A9 9 0 1 1 21 11.5Z"/><path d="M8 7c-2 3 3 8 6 7l1-2-2-1-1 1-2-2 1-1-1-2Z"/></svg>{t.whatsapp} <span aria-hidden="true">↗</span></a><a href={`tel:${hotel.phoneLink}`} class="phone-link">{t.callUs} {hotel.phone}</a><span class="contact-note">{t.contactNote}</span></div>
+          <div class="contact-actions"><a href={whatsapp} target="_blank" rel="noopener noreferrer" class="button button-cream" data-umami-event="whatsapp" data-umami-event-source="contact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-13.3 7.9L3 21l1.6-4.7A9 9 0 1 1 21 11.5Z"/><path d="M8 7c-2 3 3 8 6 7l1-2-2-1-1 1-2-2 1-1-1-2Z"/></svg>{t.whatsapp} <span aria-hidden="true">↗</span></a><a href={`tel:${hotel.phoneLink}`} class="phone-link">{t.callUs} {hotel.phone}</a><span class="contact-note">{t.contactNote}</span></div>
         </div>
       </section>
     </main>
@@ -243,7 +245,7 @@ const shareImage = Astro.site && new URL(hotel.shareImage.path, Astro.site).toSt
       <p id="photos" class="photo-notice">{t.photoNotice}</p>
     </footer>
 
-    <a href={whatsapp} class="whatsapp-float" target="_blank" rel="noopener noreferrer" aria-label={t.whatsappFloat} data-whatsapp-float>
+    <a href={whatsapp} class="whatsapp-float" data-umami-event="whatsapp" data-umami-event-source="float" target="_blank" rel="noopener noreferrer" aria-label={t.whatsappFloat} data-whatsapp-float>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a9 9 0 0 1-13.3 7.9L3 21l1.6-4.7A9 9 0 1 1 21 11.5Z"/><path d="M8 7c-2 3 3 8 6 7l1-2-2-1-1 1-2-2 1-1-1-2Z"/></svg>
       <span>{t.whatsappFloatShort}</span>
     </a>

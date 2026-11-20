@@ -11,6 +11,9 @@ ENV PUBLIC_API_URL=$PUBLIC_API_URL
 # Public origin of the site (https://example.com). Empty: no share preview (og:image) nor hreflang.
 ARG SITE_URL=
 ENV SITE_URL=$SITE_URL
+# Umami website ID (production only). Empty: no analytics script on the pages.
+ARG PUBLIC_UMAMI_WEBSITE_ID=
+ENV PUBLIC_UMAMI_WEBSITE_ID=$PUBLIC_UMAMI_WEBSITE_ID
 RUN API_ORIGIN=$(node -e "const u = process.env.PUBLIC_API_URL; console.log(u.startsWith('/') ? '' : new URL(u).origin)") \
  && sed "s|__API_ORIGIN__|$API_ORIGIN|" security-headers.conf > security-headers.generated.conf
 RUN npm run build
@@ -24,6 +27,8 @@ RUN if [ "$PUBLIC_APP_ENV" != "production" ]; then \
 FROM nginx:stable-alpine
 # Upstream of the /api/public relay, substituted at container start (see nginx.conf).
 ENV API_UPSTREAM=server
+# Umami URL relayed under /stats/ (see nginx.conf). Empty: /stats/ answers 404.
+ENV UMAMI_UPSTREAM=
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/security-headers.generated.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /app/dist /usr/share/nginx/html

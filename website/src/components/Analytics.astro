@@ -1,0 +1,7 @@
+---
+// Umami (cookieless audience measurement), served from the site's own origin: nginx relays /stats/
+// to UMAMI_UPSTREAM, so the CSP stays 'self'. No website ID at build (local, preprod): nothing loaded.
+// Query strings are never sent: password reset and email verification links carry their token there.
+const websiteId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+---
+{websiteId && <script is:inline defer src="/stats/script.js" data-website-id={websiteId} data-host-url="/stats" data-exclude-search="true" data-exclude-hash="true"></script>}

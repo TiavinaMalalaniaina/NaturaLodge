@@ -45,7 +45,7 @@ export const legal = {
   privacyEmail: 'naturalodge.manambato@gmail.com', // Adresse dédiée à l'hôtel (pas une adresse personnelle) pour les demandes liées aux données
   host: 'Contabo GmbH, Aschauer Straße 32a, 81549 Munich, Allemagne', // Hébergeur du site : nom et adresse
   emailProvider: 'Google (Gmail)', // Service d'envoi des emails
-  updatedAt: '2026-11-18', // Date de dernière mise à jour des pages légales
+  updatedAt: '2026-11-19', // Date de dernière mise à jour des pages légales
 };
 
 // Règles de réservation, reprises dans les conditions, le formulaire et les instructions de paiement.
