@@ -14,6 +14,7 @@ import { paymentsRouter } from './routes/payments';
 import { ledgerRouter } from './routes/ledger';
 import { kpiRouter } from './routes/kpi';
 import { expensesRouter } from './routes/expenses';
+import { inventoryRouter } from './routes/inventory';
 import { auditLogsRouter } from './routes/auditLogs';
 import { permissionsRouter } from './routes/permissions';
 import { rolesRouter } from './routes/roles';
@@ -67,6 +68,7 @@ app.use('/api/expenses', expensesRouter);
 app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/permissions', permissionsRouter);
 app.use('/api/roles', rolesRouter);
+app.use('/api/inventory', inventoryRouter);
 
 app.use((_req, res) => res.status(404).json({ error: 'Route introuvable' }));
 

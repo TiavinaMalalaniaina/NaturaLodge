@@ -20,7 +20,8 @@
     "groupAdmin": "Administration",
     "auditLog": "Audit Log",
     "permissions": "Permissions",
-    "treasuryAccess": "Treasury access"
+    "treasuryAccess": "Treasury access",
+    "inventory": "Inventory"
   },
   "topbar": {
     "searchPlaceholder": "Search for staff, rooms or guests…",
@@ -982,5 +983,164 @@
   "roomImage": {
     "previewAlt": "Preview",
     "urlPlaceholder": "https://…"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "count": "{{count}} item(s)",
+    "totalValue": "Value: {{value}}",
+    "tabs": {
+      "items": "Items",
+      "movements": "Movements",
+      "counts": "Stock counts"
+    },
+    "families": {
+      "equipment": "Equipment",
+      "linen_tableware": "Linen & tableware",
+      "consumable": "Consumables"
+    },
+    "toBuy": "To buy",
+    "searchPlaceholder": "Search an item…",
+    "allCategories": "All categories",
+    "showInactive": "Show deactivated items",
+    "allTypes": "All movements",
+    "empty": "No items yet. Create a category first, then your items.",
+    "emptyFiltered": "No item matches these filters.",
+    "valueLine": "Value: {{value}}",
+    "minStockShort": "minimum {{count}}",
+    "badges": {
+      "belowMin": "To buy",
+      "inactive": "Deactivated",
+      "variants": "{{count}} variant(s)"
+    },
+    "columns": {
+      "category": "Category",
+      "unit": "Unit",
+      "quantity": "Quantity",
+      "minStock": "Minimum"
+    },
+    "actions": {
+      "categories": "Categories",
+      "newItem": "New item",
+      "receive": "Receive purchase",
+      "report": "Report",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "toggleVariants": "Show variants of {{name}}",
+      "reportFor": "Report for {{name}}",
+      "addVariantsFor": "Add variants to {{name}}",
+      "editFor": "Edit {{name}}",
+      "historyFor": "History of {{name}}"
+    },
+    "movementTypes": {
+      "initial": "Starting quantity",
+      "purchase": "Purchase",
+      "consumption": "Used",
+      "breakage": "Broken",
+      "loss": "Lost",
+      "disposal": "Disposed of",
+      "adjustment": "Adjustment",
+      "reclassification": "Split"
+    },
+    "movement": {
+      "what": "What happened?",
+      "item": "Item",
+      "chooseItem": "Choose an item",
+      "available": "Available: {{quantity}} {{unit}}",
+      "decrease": "Decrease",
+      "increase": "Increase",
+      "exceeds": "Only {{quantity}} {{unit}} left.",
+      "reason": "Details",
+      "reasonPlaceholder": "Optional: room, circumstances…",
+      "typeFilter": "Movement type",
+      "filterItem": "Item: {{name}}",
+      "empty": "No movements.",
+      "booking": "stay of {{name}}",
+      "unitCostLine": "{{value}} each",
+      "after": "{{quantity}} left",
+      "countRef": "Count {{number}}"
+    },
+    "form": {
+      "createTitle": "New item",
+      "editTitle": "Edit item",
+      "name": "Item name",
+      "defaultUnit": "piece",
+      "unitHint": "piece, roll, litre…",
+      "initialQuantity": "Current quantity",
+      "minStock": "Alert threshold",
+      "minStockHint": "Empty: no threshold",
+      "unitCost": "Unit cost (Ar)",
+      "noCategory": "Create an inventory category first (“Categories” button).",
+      "variantLocked": "A variant always has the category and unit of its item.",
+      "variantsLater": "Colours, sizes…: add variants once the item is created."
+    },
+    "variants": {
+      "title": "Variants of {{name}}",
+      "name": "Variant",
+      "namePlaceholder": "red, white, double…",
+      "hint": "Type only the difference: “red” will show as “item — red”.",
+      "distribute": "This item already has {{quantity}} {{unit}}: split them between the variants.",
+      "distributed": "Split: {{done}} / {{total}} {{unit}}",
+      "existing": "Existing variants: {{names}}",
+      "addRow": "Add a row",
+      "removeRow": "Remove the row"
+    },
+    "categories": {
+      "title": "Inventory categories",
+      "name": "Name",
+      "family": "Family",
+      "add": "Add category",
+      "empty": "No categories."
+    },
+    "counts": {
+      "open": "Start a stock count",
+      "continue": "Continue counting",
+      "currentTitle": "Stock count {{number}} in progress",
+      "openHint": "Count what is really in the hotel and correct the differences.",
+      "openMessage": "The expected quantities of all active items are frozen as a starting point. Staff can then count, and a manager validates.",
+      "empty": "No stock count yet.",
+      "gapSummary": "{{count}} difference(s)"
+    },
+    "stockCount": {
+      "title": "Stock count {{number}}",
+      "back": "Back to stock counts",
+      "none": "—",
+      "plus": "+{{value}}",
+      "status": {
+        "in_progress": "In progress",
+        "validated": "Validated",
+        "cancelled": "Cancelled"
+      },
+      "openedBy": "Started on {{date}} by {{name}}",
+      "validatedBy": "validated on {{date}} by {{name}}",
+      "cancelledAt": "cancelled on {{date}}",
+      "progress": "Progress",
+      "progressValue": "{{counted}} / {{total}} counted",
+      "gapLines": "Lines with a difference",
+      "gapValue": "Value of differences",
+      "help": "Enter the quantity found (press Enter or leave the field to save), or tick it if it matches. Uncounted lines change nothing on validation.",
+      "onlyUncounted": "Uncounted only",
+      "onlyGaps": "Differences only",
+      "columns": {
+        "item": "Item",
+        "theoretical": "Expected",
+        "atValidation": "Expected at validation",
+        "counted": "Counted",
+        "gap": "Difference",
+        "value": "Value"
+      },
+      "countedBy": "counted by {{name}}",
+      "countedFor": "Counted quantity for {{name}}",
+      "asExpected": "Matches: the expected quantity is right",
+      "asExpectedFor": "Matches for {{name}}",
+      "recount": "recount",
+      "movedSinceCount": "This item moved after it was counted.",
+      "ignored": "Ignored",
+      "validate": "Validate the count",
+      "cancel": "Cancel the count",
+      "validateTitle": "Validate the stock count?",
+      "validateMessage": "{{counted}} of {{total}} line(s) counted, {{gaps}} with a difference. Each difference will be recorded as an adjustment; uncounted lines change nothing. This cannot be undone.",
+      "cancelTitle": "Cancel the stock count?",
+      "cancelMessage": "The counted quantities will be discarded and no adjustment will be recorded."
+    }
   }
 }

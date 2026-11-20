@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { lockForTransaction } from './advisoryLock';
 
-type NumberedTable = 'Invoice' | 'JournalEntry';
+type NumberedTable = 'Invoice' | 'JournalEntry' | 'InventoryCount';
 
 // Année de l'hôtel (Madagascar), pas celle du serveur (UTC en conteneur) : le 31 décembre à 22h
 // heure locale appartient déjà à la nouvelle année.

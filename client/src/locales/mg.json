@@ -20,7 +20,8 @@
     "groupAdmin": "Fitantanana",
     "auditLog": "Diarin'ny asa",
     "permissions": "Fahazoan-dalana",
-    "treasuryAccess": "Fidirana amin'ny volabe"
+    "treasuryAccess": "Fidirana amin'ny volabe",
+    "inventory": "Tahiry"
   },
   "topbar": {
     "searchPlaceholder": "Karohy mpiasa, efitrano, vahiny…",
@@ -982,5 +983,164 @@
   "roomImage": {
     "previewAlt": "Topi-maso",
     "urlPlaceholder": "https://…"
+  },
+  "inventory": {
+    "title": "Tahiry",
+    "count": "Entana {{count}}",
+    "totalValue": "Sanda : {{value}}",
+    "tabs": {
+      "items": "Entana",
+      "movements": "Fivezivezena",
+      "counts": "Fanisana"
+    },
+    "families": {
+      "equipment": "Fitaovana",
+      "linen_tableware": "Lamba sy fitaovam-pisakafoanana",
+      "consumable": "Entana lany"
+    },
+    "toBuy": "Hovidiana",
+    "searchPlaceholder": "Hitady entana…",
+    "allCategories": "Sokajy rehetra",
+    "showInactive": "Asehoy ireo entana tsy ampiasaina intsony",
+    "allTypes": "Fivezivezena rehetra",
+    "empty": "Mbola tsy misy entana. Mamorona sokajy aloha, avy eo ny entana.",
+    "emptyFiltered": "Tsy misy entana mifanaraka amin’ireo sivana ireo.",
+    "valueLine": "Sanda : {{value}}",
+    "minStockShort": "fetra {{count}}",
+    "badges": {
+      "belowMin": "Hovidiana",
+      "inactive": "Tsy ampiasaina",
+      "variants": "Karazany {{count}}"
+    },
+    "columns": {
+      "category": "Sokajy",
+      "unit": "Refy",
+      "quantity": "Isa",
+      "minStock": "Fetra"
+    },
+    "actions": {
+      "categories": "Sokajy",
+      "newItem": "Entana vaovao",
+      "receive": "Fidirana vidiana",
+      "report": "Hampahafantatra",
+      "deactivate": "Atsahatra",
+      "reactivate": "Averina ampiasaina",
+      "toggleVariants": "Asehoy ny karazan’i {{name}}",
+      "reportFor": "Hampahafantatra momba ny {{name}}",
+      "addVariantsFor": "Hanampy karazana amin’i {{name}}",
+      "editFor": "Hanova {{name}}",
+      "historyFor": "Tantaran’i {{name}}"
+    },
+    "movementTypes": {
+      "initial": "Isa tany am-boalohany",
+      "purchase": "Vidiana",
+      "consumption": "Nampiasaina",
+      "breakage": "Vaky",
+      "loss": "Very",
+      "disposal": "Nariana",
+      "adjustment": "Fanitsiana",
+      "reclassification": "Fizarana"
+    },
+    "movement": {
+      "what": "Inona no nitranga ?",
+      "item": "Entana",
+      "chooseItem": "Misafidiana entana",
+      "available": "Misy : {{quantity}} {{unit}}",
+      "decrease": "Ahena",
+      "increase": "Ampitomboina",
+      "exceeds": "{{quantity}} {{unit}} sisa no misy.",
+      "reason": "Fanazavana",
+      "reasonPlaceholder": "Tsy voatery : efitrano, toe-javatra…",
+      "typeFilter": "Karazana fivezivezena",
+      "filterItem": "Entana : {{name}}",
+      "empty": "Tsy misy fivezivezena.",
+      "booking": "fijanonan’i {{name}}",
+      "unitCostLine": "{{value}} ny iray",
+      "after": "{{quantity}} sisa",
+      "countRef": "Fanisana {{number}}"
+    },
+    "form": {
+      "createTitle": "Entana vaovao",
+      "editTitle": "Hanova ny entana",
+      "name": "Anaran’ny entana",
+      "defaultUnit": "iray",
+      "unitHint": "iray, horonana, litatra…",
+      "initialQuantity": "Isa ankehitriny",
+      "minStock": "Fetra fampitandremana",
+      "minStockHint": "Banga : tsy misy fetra",
+      "unitCost": "Vidin’ny iray (Ar)",
+      "noCategory": "Mamorona sokajy aloha (bokotra « Sokajy »).",
+      "variantLocked": "Ny sokajy sy ny refin’ny karazana dia mitovy amin’ny an’ny entany.",
+      "variantsLater": "Loko, habe… : ampio karazana rehefa voaforona ny entana."
+    },
+    "variants": {
+      "title": "Karazan’i {{name}}",
+      "name": "Karazana",
+      "namePlaceholder": "mena, fotsy…",
+      "hint": "Soraty ny fahasamihafana ihany : « mena » dia hiseho hoe « entana — mena ».",
+      "distribute": "Efa misy {{quantity}} {{unit}} ity entana ity : zarao amin’ireo karazana.",
+      "distributed": "Voazara : {{done}} / {{total}} {{unit}}",
+      "existing": "Karazana efa misy : {{names}}",
+      "addRow": "Hanampy andalana",
+      "removeRow": "Esory ny andalana"
+    },
+    "categories": {
+      "title": "Sokajin’ny tahiry",
+      "name": "Anarana",
+      "family": "Fianakaviana",
+      "add": "Hanampy sokajy",
+      "empty": "Tsy misy sokajy."
+    },
+    "counts": {
+      "open": "Hanokatra fanisana",
+      "continue": "Hanohy ny fanisana",
+      "currentTitle": "Fanisana {{number}} an-dalam-pandehanana",
+      "openHint": "Isao izay tena misy ao amin’ny hotely ary ahitsio ny fahasamihafana.",
+      "openMessage": "Ny isa voasoratra amin’ny entana rehetra ampiasaina no raisina ho fiaingana. Afaka manisa ny mpiasa, avy eo misy tompon’andraikitra manamarina.",
+      "empty": "Mbola tsy misy fanisana.",
+      "gapSummary": "Fahasamihafana {{count}}"
+    },
+    "stockCount": {
+      "title": "Fanisana {{number}}",
+      "back": "Hiverina amin’ny fanisana",
+      "none": "—",
+      "plus": "+{{value}}",
+      "status": {
+        "in_progress": "Mandeha",
+        "validated": "Voamarina",
+        "cancelled": "Nofoanana"
+      },
+      "openedBy": "Nosokafan’i {{name}} ny {{date}}",
+      "validatedBy": "nohamarinin’i {{name}} ny {{date}}",
+      "cancelledAt": "nofoanana ny {{date}}",
+      "progress": "Fandrosoana",
+      "progressValue": "{{counted}} / {{total}} voaisa",
+      "gapLines": "Andalana misy fahasamihafana",
+      "gapValue": "Sandan’ny fahasamihafana",
+      "help": "Soraty ny isa hita (Entrée na mivoaha amin’ny saha mba hitehirizana), na mariho raha mitovy. Tsy manova na inona na inona ny andalana tsy voaisa.",
+      "onlyUncounted": "Ireo tsy voaisa ihany",
+      "onlyGaps": "Ireo misy fahasamihafana ihany",
+      "columns": {
+        "item": "Entana",
+        "theoretical": "Voasoratra",
+        "atValidation": "Voasoratra tamin’ny fanamarinana",
+        "counted": "Voaisa",
+        "gap": "Fahasamihafana",
+        "value": "Sanda"
+      },
+      "countedBy": "nisain’i {{name}}",
+      "countedFor": "Isa voaisa ho an’i {{name}}",
+      "asExpected": "Mitovy : marina ny isa voasoratra",
+      "asExpectedFor": "Mitovy ho an’i {{name}}",
+      "recount": "isaina indray",
+      "movedSinceCount": "Nisy fivezivezena ity entana ity taorian’ny nanisana azy.",
+      "ignored": "Tsy noraharahiana",
+      "validate": "Hamarina ny fanisana",
+      "cancel": "Hanafoana ny fanisana",
+      "validateTitle": "Hamarina ny fanisana ?",
+      "validateMessage": "Andalana {{counted}} voaisa amin’ny {{total}}, ka {{gaps}} misy fahasamihafana. Hosoratana ho fanitsiana ny fahasamihafana tsirairay ; tsy manova na inona na inona ny andalana tsy voaisa. Tsy azo averina io.",
+      "cancelTitle": "Hanafoana ny fanisana ?",
+      "cancelMessage": "Hariana ny isa voaisa ary tsy hisy fanitsiana hosoratana."
+    }
   }
 }

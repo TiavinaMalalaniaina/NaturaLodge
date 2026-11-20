@@ -25,6 +25,8 @@ const InvoiceView     = lazy(() => import('./pages/InvoiceView').then(m => ({ de
 const InvoiceDocument = lazy(() => import('./pages/InvoiceDocument').then(m => ({ default: m.InvoiceDocument })));
 const Settings        = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })));
 const Expenses         = lazy(() => import('./pages/Expenses').then(m => ({ default: m.Expenses })));
+const Inventory        = lazy(() => import('./pages/Inventory').then(m => ({ default: m.Inventory })));
+const InventoryCount   = lazy(() => import('./pages/InventoryCount').then(m => ({ default: m.InventoryCount })));
 const Treasury          = lazy(() => import('./pages/Treasury').then(m => ({ default: m.Treasury })));
 const Reports            = lazy(() => import('./pages/Reports').then(m => ({ default: m.Reports })));
 const KpiLayout            = lazy(() => import('./pages/KpiLayout').then(m => ({ default: m.KpiLayout })));
@@ -73,6 +75,12 @@ const App: React.FC = () => {
                   </Route>
                   <Route element={<ProtectedRoute permission="expenses.view" />}>
                     <Route path="expenses" element={<Expenses />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="inventory.view" />}>
+                    <Route path="inventory" element={<Inventory />} />
+                  </Route>
+                  <Route element={<ProtectedRoute permission="inventory.count" />}>
+                    <Route path="inventory/counts/:id" element={<InventoryCount />} />
                   </Route>
                   <Route element={<ProtectedRoute permission="ledger.view_cash_accounts" />}>
                     <Route path="treasury" element={<Treasury />} />
