@@ -1142,5 +1142,11 @@
       "cancelTitle": "Annuler l’inventaire ?",
       "cancelMessage": "Les quantités comptées seront abandonnées et aucun ajustement ne sera enregistré."
     }
+  },
+  "relativeTime": {
+    "justNow": "à l’instant",
+    "minutes": "il y a {{count}} min",
+    "hours": "il y a {{count}} h",
+    "days": "il y a {{count}} j"
   }
 }
